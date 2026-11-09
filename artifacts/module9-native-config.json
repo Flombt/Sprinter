@@ -1,0 +1,29 @@
+{
+  "bundle": "app.sprinter.running",
+  "backgroundModes": [
+    "location",
+    "audio",
+    "fetch"
+  ],
+  "healthReadPurpose": "Avec votre accord, Sprinter lit vos activités de course et leur distance pour vous permettre de les consulter ou de les importer localement.",
+  "healthWritePurpose": "Avec votre accord, Sprinter ajoute vos courses terminées et leur distance dans Apple Santé. Aucun accès aux autres données de santé n’est demandé.",
+  "motionPurpose": "Si vous activez la cadence mesurée, Sprinter utilise les mouvements de l’iPhone pour estimer vos pas par minute pendant une course au premier plan.",
+  "supportsLiveActivities": true,
+  "entitlements": {
+    "com.apple.security.application-groups": [
+      "group.app.sprinter.running"
+    ],
+    "com.apple.developer.healthkit": true
+  },
+  "extensions": [
+    {
+      "targetName": "ExpoWidgetsTarget",
+      "bundleIdentifier": "app.sprinter.running.ExpoWidgetsTarget",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.app.sprinter.running"
+        ]
+      }
+    }
+  ]
+}

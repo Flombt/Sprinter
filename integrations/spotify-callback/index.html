@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Retour vers Sprinter</title>
+</head>
+<body>
+  <h1>Connexion Spotify</h1>
+  <p id="status">Retour vers Sprinter…</p>
+  <a id="return" hidden>Revenir dans Sprinter</a>
+  <script>
+    (() => {
+      const query = new URLSearchParams(location.search);
+      history.replaceState(null, '', location.pathname);
+      const state = query.get('state'), code = query.get('code'), error = query.get('error');
+      if (!state || state.length > 256 || (!code && !error) || (code && code.length > 4096) || (error && error.length > 256)) {
+        document.getElementById('status').textContent = 'Retour incomplet. Relancez la connexion depuis Sprinter.';
+        return;
+      }
+      const parameters = new URLSearchParams({ state });
+      if (error) parameters.set('error', error); else parameters.set('code', code);
+      // The destination is fixed: query parameters can never select another host or app.
+      const callback = 'app.sprinter.running://spotify-callback?' + parameters.toString();
+      const link = document.getElementById('return'); link.href = callback; link.hidden = false;
+      document.getElementById('status').textContent = 'Si Sprinter ne s’ouvre pas, touchez le lien ci-dessous.';
+      location.replace(callback);
+    })();
+  </script>
+</body>
+</html>

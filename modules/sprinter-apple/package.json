@@ -1,0 +1,8 @@
+{
+  "name": "sprinter-apple",
+  "version": "1.0.0",
+  "description": "Local HealthKit bridge for Sprinter",
+  "license": "MIT",
+  "private": true,
+  "main": "index.js"
+}
