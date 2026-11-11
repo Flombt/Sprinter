@@ -4,7 +4,7 @@ import { Appearance } from '../core/types';
 import { palettes, type ThemeColors } from './tokens';
 
 export type Theme = ThemeColors;
-const ThemeContext = createContext({ colors: palettes.light, reduceMotion: false, reduceTransparency: false });
+const ThemeContext = createContext({ colors: palettes.dark, reduceMotion: false, reduceTransparency: false });
 export function ThemeProvider({ appearance, children }: { appearance: Appearance; children: React.ReactNode }) {
   const system = useColorScheme();
   // Start conservatively while iOS accessibility preferences are being read.
