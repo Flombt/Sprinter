@@ -198,7 +198,8 @@ export class RunRepository {
         backgroundEnabled: s.backgroundEnabled === true,
         autoPauseEnabled: s.autoPauseEnabled === true,
         coaching: sanitizeCoaching(s.coaching),
-        appearance: s.appearance === 'light' || s.appearance === 'dark' ? s.appearance : 'system' };
+        appearance: s.appearance === 'light' || s.appearance === 'dark' || s.appearance === 'system'
+          ? s.appearance : DEFAULT_SETTINGS.appearance };
     } catch { return { ...DEFAULT_SETTINGS, config: { ...DEFAULT_SETTINGS.config } }; }
   }
   saveSettings(settings: Settings) {
