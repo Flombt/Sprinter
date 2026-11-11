@@ -1,0 +1,14 @@
+.expo/
+.verification/
+artifacts/
+dist/
+node_modules/
+modules/sprinter-apple/
+integrations/spotify-callback/
+src/core/
+src/pacing/
+src/storage/
+src/services/location.ts
+src/services/session.ts
+src/analysis/*
+!src/analysis/SeriesChart.tsx

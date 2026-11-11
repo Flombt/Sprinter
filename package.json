@@ -17,16 +17,20 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test",
+    "check": "npm run lint && npm run typecheck && npm test",
     "export:ios": "expo export --platform ios",
     "build:ios": "npx eas-cli@latest build --platform ios --profile development",
-    "qr": "node scripts/qr.cjs"
+    "qr": "node scripts/qr.cjs",
+    "lint": "eslint App.tsx src",
+    "format": "prettier --write App.tsx src/navigation src/screens src/ui src/analysis/SeriesChart.tsx src/settings/TrackingPanel.tsx src/spotify/TrackSheet.tsx src/spotify/components.tsx"
   },
   "dependencies": {
     "@expo/ui": "~58.0.26",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-community/slider": "5.2.1",
     "@react-native-picker/picker": "2.11.4",
+    "@react-navigation/native": "^7.5.1",
+    "@react-navigation/native-stack": "^7.21.0",
     "expo": "~58.0.24",
     "expo-asset": "~58.0.19",
     "expo-audio": "~58.0.12",
@@ -59,12 +63,16 @@
     "react-native": "0.88.1",
     "react-native-maps": "1.29.11",
     "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1",
     "react-native-svg": "15.16.0",
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/react": "~19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~58.0.4",
+    "prettier": "^3.10.0",
     "qrcode": "^1.5.4",
     "typescript": "~6.0.3",
     "vitest": "^5.0.5"

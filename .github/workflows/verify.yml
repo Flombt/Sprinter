@@ -29,7 +29,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Types and regression tests
+      - name: Lint, types and regression tests
         run: npm run check
       - name: Expo dependency compatibility
         run: npx expo install --check
