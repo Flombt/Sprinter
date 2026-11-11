@@ -25,6 +25,8 @@ Trois onglets : **Stats · Courir · Spotify**. La nouvelle identité associe ca
 
 Les séances, défis, objectifs avancés, chaussures et parcours se règlent depuis la préparation. L’historique donne accès aux records, à la comparaison et au calendrier. Les sauvegardes de récupération sont accessibles dans les réglages.
 
+Le départ simple utilise une [allure précise sans marge](docs/ALLURE_PRECISE.md), par défaut 5′00″/km : 4′58″ est trop rapide et 5′02″ trop lent. Les plages restent disponibles dans les options avancées.
+
 **Dernière vérification, 11 novembre 2026 : 164 tests réussis, TypeScript et exports iOS/web réussis.** Le client natif signé et la recette physique sur iPhone restent à réaliser. Le workflow GitHub est ajouté localement et attend sa première exécution distante.
 
 [Audit des 64 fiches GitHub](docs/AUDIT_2026-11-11.md) · [Travail réalisé et prochaines priorités](docs/STABILISATION_2026-11-11.md) · [Identité et navigation](docs/INTERFACE.md).

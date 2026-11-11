@@ -1,9 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { PaceCoach, sanitizeConfig } from '../src/core/coach';
+import { classifyPace, PaceCoach, sanitizeConfig } from '../src/core/coach';
 import { DEFAULT_CONFIG, DEFAULT_TARGET } from '../src/core/types';
-import { duration, pace, estimatedDuration, validateTarget } from '../src/core/format';
+import { duration, pace, estimatedDuration, inTarget, validateTarget } from '../src/core/format';
 
 describe('pace coach', () => {
+  it.each([[298, 'tooFast', 'slowDown'], [302, 'tooSlow', 'speedUp']] as const)('alerts for an exact 5:00 target at %i s/km despite range margins', (value, state, cue) => {
+    const target = { fast: 300, slow: 300, distanceMeters: null };
+    const coach = new PaceCoach(target, { ...DEFAULT_CONFIG, toleranceSeconds: 5, hysteresisSeconds: 3 });
+    for (let t = 0; t < 10; t++) expect(coach.update(value, t)).toBeNull();
+    expect(coach.classification).toBe(state); expect(coach.update(value, 10)).toBe(cue);
+    expect(coach.update(300, 11)).toBeNull(); expect(coach.classification).toBe('onTarget');
+  });
+  it('compares exact targets at the same second precision as the displayed pace', () => {
+    const target = { fast: 300, slow: 300, distanceMeters: null };
+    for (const value of [299.6, 300, 300.4]) {
+      expect(pace(value)).toBe('5′00″'); expect(classifyPace(value, target)).toBe('onTarget'); expect(inTarget(value, target)).toBe(true);
+    }
+    expect(classifyPace(299, target)).toBe('tooFast'); expect(classifyPace(301, target)).toBe('tooSlow');
+  });
   it('never alerts between 5′10 and 5′20', () => {
     const coach = new PaceCoach(DEFAULT_TARGET);
     for (let t = 0; t < 300; t++) expect(coach.update(310 + t % 11, t)).toBeNull();

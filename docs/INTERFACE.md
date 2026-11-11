@@ -12,6 +12,8 @@ Les surfaces claires mettent les données principales au premier plan. Les carte
 
 L’allure cible et la distance se choisissent avant le départ. Les vibrations et les signaux audio restent modifiables pendant la course. Les données affichées viennent des services existants ; aucune activité ni playlist fictive n’est ajoutée.
 
+Le départ simple propose une [allure précise](ALLURE_PRECISE.md), sans marge, par défaut 5′00″/km. Les plages d’allure restent disponibles dans la préparation.
+
 ## Fonctions préservées et vérification
 
 La préparation avancée et le départ rapide partagent la séance, le calendrier, la chaussure et le parcours. Les panneaux de séance, navigation, carte, progression et rythme restent disponibles dans Stats. Spotify propose les morceaux et les options du lecteur à la demande. Le thème peut suivre le système ou être choisi dans les réglages. L’icône et le lancement reprennent le signe de vitesse orange.

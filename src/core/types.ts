@@ -16,6 +16,7 @@ export const DEFAULT_CONFIG: CoachConfig = {
   toleranceSeconds: 0, timeWarningSeconds: 15,
 };
 export const DEFAULT_TARGET: PaceTarget = { fast: 310, slow: 320, distanceMeters: null };
+export const DEFAULT_EXACT_TARGET: PaceTarget = { fast: 300, slow: 300, distanceMeters: null };
 export type PaceState = 'acquiring' | 'onTarget' | 'tooFast' | 'tooSlow' | 'unreliable' | 'paused' | 'free';
 export type SignalQuality = 'warmingUp' | 'good' | 'poor' | 'stale' | 'stationary' | 'paused';
 export type AlertCue = 'slowDown' | 'speedUp';

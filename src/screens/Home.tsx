@@ -71,7 +71,7 @@ export default function Home({ state, target, onStart, onPrepare, onRecovery, on
           </View>
         </View>
         <View style={{ height: 1, backgroundColor: design.paperLine }} />
-        <View style={s.row}><BodyText style={{ color: '#6A6761', fontSize: 11 }}>Tolérance ± {Math.round((currentTarget.slow - currentTarget.fast) / 2)} s / km</BodyText>
+        <View style={s.row}><BodyText style={{ color: '#6A6761', fontSize: 11 }}>{currentTarget.fast === currentTarget.slow ? 'Allure précise · sans marge' : 'Tolérance ± ' + Math.round((currentTarget.slow - currentTarget.fast) / 2) + ' s / km'}</BodyText>
           <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}><BodyText style={{ fontSize: 12, fontWeight: '600', color: design.ink }}>Modifier</BodyText><Icon name="arrow-forward" size={14} color={design.ink} /></View>
         </View>
       </Surface>

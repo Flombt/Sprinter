@@ -37,8 +37,8 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
   const advanced = !!setup.definition || target.finishSeconds != null || target.kilometerTargets !== undefined;
   const center = Math.round((activeTarget.fast + activeTarget.slow) / 2);
   const setPace = (seconds: number) => {
-    const next = Math.min(1185, Math.max(135, seconds));
-    onTargetChange({ ...target, fast: next - 5, slow: next + 5 });
+    const next = Math.min(1200, Math.max(120, seconds));
+    onTargetChange({ ...target, fast: next, slow: next });
   };
   return <AppScreen gap={17}>
     <View style={s.row}>
@@ -78,14 +78,14 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
       {run ? <Surface contentStyle={{ gap: 7 }}>
         <Kicker>{block?.planned.name ?? (run.target.kilometerTargets ? 'Kilomètre ' + (Math.floor(run.distanceMeters / 1000) + 1) : 'Votre allure de course')}</Kicker>
         <DisplayText numeric style={{ fontSize: 36, lineHeight: 42 }}>{liveTarget ? pace(Math.round((liveTarget.fast + liveTarget.slow) / 2)) : 'Libre'}</DisplayText>
-        <BodyText style={{ fontSize: 12, color: design.secondary }}>{liveTarget ? 'min / km · ' + pace(liveTarget.fast) + ' à ' + pace(liveTarget.slow) : 'Aucune consigne d’allure pour ce bloc.'}</BodyText>
+        <BodyText style={{ fontSize: 12, color: design.secondary }}>{liveTarget ? liveTarget.fast === liveTarget.slow ? 'min / km · sans marge' : 'min / km · ' + pace(liveTarget.fast) + ' à ' + pace(liveTarget.slow) : 'Aucune consigne d’allure pour ce bloc.'}</BodyText>
       </Surface> : <Surface contentStyle={{ padding: 13, gap: 12 }}>
         <View style={s.row}>
-          <ActionIcon icon="remove" label="Accélérer l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center - 5)} disabled={!!run || advanced || center <= 135} />
-          <View style={{ alignItems: 'center' }}><DisplayText numeric style={{ fontSize: 36, lineHeight: 39 }}>{pace(center)}</DisplayText>
-            <BodyText style={{ fontSize: 10, lineHeight: 15, color: design.secondary }}>min / km · ± {Math.round((activeTarget.slow - activeTarget.fast) / 2)} s</BodyText>
-          </View>
-          <ActionIcon icon="add" label="Ralentir l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center + 5)} disabled={!!run || advanced || center >= 1185} />
+          <ActionIcon icon="remove" label="Accélérer l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center - 5)} disabled={!!run || advanced || center <= 120} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Choisir précisément mon allure" disabled={advanced} onPress={onPrepare} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><DisplayText numeric style={{ fontSize: 36, lineHeight: 39 }}>{pace(center)}</DisplayText>
+            <BodyText style={{ fontSize: 10, lineHeight: 15, color: design.secondary }}>{activeTarget.fast === activeTarget.slow ? 'min / km · sans marge' : 'min / km · ± ' + Math.round((activeTarget.slow - activeTarget.fast) / 2) + ' s'}</BodyText>
+          </Pressable>
+          <ActionIcon icon="add" label="Ralentir l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center + 5)} disabled={!!run || advanced || center >= 1200} />
         </View>
         <View accessibilityRole="radiogroup" accessibilityLabel="Distance cible" style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap' }}>
           {([[null, 'Libre'], [5000, '5 km'], [10000, '10 km'], [21097.5, 'Semi']] as const).map(([meters, label]) => <Pressable key={label}

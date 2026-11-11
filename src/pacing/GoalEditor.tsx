@@ -17,7 +17,7 @@ export function PacingNumberInput({ label, value, onChange, kind = 'number' }: {
     onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onChangeText={input => {
       setText(input); const raw = input.trim().replace(',', '.'); let parsed = NaN;
       if (kind === 'number' && /^\d+(\.\d*)?$/.test(raw)) parsed = Number(raw);
-      if (kind === 'pace') { const match = /^(\d{1,2}):([0-5]\d)$/.exec(raw); if (match) parsed = Number(match[1]) * 60 + Number(match[2]); }
+      if (kind === 'pace') { const match = /^(\d{1,2})[:.]([0-5]\d)$/.exec(raw); if (match) parsed = Number(match[1]) * 60 + Number(match[2]); }
       if (kind === 'time') { const parts = raw.split(':'); if ((parts.length === 2 || parts.length === 3) && /^\d{1,3}$/.test(parts[0]!) && parts.slice(1).every(p => /^[0-5]\d$/.test(p))) parsed = parts.reduce((n, p) => n * 60 + Number(p), 0); }
       onChange(parsed);
     }} placeholder={kind === 'pace' ? '5:10' : kind === 'time' ? '25:00' : '5'} placeholderTextColor={colors.muted}
@@ -26,14 +26,17 @@ export function PacingNumberInput({ label, value, onChange, kind = 'number' }: {
 function Choice<T extends string>({ value, values, onChange }: { value: T; values: [T, string][]; onChange: (value: T) => void }) {
   return <ChoiceGroup value={value} choices={values} onChange={onChange} />;
 }
-export function PacingGoalEditor({ target, onChange }: { target: PaceTarget; onChange: (target: PaceTarget) => void }) {
-  const { colors } = useTheme(); const mode = target.kilometerTargets !== undefined ? 'kilometers' : target.finishSeconds != null ? 'time' : 'pace';
+export function PacingGoalEditor({ target, onChange, onPaceModeChange }: { target: PaceTarget; onChange: (target: PaceTarget) => void; onPaceModeChange?: (exact: boolean) => void }) {
+  const { colors } = useTheme();
+  const [paceMode, setPaceMode] = useState<'exact' | 'pace'>(() => target.fast === target.slow ? 'exact' : 'pace');
+  const mode = target.kilometerTargets !== undefined ? 'kilometers' : target.finishSeconds != null ? 'time' : paceMode;
   const [window, setWindow] = useState(() => mode === 'time' ? (target.slow - target.fast) / 2 : 5);
   const [lastFinish, setLastFinish] = useState(target.finishSeconds ?? 1500);
-  const setMode = (next: 'pace' | 'time' | 'kilometers') => {
+  const setMode = (next: 'exact' | 'pace' | 'time' | 'kilometers') => {
     const { finishSeconds, kilometerTargets, timeBasis, ...rest } = target;
     const base = { ...rest, fast: Number.isFinite(rest.fast) ? rest.fast : DEFAULT_TARGET.fast, slow: Number.isFinite(rest.slow) ? rest.slow : DEFAULT_TARGET.slow };
-    if (next === 'pace') onChange(base);
+    if (next === 'exact') { const value = Math.round((base.fast + base.slow) / 2); setPaceMode('exact'); onPaceModeChange?.(true); onChange({ ...base, fast: value, slow: value }); }
+    else if (next === 'pace') { setPaceMode('pace'); onPaceModeChange?.(false); onChange(base.fast === base.slow ? { ...base, fast: Math.max(120, base.fast - 5), slow: Math.min(1200, base.slow + 5) } : base); }
     else if (next === 'time') onChange({ ...base, distanceMeters: base.distanceMeters ?? 5000, finishSeconds: lastFinish, timeBasis: target.timeBasis ?? 'active' });
     else { const distance = base.distanceMeters ?? 5000, count = Number.isFinite(distance) && distance >= 100 && distance <= 200000 ? Math.ceil(distance / 1000) : 0;
       onChange({ ...base, distanceMeters: distance, timeBasis: timeBasis ?? 'active', ...(finishSeconds != null ? { finishSeconds } : {}), kilometerTargets: Array.from({ length: count }, (_, i) => ({ kilometer: i + 1, fast: base.fast, slow: base.slow })) }); }
@@ -51,8 +54,12 @@ export function PacingGoalEditor({ target, onChange }: { target: PaceTarget; onC
     }
   }, [target, mode, window]);
   const setFinish = (finishSeconds: number) => { setLastFinish(finishSeconds); onChange({ ...target, finishSeconds }); };
-  return <Panel style={{ gap: 16 }}><Label>Objectif du coach</Label><Choice value={mode} values={[["pace", "Plage d’allure"], ["time", "Temps final"], ["kilometers", "Par kilomètre"]]} onChange={setMode} />
-    {mode !== 'pace' && <Copy muted variant="caption">Une distance est nécessaire. Ajustez-la dans « Une distance en tête ? » ci-dessous.</Copy>}
+  return <Panel style={{ gap: 16 }}><Label>Objectif du coach</Label><Choice value={mode} values={[["exact", "Allure précise"], ["pace", "Plage d’allure"], ["time", "Temps final"], ["kilometers", "Par kilomètre"]]} onChange={setMode} />
+    {mode === 'exact' && <>
+      <PacingNumberInput label="Allure à suivre (min:sec /km)" kind="pace" value={target.fast} onChange={value => onChange({ ...target, fast: value, slow: value })} />
+      <Copy muted variant="caption">Une cible unique, sans marge. À 5′00″, 4′58″ est trop rapide et 5′02″ trop lent. Le signal suit l’allure GPS lissée, après confirmation de l’écart.</Copy>
+    </>}
+    {mode !== 'pace' && mode !== 'exact' && <Copy muted variant="caption">Une distance est nécessaire. Ajustez-la dans « Une distance en tête ? » ci-dessous.</Copy>}
     {mode === 'kilometers' && <View style={[styles.row, { gap: 15 }]}><Copy style={{ flex: 1 }}>Comparer aussi à un temps final</Copy><Switch accessibilityLabel="Comparer à un temps final" value={target.finishSeconds != null} onValueChange={enabled => onChange({ ...target, finishSeconds: enabled ? lastFinish : undefined })} /></View>}
     {target.finishSeconds != null && <><PacingNumberInput label="Temps final (min:sec ou h:min:sec)" kind="time" value={target.finishSeconds} onChange={setFinish} />
       <Choice value={target.timeBasis ?? 'active'} values={[["active", "Temps actif"], ["total", "Temps total, pauses incluses"]]} onChange={timeBasis => onChange({ ...target, timeBasis })} />

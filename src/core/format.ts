@@ -13,14 +13,15 @@ export function duration(value: number): string {
     : `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
 }
 export const km = (meters: number, digits = 2) => (meters / 1000).toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-export const inTarget = (value: number, target: PaceTarget) => value >= target.fast && value <= target.slow;
+export const inTarget = (value: number, target: PaceTarget) => target.fast === target.slow
+  ? Math.round(value) === Math.round(target.fast) : value >= target.fast && value <= target.slow;
 export const averagePace = (run: RunRecord) => run.distanceMeters > 0 ? run.activeSeconds / run.distanceMeters * 1000 : null;
 export const averageSpeed = (run: RunRecord) => run.activeSeconds > 0 ? run.distanceMeters / run.activeSeconds * 3.6 : null;
 export const targetPercentage = (run: RunRecord) => run.reliableSeconds > 0 ? Math.min(100, run.inTargetSeconds / run.reliableSeconds * 100) : null;
 export function estimatedDuration(target: PaceTarget): [number, number] | null {
   return plannedDurationRange(target);
 }
-export const targetLabel = (target: PaceTarget) => `${pace(target.fast)} – ${pace(target.slow)}`;
+export const targetLabel = (target: PaceTarget) => target.fast === target.slow ? pace(target.fast) : `${pace(target.fast)} – ${pace(target.slow)}`;
 export const runDate = (timestamp: number) => new Date(timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 export function allSplits(run: RunRecord): Split[] {
   const result = [...run.splits];

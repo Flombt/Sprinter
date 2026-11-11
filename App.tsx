@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, Modal, Platform, View } from 'react-native'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { DEFAULT_TARGET, type PaceTarget, type RunRecord } from './src/core/types';
+import { DEFAULT_EXACT_TARGET, type PaceTarget, type RunRecord } from './src/core/types';
 import { useKeepAwake } from 'expo-keep-awake';
 import { session } from './src/services/session';
 import { ThemeProvider, useTheme } from './src/ui/theme';
@@ -49,7 +49,7 @@ function AppContent() {
   const { colors, reduceMotion } = useTheme(); const inset = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('home'); const [page, setPage] = useState<Page>({ name: 'tabs' });
   const [tabBarHeight, setTabBarHeight] = useState(0);
-  const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_TARGET });
+  const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [countdown, setCountdown] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [musicVisible, setMusicVisible] = useState(false);
