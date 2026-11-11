@@ -13,6 +13,7 @@ import { NavigationPanel } from '../tools/activityComponents';
 import { RunInsights } from './RunInsights';
 import { paceTargetAt } from '../pacing/goals';
 import { effectiveTarget } from '../workouts/definition';
+import { HoldToFinish } from '../ui/HoldToFinish';
 
 function Setting({ icon, title, detail, value, onChange, disabled = false }: {
   icon: IconName; title: string; detail?: string; value: boolean; onChange: (value: boolean) => void; disabled?: boolean;
@@ -27,7 +28,9 @@ function Setting({ icon, title, detail, value, onChange, disabled = false }: {
   </View>;
 }
 
-export default function RunStats({ active, state, target, onTargetChange, onPrepare, onSettings, onMusic, onFinish }: {
+export default function RunStats({
+  active, state, target, onTargetChange, onPrepare, onSettings, onMusic, onFinish, onConfirmFinish,
+}: {
   active: boolean;
   state: SessionState;
   target: PaceTarget;
@@ -36,6 +39,7 @@ export default function RunStats({ active, state, target, onTargetChange, onPrep
   onSettings: () => void;
   onMusic: () => void;
   onFinish: () => void;
+  onConfirmFinish: () => void;
 }) {
   const design = useDesign();
   const s = createStyles(design);
@@ -76,6 +80,12 @@ export default function RunStats({ active, state, target, onTargetChange, onPrep
     <View style={{ gap: 7 }}>
       <View style={s.row}><BodyText style={s.caption}>Allure moyenne</BodyText><BodyText style={{ fontSize: 13, fontVariant: ['tabular-nums'], fontWeight: '600' }}>{run ? pace(averagePace(run)) : '—'} <BodyText style={s.caption}>/km</BodyText></BodyText></View>
       {run && <View style={s.row}><BodyText style={s.caption}>Dénivelé +</BodyText><BodyText style={{ fontSize: 12 }}>{(run.elevationReliableSeconds ?? 0) > 0 ? Math.round(run.ascentMeters ?? 0) + ' m' : '—'}</BodyText></View>}
+      {run && <View style={s.row}>
+        <BodyText style={s.caption}>Dénivelé −</BodyText>
+        <BodyText style={s.caption}>
+          {(run.elevationReliableSeconds ?? 0) > 0 ? Math.round(run.descentMeters ?? 0) + ' m' : '—'}
+        </BodyText>
+      </View>}
       {run && <View style={s.row}><BodyText style={s.caption}>Temps total</BodyText><BodyText style={{ fontSize: 12, fontVariant: ['tabular-nums'] }}>{duration(run.totalSeconds ?? run.activeSeconds)}</BodyText></View>}
     </View>
 
@@ -122,9 +132,9 @@ export default function RunStats({ active, state, target, onTargetChange, onPrep
       </Surface>
     </View>
 
-    {run && <View style={{ gap: 9 }}><ActionButton feedback="medium" title={state.autoPaused ? 'Pause manuelle' : state.running ? 'Mettre en pause' : 'Reprendre la course'} icon={state.running || state.autoPaused ? 'pause' : 'play'} disabled={state.busy}
+    {run && <View style={{ gap: 9 }}><ActionButton arrow={false} feedback="medium" title={state.autoPaused ? 'Pause manuelle' : state.running ? 'Mettre en pause' : 'Reprendre la course'} icon={state.running || state.autoPaused ? 'pause' : 'play'} disabled={state.busy}
       onPress={() => { if (state.running || state.autoPaused) void session.pause(); else void session.resume(); }} />
-      <ActionButton title="Terminer la course" icon="stop-outline" secondary disabled={state.busy} onPress={onFinish} />
+      <HoldToFinish key={run.id} disabled={state.busy} onFinish={onFinish} onConfirm={onConfirmFinish} />
       {!state.backgroundActive && <BodyText style={{ fontSize: typography.small.fontSize, color: design.secondary, textAlign: 'center' }}>Gardez Sprinter ouvert pendant la course.</BodyText>}
     </View>}
     {run && <RunInsights active={active} state={state} onMusic={onMusic} />}

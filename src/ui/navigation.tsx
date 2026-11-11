@@ -41,12 +41,15 @@ export function TabPane({ visible, children }: { visible: boolean; children: Rea
   </Animated.View>;
 }
 
-export function BottomTabs<T extends string>({ items, value, onChange, onHeightChange }: {
+export function BottomTabs<T extends string>({ items, value, onChange, onHeightChange, hidden = false }: {
   items: readonly TabItem<T>[]; value: T; onChange: (value: T) => void; onHeightChange: (height: number) => void;
+  hidden?: boolean;
 }) {
   const design = useDesign();
   const insets = useSafeAreaInsets(), { colors, reduceMotion, reduceTransparency } = useTheme();
   const [width, setWidth] = useState(0), x = useRef(new Animated.Value(0)).current, positioned = useRef(false);
+  const [height, setHeight] = useState(0);
+  const slide = useRef(new Animated.Value(hidden ? 1 : 0)).current;
   const index = Math.max(0, items.findIndex(item => item.key === value)), itemWidth = width / items.length;
   useEffect(() => {
     if (!width) return;
@@ -58,9 +61,36 @@ export function BottomTabs<T extends string>({ items, value, onChange, onHeightC
     });
     animation.start(); return () => animation.stop();
   }, [index, itemWidth, reduceMotion, width, x]);
-  return <View accessibilityRole="tablist" accessibilityLabel="Navigation principale" onLayout={event => onHeightChange(event.nativeEvent.layout.height)}
+  useEffect(() => {
+    const toValue = hidden ? 1 : 0;
+    if (reduceMotion) {
+      slide.setValue(toValue);
+      return;
+    }
+    const animation = Animated.timing(slide, {
+      toValue,
+      duration: 200,
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [hidden, reduceMotion, slide]);
+
+  return <Animated.View
+    accessibilityRole="tablist"
+    accessibilityLabel="Navigation principale"
+    pointerEvents={hidden ? 'none' : 'auto'}
+    aria-hidden={hidden}
+    accessibilityElementsHidden={hidden}
+    importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+    onLayout={event => {
+      const measuredHeight = event.nativeEvent.layout.height;
+      setHeight(measuredHeight);
+      onHeightChange(measuredHeight);
+    }}
     style={{ position: 'absolute', zIndex: 2, bottom: 0, left: 0, right: 0, paddingHorizontal: 20,
-      paddingTop: 10, paddingBottom: Math.max(12, insets.bottom) }}>
+      paddingTop: 10, paddingBottom: Math.max(12, insets.bottom),
+      transform: [{ translateY: Animated.multiply(slide, height || 150) }] }}>
     <View style={{ borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: design.line, backgroundColor: colors.glass }}>
       <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
         {!reduceTransparency && (Platform.OS === 'ios' && isLiquidGlassAvailable()
@@ -86,5 +116,5 @@ export function BottomTabs<T extends string>({ items, value, onChange, onHeightC
         })}
       </View>
     </View>
-  </View>;
+  </Animated.View>;
 }

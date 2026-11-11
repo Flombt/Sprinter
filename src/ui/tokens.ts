@@ -25,7 +25,10 @@ export const palettes = {
 export type ThemeColors = typeof palettes.light;
 export const spacing = { none: 0, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, section: 40 } as const;
 export const radii = { sm: 6, control: 12, button: 12, card: 18, hero: 20, pill: 999 } as const;
-export const layout = { touch: 44, button: 56, input: 52, multiline: 112, screenGutter: 24, compactGutter: 16, contentWidth: 560, tabIcon: 22 } as const;
+export const layout = {
+  touch: 44, button: 56, runButton: 72, toolbarButton: 48, input: 52, multiline: 112,
+  screenGutter: 24, compactGutter: 16, contentWidth: 560, tabIcon: 22,
+} as const;
 export const interaction = {
   pressedOpacity: .78,
   disabledOpacity: .5,

@@ -95,15 +95,22 @@ function AppContent() {
   const progress = () => setPage({ name: 'progression' });
   const applePage = () => setPage({ name: 'apple' });
   const openTools = () => setToolsVisible(true);
-  const finish = () => confirm('Terminer la course ?', 'Votre sortie sera enregistrée.', 'Enregistrer', () => {
+  const finish = () => {
     void session.finish().then(run => {
       if (!run) return;
       haptic.success();
       detail(run, true);
     });
-  });
+  };
+  const confirmFinish = () => confirm(
+    'Terminer la course ?',
+    'Votre sortie sera enregistrée.',
+    'Enregistrer',
+    finish,
+  );
   const modalVisible = musicVisible || workoutsVisible || toolsVisible || settingsVisible || countdown;
   const tabsVisible = state.ready && page.name === 'tabs';
+  const hideTabBar = tab === 'home' && (state.running || state.autoPaused);
   const tabsActive = tabsVisible && !modalVisible;
   const foregroundOnlyRun = (state.running || state.autoPaused) && !state.backgroundActive;
   const changeTab = (next: Tab) => {
@@ -124,7 +131,7 @@ function AppContent() {
   return <View style={{ flex: 1, backgroundColor: colors.background }}><View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center', backgroundColor: design.background }}><StatusBar style={colors.dark ? 'light' : 'dark'} />
     <AppBackground />
     {foregroundOnlyRun && <KeepScreenAwake />}
-    <BottomBarInsetContext.Provider value={tabsVisible ? tabBarHeight : 0}>
+    <BottomBarInsetContext.Provider value={tabsVisible && !hideTabBar ? tabBarHeight : 0}>
       <View
         style={{ flex: 1 }}
         aria-hidden={modalVisible}
@@ -151,6 +158,7 @@ function AppContent() {
               onMusic={() => changeTab('music')}
               onSettings={() => setSettingsVisible(true)}
               onFinish={finish}
+              onConfirmFinish={confirmFinish}
             />
           </TabPane>
           <TabPane visible={tab === 'stats'}>
@@ -163,12 +171,19 @@ function AppContent() {
               onSettings={() => setSettingsVisible(true)}
               onMusic={() => setMusicVisible(true)}
               onFinish={finish}
+              onConfirmFinish={confirmFinish}
             />
           </TabPane>
           {musicVisited && <TabPane visible={tab === 'music'}>
             <Music active={tabsActive && tab === 'music'} foregroundOnlyRun={foregroundOnlyRun} />
           </TabPane>}
-          <BottomTabs items={TAB_ITEMS} value={tab} onChange={changeTab} onHeightChange={setTabBarHeight} />
+          <BottomTabs
+            items={TAB_ITEMS}
+            value={tab}
+            hidden={hideTabBar}
+            onChange={changeTab}
+            onHeightChange={setTabBarHeight}
+          />
         </View>}
         {!tabsVisible && <PageTransition key={page.name}>{content}</PageTransition>}
       </View>

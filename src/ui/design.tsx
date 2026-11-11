@@ -91,10 +91,11 @@ export function ActionIcon({ icon, label, onPress, disabled = false, paper = fal
 }
 
 export function ActionButton({
-  title, icon, onPress, disabled = false, secondary = false, compact = false, feedback = 'light',
+  title, icon, onPress, disabled = false, secondary = false, compact = false, feedback = 'light', arrow = true,
 }: {
   title: string; icon?: IconName; onPress: () => void; disabled?: boolean; secondary?: boolean; compact?: boolean;
   feedback?: HapticFeedback;
+  arrow?: boolean;
 }) {
   const design = useDesign();
   const { reduceMotion } = useTheme(), scale = useRef(new Animated.Value(1)).current;
@@ -124,7 +125,7 @@ export function ActionButton({
         {icon && <Icon name={icon} size={19} color={foreground} />}
         <BodyText style={{ fontSize: compact ? 14 : 16, lineHeight: 22, fontWeight: '700', color: foreground }}>{title}</BodyText>
       </View>
-      {!secondary && <Icon name="arrow-forward" size={22} color={foreground} />}
+      {!secondary && arrow && <Icon name="arrow-forward" size={22} color={foreground} />}
     </Pressable>
   </Animated.View>;
 }

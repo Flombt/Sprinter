@@ -3,14 +3,14 @@ import {
   Animated, BackHandler, Easing, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { averagePace, duration, km, pace, targetLabel } from '../core/format';
-import { QUALITY_LABELS, STATE_LABELS, type PaceTarget } from '../core/types';
+import { km, targetLabel } from '../core/format';
+import { QUALITY_LABELS, type PaceTarget } from '../core/types';
 import { session, type SessionState } from '../services/session';
 import { selectedPlaylist } from '../spotify/store';
 import { useMusic } from '../spotify/components';
 import { playlistTitle } from '../spotify/presentation';
 import { useTools } from '../tools/components';
-import { Icon } from '../ui/components';
+import { Button, Icon } from '../ui/components';
 import { ActionButton, ActionIcon, BodyText, Brand, DisplayText, Kicker, useDesign } from '../ui/design';
 import { useBottomBarInset } from '../ui/layout';
 import RouteMap from '../ui/RouteMap';
@@ -19,6 +19,9 @@ import { useTheme } from '../ui/theme';
 import { useMapPosition } from '../ui/useMapPosition';
 import { useRunSetup } from '../ui/useRunSetup';
 import { spacing, typography } from '../ui/tokens';
+import { LiveRunMetrics } from './LiveRunMetrics';
+import { HoldToFinish } from '../ui/HoldToFinish';
+import { RunPauseButton } from '../ui/RunPauseButton';
 
 export { RunRow } from '../ui/RunRow';
 
@@ -31,6 +34,7 @@ function RunMetric({ value, label, unit }: { value: string; label: string; unit?
 
 export default function Home({
   active, state, target, starting, onStart, onPrepare, onRecovery, onHistory, onStats, onMusic, onSettings, onFinish,
+  onConfirmFinish,
 }: {
   active: boolean;
   state: SessionState;
@@ -44,12 +48,13 @@ export default function Home({
   onMusic: () => void;
   onSettings: () => void;
   onFinish: () => void;
+  onConfirmFinish: () => void;
 }) {
   const design = useDesign();
   const { colors, reduceMotion } = useTheme();
   const { top, bottom } = useSafeAreaInsets();
   const { fontScale, height } = useWindowDimensions();
-  const scroll = fontScale > 1 || height < 640;
+  const scroll = fontScale > 1 || height < 700;
   const barHeight = useBottomBarInset();
   const setup = useRunSetup(target, state);
   const playlist = selectedPlaylist(useMusic());
@@ -113,19 +118,17 @@ export default function Home({
     setFollow(false);
     setCommand({ kind: 'route', revision: ++revision.current });
   };
-  const startOrPause = () => {
+  const start = () => {
     if (state.recoveryBlocked) onRecovery();
-    else if (run) {
-      if (state.running || state.autoPaused) void session.pause();
-      else void session.resume();
-    } else if (setup.error) onPrepare();
+    else if (setup.error) onPrepare();
     else onStart();
+  };
+  const pauseOrResume = () => {
+    if (state.running || state.autoPaused) void session.pause();
+    else void session.resume();
   };
 
   const distance = km(run?.distanceMeters ?? 0);
-  const activeTime = run ? duration(run.activeSeconds) : '00:00';
-  const average = run ? pace(averagePace(run)) : '00:00';
-  const descent = !run ? '0' : run.elevationReliableSeconds ? Math.round(run.descentMeters ?? 0).toString() : '—';
   const gpsLabel = run ? QUALITY_LABELS[state.quality]
     : preview.status === 'locating' ? 'Localisation…'
       : preview.status === 'unavailable' ? 'GPS indisponible'
@@ -136,10 +139,9 @@ export default function Home({
         : 'Centrez la carte sur votre position.';
   const mapEmpty = !hasRoute && !position;
   const actionTitle = state.busy || starting ? 'Préparation GPS…' : state.recoveryBlocked ? 'Récupérer la course'
-    : run ? state.autoPaused ? 'Pause manuelle' : state.running ? 'Mettre en pause' : 'Reprendre'
-      : setup.error ? 'Vérifier les options' : 'Démarrer une course';
+    : setup.error ? 'Vérifier les options' : 'Démarrer une course';
   const heroHeight = Math.max(108, 84 * Math.min(fontScale, 1.6) + 24);
-  const paceHint = run ? STATE_LABELS[state.paceState] : setup.definition?.name ?? ('Cible ' + targetLabel(setup.target) + ' /km');
+  const paceHint = setup.definition?.name ?? ('Cible ' + targetLabel(setup.target) + ' /km');
 
   const insets = {
     paddingTop: top + spacing.xs,
@@ -154,6 +156,7 @@ export default function Home({
         onPress={() => setExpanded(value => !value)} />
     </View>
     <Animated.View style={[styles.readouts, { borderBottomColor: design.line, opacity: readoutOpacity }]}>
+      {run ? <LiveRunMetrics run={run} state={state} expanded={expanded} /> : <>
       {!expanded && <View style={[styles.hero, { minHeight: heroHeight }]}>
         <DisplayText numeric maxFontSizeMultiplier={1.6} numberOfLines={1} adjustsFontSizeToFit style={styles.heroValue}>
           {distance}
@@ -161,12 +164,13 @@ export default function Home({
         <Kicker style={{ fontSize: typography.caption.fontSize }}>Distance · km</Kicker>
       </View>}
       <View style={styles.metricRow}>
-        {expanded ? <RunMetric label="Distance" unit="km" value={distance} /> : <RunMetric label="Temps actif" value={activeTime} />}
+        {expanded ? <RunMetric label="Distance" unit="km" value={distance} /> : <RunMetric label="Temps actif" value="00:00" />}
         <View style={[styles.divider, { backgroundColor: design.line }]} />
-        <RunMetric label="Dénivelé −" unit="m" value={descent} />
+        <RunMetric label="Dénivelé −" unit="m" value="0" />
         <View style={[styles.divider, { backgroundColor: design.line }]} />
-        <RunMetric label="Allure moy." unit="/km" value={average} />
+        <RunMetric label="Allure moy." unit="/km" value="00:00" />
       </View>
+      </>}
     </Animated.View>
 
     <View style={[styles.map, scroll && styles.scrollMap, { backgroundColor: colors.field }]}>
@@ -196,7 +200,7 @@ export default function Home({
 
     <View style={[styles.controls, { borderTopColor: design.line }]}>
       {state.autoPaused && <View style={styles.autoPause}>
-        <BodyText accessibilityRole="header" style={styles.autoPauseTitle}>Pause automatique</BodyText>
+        {expanded && <BodyText accessibilityRole="header" style={styles.autoPauseTitle}>Pause automatique</BodyText>}
         <BodyText>
           Le temps actif est suspendu. Le GPS attend un mouvement confirmé pour reprendre automatiquement.
           {' '}« Pause manuelle » arrête cette détection.
@@ -210,26 +214,47 @@ export default function Home({
           onPress={() => void session.resume()}
         />
       </View>}
+      {run ? <View style={styles.runControls}>
+        <RunPauseButton
+          paused={!state.running && !state.autoPaused}
+          autoPaused={state.autoPaused}
+          disabled={state.busy}
+          onPress={pauseOrResume}
+        />
+        <View style={styles.secondaryActions}>
+          <Button title="Musique" icon="musical-notes-outline" variant="quiet" size="toolbar" onPress={onMusic} />
+          <Button
+            title={expanded ? 'Réduire' : 'Carte'}
+            icon={expanded ? 'contract-outline' : 'expand-outline'}
+            variant="quiet"
+            size="toolbar"
+            onPress={() => setExpanded(value => !value)}
+          />
+          <Button title="Détails" icon="stats-chart-outline" variant="quiet" size="toolbar" onPress={onStats} />
+        </View>
+        <HoldToFinish key={run.id} disabled={state.busy} onFinish={onFinish} onConfirm={onConfirmFinish} />
+      </View> : <>
       {state.recoveryBlocked && <BodyText accessibilityRole="alert" style={[styles.note, { color: design.danger }]}>Une sauvegarde interrompue doit être récupérée avant le départ.</BodyText>}
       {!run && !state.recoveryBlocked && setup.error && <BodyText accessibilityRole="alert" style={[styles.note, { color: design.danger }]}>{setup.error}</BodyText>}
       <View style={styles.context}>
-        <Pressable accessibilityRole="button" accessibilityLabel={run ? 'Voir les statistiques de la course' : 'Préparer ma course'} onPress={run ? onStats : onPrepare}
+        <Pressable accessibilityRole="button" accessibilityLabel="Préparer ma course" onPress={onPrepare}
           style={styles.contextLink}>
-          <Icon name={run ? 'stats-chart-outline' : 'speedometer-outline'} size={15} color={design.accent} />
+          <Icon name="speedometer-outline" size={15} color={design.accent} />
           <BodyText numberOfLines={1} style={[styles.contextText, { color: design.secondary }]}>{paceHint}</BodyText>
           <Icon name="chevron-forward" size={13} color={design.secondary} />
         </Pressable>
-        {!expanded && !run && <Pressable accessibilityRole="button" accessibilityLabel="Centrer sur ma position" onPress={recenter} style={styles.locate}>
+        {!expanded && <Pressable accessibilityRole="button" accessibilityLabel="Centrer sur ma position" onPress={recenter} style={styles.locate}>
           <Icon name="locate-outline" size={18} color={design.secondary} />
         </Pressable>}
-        {run && expanded && <BodyText style={[styles.contextText, { color: design.secondary }]}>{activeTime}</BodyText>}
       </View>
       <View style={styles.actionRow}>
         <ActionIcon icon="musical-notes-outline" label={playlist ? 'Playlist Spotify : ' + playlistTitle(playlist) : 'Choisir une playlist Spotify'} onPress={onMusic} />
-        <View style={styles.startAction}><ActionButton title={actionTitle} feedback={run ? 'medium' : 'light'} compact disabled={state.busy || starting} icon={run && (state.running || state.autoPaused) ? 'pause' : 'play'} onPress={startOrPause} /></View>
-        <ActionIcon icon={run ? 'stop-outline' : 'options-outline'} label={run ? 'Terminer et enregistrer la course' : 'Réglages de course'}
-          disabled={!!run && state.busy} onPress={run ? onFinish : onSettings} />
+        <View style={styles.startAction}>
+          <ActionButton title={actionTitle} compact disabled={state.busy || starting} icon="play" onPress={start} />
+        </View>
+        <ActionIcon icon="options-outline" label="Réglages de course" onPress={onSettings} />
       </View>
+      </>}
     </View>
   </>;
   if (scroll) {
@@ -268,6 +293,8 @@ const styles = StyleSheet.create({
   controls: { paddingHorizontal: 16, paddingBottom: 7, borderTopWidth: StyleSheet.hairlineWidth },
   autoPause: { paddingVertical: 12, gap: 8 },
   autoPauseTitle: { fontWeight: '700' },
+  runControls: { gap: spacing.xs, paddingTop: spacing.sm },
+  secondaryActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around' },
   context: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   contextLink: { minHeight: 44, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
   contextText: { flexShrink: 1, fontSize: typography.caption.fontSize, fontWeight: '500' },

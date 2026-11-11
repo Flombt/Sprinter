@@ -26,11 +26,13 @@ export function Icon({ name, size = 22, color }: { name: IconName; size?: number
 }
 export function Button({
   title, onPress, icon, secondary = false, variant, danger = false, disabled = false, style, hint, onHero = false,
-  feedback = 'light',
+  feedback = 'light', size, children,
 }: {
   title: string; onPress: () => void; icon?: IconName; secondary?: boolean; danger?: boolean; disabled?: boolean;
   style?: StyleProp<ViewStyle>; hint?: string; variant?: 'primary' | 'secondary' | 'quiet'; onHero?: boolean;
   feedback?: HapticFeedback;
+  size?: 'run' | 'toolbar';
+  children?: React.ReactNode;
 }) {
   const { colors, reduceMotion } = useTheme(); const scale = useRef(new Animated.Value(1)).current;
   const kind = variant ?? (secondary ? 'secondary' : 'primary');
@@ -49,8 +51,17 @@ export function Button({
   return <Animated.View style={[{ minWidth: 0, transform: [{ scale }] }, style]}><Pressable accessibilityRole="button" accessibilityLabel={title}
     accessibilityHint={hint} accessibilityState={{ disabled }} disabled={disabled}
     onPress={press} onPressIn={() => animate(interaction.buttonScale)} onPressOut={() => animate(1)}
-    style={({ pressed }) => [styles.button, kind === 'quiet' && { minHeight: layout.touch, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm }, { backgroundColor, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 }]}>
-    {icon && <Icon name={icon} color={color} size={22} />}<Copy variant="button" style={{ color, flexShrink: 1, textAlign: 'center' }}>{title}</Copy>
+    style={({ pressed }) => [
+      styles.button,
+      kind === 'quiet' && { minHeight: layout.touch, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm },
+      size === 'run' && { minHeight: layout.runButton },
+      size === 'toolbar' && { minHeight: layout.toolbarButton },
+      { backgroundColor, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 },
+    ]}>
+    {children ?? <>
+      {icon && <Icon name={icon} color={color} size={22} />}
+      <Copy variant="button" style={{ color, flexShrink: 1, textAlign: 'center' }}>{title}</Copy>
+    </>}
   </Pressable></Animated.View>;
 }
 export function IconButton({ icon, label, onPress, quiet = false, disabled = false, feedback = 'light' }: {
