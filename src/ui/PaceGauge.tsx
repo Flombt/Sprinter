@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
-import { QUALITY_LABELS, STATE_LABELS, type PaceState, type PaceTarget, type SignalQuality } from '../core/types';
+import {
+  QUALITY_LABELS,
+  STATE_LABELS,
+  type PaceState,
+  type PaceTarget,
+  type SignalQuality,
+} from '../core/types';
 import { Copy, Icon, type IconName } from './components';
 import { paceGaugePosition } from './paceGaugePosition';
 import { useTheme } from './theme';
@@ -17,7 +23,15 @@ const icons: Record<PaceState, IconName> = {
 };
 const cursorSize = 12;
 
-export function PaceGauge({ value, target, tolerance, state, quality, running, autoPaused }: {
+export function PaceGauge({
+  value,
+  target,
+  tolerance,
+  state,
+  quality,
+  running,
+  autoPaused,
+}: {
   value: number | null;
   target: Pick<PaceTarget, 'fast' | 'slow'> | null;
   tolerance: number;
@@ -31,11 +45,22 @@ export function PaceGauge({ value, target, tolerance, state, quality, running, a
   const translateX = useRef(new Animated.Value(0)).current;
   const positioned = useRef(false);
   const status = !running ? 'paused' : quality === 'good' ? state : 'unreliable';
-  const label = autoPaused ? 'Pause automatique'
-    : running && quality !== 'good' ? QUALITY_LABELS[quality] : STATE_LABELS[status];
-  const color = status === 'tooFast' ? colors.orange : status === 'tooSlow' ? colors.blue
-    : status === 'onTarget' ? colors.accentText : colors.secondary;
-  const model = target ? paceGaugePosition(running && quality === 'good' ? value : null, target, tolerance) : null;
+  const label = autoPaused
+    ? 'Pause automatique'
+    : running && quality !== 'good'
+      ? QUALITY_LABELS[quality]
+      : STATE_LABELS[status];
+  const color =
+    status === 'tooFast'
+      ? colors.orange
+      : status === 'tooSlow'
+        ? colors.blue
+        : status === 'onTarget'
+          ? colors.accentText
+          : colors.secondary;
+  const model = target
+    ? paceGaugePosition(running && quality === 'good' ? value : null, target, tolerance)
+    : null;
   const cursor = model?.cursor ?? null;
 
   useEffect(() => {
@@ -52,38 +77,56 @@ export function PaceGauge({ value, target, tolerance, state, quality, running, a
     const animation = Animated.timing(translateX, {
       toValue,
       duration: 220,
-      easing: Easing.out(Easing.back(.55)),
+      easing: Easing.out(Easing.back(0.55)),
       useNativeDriver: Platform.OS !== 'web',
     });
     animation.start();
     return () => animation.stop();
   }, [cursor, width, reduceMotion, translateX]);
 
-  return <View style={styles.container}>
-    {model && <View
-      accessible={false}
-      onLayout={event => setWidth(event.nativeEvent.layout.width)}
-      style={styles.rail}
-    >
-      <View style={[styles.line, { backgroundColor: colors.line }]} />
-      {width > 0 && <View style={[styles.zone, {
-        left: cursorSize / 2 + (width - cursorSize) * model.start - 2,
-        width: Math.max(4, (width - cursorSize) * (model.end - model.start) + 4),
-        backgroundColor: colors.accentText,
-      }]} />}
-      {cursor !== null && width > 0 && <Animated.View style={[styles.cursor, {
-        backgroundColor: color,
-        borderColor: colors.background,
-        transform: [{ translateX }],
-      }]} />}
-    </View>}
-    <View style={styles.status}>
-      <Icon name={icons[status]} size={17} color={color} />
-      <Copy variant="caption" accessibilityLiveRegion="polite" style={{ color, flexShrink: 1 }}>
-        {label}
-      </Copy>
+  return (
+    <View style={styles.container}>
+      {model && (
+        <View
+          accessible={false}
+          onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+          style={styles.rail}
+        >
+          <View style={[styles.line, { backgroundColor: colors.line }]} />
+          {width > 0 && (
+            <View
+              style={[
+                styles.zone,
+                {
+                  left: cursorSize / 2 + (width - cursorSize) * model.start - 2,
+                  width: Math.max(4, (width - cursorSize) * (model.end - model.start) + 4),
+                  backgroundColor: colors.accentText,
+                },
+              ]}
+            />
+          )}
+          {cursor !== null && width > 0 && (
+            <Animated.View
+              style={[
+                styles.cursor,
+                {
+                  backgroundColor: color,
+                  borderColor: colors.background,
+                  transform: [{ translateX }],
+                },
+              ]}
+            />
+          )}
+        </View>
+      )}
+      <View style={styles.status}>
+        <Icon name={icons[status]} size={17} color={color} />
+        <Copy variant="caption" accessibilityLiveRegion="polite" style={{ color, flexShrink: 1 }}>
+          {label}
+        </Copy>
+      </View>
     </View>
-  </View>;
+  );
 }
 
 const styles = StyleSheet.create({

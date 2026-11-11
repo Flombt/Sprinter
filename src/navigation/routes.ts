@@ -14,5 +14,5 @@ export type RootRoutes = {
 };
 
 export function resolveRun(history: readonly RunRecord[], id: string): RunRecord | undefined {
-  return history.find(run => run.id === id);
+  return history.find((run) => run.id === id);
 }

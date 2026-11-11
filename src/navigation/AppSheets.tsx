@@ -11,7 +11,13 @@ import { useTheme } from '../ui/theme';
 export type Sheet = 'music' | 'settings' | 'workouts' | 'tools';
 
 export const AppSheets = memo(function AppSheets({
-  sheet, onClose, onDetail, onRecovery, onApple, onPrepare, onTools,
+  sheet,
+  onClose,
+  onDetail,
+  onRecovery,
+  onApple,
+  onPrepare,
+  onTools,
 }: {
   sheet: Sheet | null;
   onClose: () => void;
@@ -23,27 +29,33 @@ export const AppSheets = memo(function AppSheets({
 }) {
   const { colors, reduceMotion } = useTheme();
   const state = useSessionStructure();
-  return <Modal
-    visible={sheet !== null}
-    animationType={reduceMotion ? 'none' : 'slide'}
-    presentationStyle="pageSheet"
-    allowSwipeDismissal
-    onRequestClose={onClose}
-  >
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {sheet === 'music' && <Music
-        onClose={onClose}
-        foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
-      />}
-      {sheet === 'settings' && <Settings
-        state={state}
-        onClose={onClose}
-        onRecovery={onRecovery}
-        onApple={onApple}
-        onTools={onTools}
-      />}
-      {sheet === 'workouts' && <Workouts onClose={onClose} onSelected={onClose} onDetail={onDetail} />}
-      {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
-    </View>
-  </Modal>;
+  return (
+    <Modal
+      visible={sheet !== null}
+      animationType={reduceMotion ? 'none' : 'slide'}
+      presentationStyle="pageSheet"
+      allowSwipeDismissal
+      onRequestClose={onClose}
+    >
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {sheet === 'music' && (
+          <Music
+            onClose={onClose}
+            foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
+          />
+        )}
+        {sheet === 'settings' && (
+          <Settings
+            state={state}
+            onClose={onClose}
+            onRecovery={onRecovery}
+            onApple={onApple}
+            onTools={onTools}
+          />
+        )}
+        {sheet === 'workouts' && <Workouts onClose={onClose} onSelected={onClose} onDetail={onDetail} />}
+        {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
+      </View>
+    </Modal>
+  );
 });

@@ -8,7 +8,11 @@ import { interaction, radii, spacing } from './tokens';
 const holdDuration = 1000;
 const finishAction = [{ name: 'activate', label: 'Confirmer la fin de la course' }];
 
-export function HoldToFinish({ disabled, onFinish, onConfirm }: {
+export function HoldToFinish({
+  disabled,
+  onFinish,
+  onConfirm,
+}: {
   disabled: boolean;
   onFinish: () => void;
   onConfirm: () => void;
@@ -19,7 +23,7 @@ export function HoldToFinish({ disabled, onFinish, onConfirm }: {
   const finishIssued = useRef(false);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', state => {
+    const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') return;
       pressed.current = false;
       fill.setValue(0);
@@ -66,45 +70,60 @@ export function HoldToFinish({ disabled, onFinish, onConfirm }: {
     fill.setValue(1);
     onFinish();
   };
-  const keyboard = Platform.OS === 'web' ? { onKeyDown: (event: KeyDownEvent) => {
-    if (event.nativeEvent.key !== 'Enter' && event.nativeEvent.key !== ' ') return;
-    event.preventDefault();
-    if (!disabled && !event.nativeEvent.repeat) onConfirm();
-  } } : {};
+  const keyboard =
+    Platform.OS === 'web'
+      ? {
+          onKeyDown: (event: KeyDownEvent) => {
+            if (event.nativeEvent.key !== 'Enter' && event.nativeEvent.key !== ' ') return;
+            event.preventDefault();
+            if (!disabled && !event.nativeEvent.repeat) onConfirm();
+          },
+        }
+      : {};
 
-  return <Pressable
-    {...keyboard}
-    accessibilityRole="button"
-    accessibilityLabel="Terminer la course"
-    accessibilityHint="Maintenez pour enregistrer votre sortie. Avec VoiceOver, activez pour confirmer."
-    accessibilityState={{ disabled }}
-    accessibilityActions={finishAction}
-    onAccessibilityAction={event => {
-      if (event.nativeEvent.actionName === 'activate' && !disabled) onConfirm();
-    }}
-    disabled={disabled}
-    delayLongPress={holdDuration}
-    onPressIn={startHold}
-    onLongPress={validate}
-    onPressOut={release}
-    style={[styles.button, {
-      backgroundColor: colors.raised,
-      borderColor: colors.line,
-      opacity: disabled ? interaction.disabledOpacity : 1,
-    }]}
-  >
-    <Animated.View
-      pointerEvents="none"
-      accessible={false}
-      style={[StyleSheet.absoluteFill, {
-        backgroundColor: colors.accentSoft,
-        transformOrigin: 'left',
-        transform: [{ scaleX: fill }],
-      }]}
-    />
-    <Icon name="stop-outline" size={19} color={colors.text} />
-    <Copy variant="caption" style={{ flexShrink: 1 }}>Maintenez pour terminer</Copy>
-  </Pressable>;
+  return (
+    <Pressable
+      {...keyboard}
+      accessibilityRole="button"
+      accessibilityLabel="Terminer la course"
+      accessibilityHint="Maintenez pour enregistrer votre sortie. Avec VoiceOver, activez pour confirmer."
+      accessibilityState={{ disabled }}
+      accessibilityActions={finishAction}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'activate' && !disabled) onConfirm();
+      }}
+      disabled={disabled}
+      delayLongPress={holdDuration}
+      onPressIn={startHold}
+      onLongPress={validate}
+      onPressOut={release}
+      style={[
+        styles.button,
+        {
+          backgroundColor: colors.raised,
+          borderColor: colors.line,
+          opacity: disabled ? interaction.disabledOpacity : 1,
+        },
+      ]}
+    >
+      <Animated.View
+        pointerEvents="none"
+        accessible={false}
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: colors.accentSoft,
+            transformOrigin: 'left',
+            transform: [{ scaleX: fill }],
+          },
+        ]}
+      />
+      <Icon name="stop-outline" size={19} color={colors.text} />
+      <Copy variant="caption" style={{ flexShrink: 1 }}>
+        Maintenez pour terminer
+      </Copy>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({

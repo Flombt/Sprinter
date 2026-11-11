@@ -8,24 +8,37 @@ import { useTheme } from './theme';
 import { radii } from './tokens';
 
 const edgePadding = { top: 60, right: 48, bottom: 52, left: 48 };
-const localRegion = { latitudeDelta: .007, longitudeDelta: .007 };
+const localRegion = { latitudeDelta: 0.007, longitudeDelta: 0.007 };
 
 function PositionMarker({ position }: { position: NonNullable<RouteMapProps['current']> }) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
-  return <Marker
-    coordinate={position}
-    title="Position GPS"
-    tracksViewChanges={tracksViewChanges}
-    anchor={{ x: .5, y: .5 }}
-    centerOffset={{ x: 0, y: 0 }}
-  >
-    <View style={styles.position} onLayout={() => setTracksViewChanges(false)} />
-  </Marker>;
+  return (
+    <Marker
+      coordinate={position}
+      title="Position GPS"
+      tracksViewChanges={tracksViewChanges}
+      anchor={{ x: 0.5, y: 0.5 }}
+      centerOffset={{ x: 0, y: 0 }}
+    >
+      <View style={styles.position} onLayout={() => setTracksViewChanges(false)} />
+    </Marker>
+  );
 }
 
 const MapSurface = memo(function MapSurface({
-  points, reference = EMPTY_REFERENCE, current, selected, initialPosition, height = 220, interactive = false, live = false,
-  follow = false, satellite = false, command, onPan, pointCount,
+  points,
+  reference = EMPTY_REFERENCE,
+  current,
+  selected,
+  initialPosition,
+  height = 220,
+  interactive = false,
+  live = false,
+  follow = false,
+  satellite = false,
+  command,
+  onPan,
+  pointCount,
 }: RouteMapProps & { pointCount: number }) {
   const { colors, reduceMotion } = useTheme();
   const map = useRef<MapView>(null);
@@ -40,7 +53,10 @@ const MapSurface = memo(function MapSurface({
   const recorded = useMemo(() => groups.flat(), [groups]);
   const guidance = useMemo(() => guides.flat(), [guides]);
   const route = recorded.length > 0 ? recorded : guidance;
-  const visibleRoute = useMemo(() => live ? route : [...guidance, ...recorded], [live, route, guidance, recorded]);
+  const visibleRoute = useMemo(
+    () => (live ? route : [...guidance, ...recorded]),
+    [live, route, guidance, recorded],
+  );
   const anchor = (live ? current : undefined) ?? route[0] ?? current ?? initialPosition;
   const latest = current ?? recorded.at(-1);
   const readyForCamera = ready && laidOut;
@@ -75,24 +91,73 @@ const MapSurface = memo(function MapSurface({
     map.current?.animateCamera({ center: current }, { duration: reduceMotion ? 0 : 240 });
   }, [readyForCamera, follow, current, reduceMotion]);
 
-  return <View accessibilityLabel={live ? undefined : 'Tracé GPS du parcours'} onLayout={event => setLaidOut(event.nativeEvent.layout.height > 0)}
-    style={[height === 'fill' ? styles.fill : { height, borderRadius: radii.card }, styles.clipped]}>
-    {anchor ? <MapView ref={map} style={StyleSheet.absoluteFill}
-      initialRegion={{ ...anchor, ...localRegion }}
-      mapType={satellite ? 'satellite' : 'standard'} userInterfaceStyle={colors.dark ? 'dark' : 'light'}
-      onMapReady={() => setReady(true)} onPanDrag={interactive ? onPan : undefined} scrollEnabled={interactive} zoomEnabled={interactive}
-      rotateEnabled={false} pitchEnabled={false} toolbarEnabled={false} showsCompass={false}>
-      {guides.map((group, index) => group.length > 1 && <Polyline key={'reference-' + index} coordinates={group} strokeWidth={3} strokeColor={colors.routeReference} />)}
-      {groups.map((group, index) => group.length > 1 && <Polyline key={index} coordinates={group} strokeWidth={5} strokeColor={colors.accent} lineCap="round" lineJoin="round" />)}
-      {(!live || recorded.length > 1) && route[0] && <Marker coordinate={route[0]} title="Départ" pinColor={colors.routeStart} />}
-      {!live && route.length > 1 && <Marker coordinate={route.at(-1)!} title="Arrivée" pinColor={colors.routeFinish} />}
-      {selected && <Marker coordinate={selected} title="Mesure sélectionnée" pinColor={colors.accent} />}
-      {current && <PositionMarker position={current} />}
-    </MapView> : <>
-      <MapPlaceholder />
-      {!live && <Copy muted style={styles.caption}>Aucun tracé GPS disponible.</Copy>}
-    </>}
-  </View>;
+  return (
+    <View
+      accessibilityLabel={live ? undefined : 'Tracé GPS du parcours'}
+      onLayout={(event) => setLaidOut(event.nativeEvent.layout.height > 0)}
+      style={[height === 'fill' ? styles.fill : { height, borderRadius: radii.card }, styles.clipped]}
+    >
+      {anchor ? (
+        <MapView
+          ref={map}
+          style={StyleSheet.absoluteFill}
+          initialRegion={{ ...anchor, ...localRegion }}
+          mapType={satellite ? 'satellite' : 'standard'}
+          userInterfaceStyle={colors.dark ? 'dark' : 'light'}
+          onMapReady={() => setReady(true)}
+          onPanDrag={interactive ? onPan : undefined}
+          scrollEnabled={interactive}
+          zoomEnabled={interactive}
+          rotateEnabled={false}
+          pitchEnabled={false}
+          toolbarEnabled={false}
+          showsCompass={false}
+        >
+          {guides.map(
+            (group, index) =>
+              group.length > 1 && (
+                <Polyline
+                  key={'reference-' + index}
+                  coordinates={group}
+                  strokeWidth={3}
+                  strokeColor={colors.routeReference}
+                />
+              ),
+          )}
+          {groups.map(
+            (group, index) =>
+              group.length > 1 && (
+                <Polyline
+                  key={index}
+                  coordinates={group}
+                  strokeWidth={5}
+                  strokeColor={colors.accent}
+                  lineCap="round"
+                  lineJoin="round"
+                />
+              ),
+          )}
+          {(!live || recorded.length > 1) && route[0] && (
+            <Marker coordinate={route[0]} title="Départ" pinColor={colors.routeStart} />
+          )}
+          {!live && route.length > 1 && (
+            <Marker coordinate={route.at(-1)!} title="Arrivée" pinColor={colors.routeFinish} />
+          )}
+          {selected && <Marker coordinate={selected} title="Mesure sélectionnée" pinColor={colors.accent} />}
+          {current && <PositionMarker position={current} />}
+        </MapView>
+      ) : (
+        <>
+          <MapPlaceholder />
+          {!live && (
+            <Copy muted style={styles.caption}>
+              Aucun tracé GPS disponible.
+            </Copy>
+          )}
+        </>
+      )}
+    </View>
+  );
 });
 
 export default function RouteMap(props: RouteMapProps) {
@@ -103,6 +168,13 @@ export default function RouteMap(props: RouteMapProps) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   clipped: { overflow: 'hidden' },
-  position: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#2F82F5', borderWidth: 3, borderColor: '#FFFFFF' },
+  position: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#2F82F5',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
   caption: { position: 'absolute', bottom: 12, left: 14, right: 14, textAlign: 'center' },
 });

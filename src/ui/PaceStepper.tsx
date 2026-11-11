@@ -6,7 +6,12 @@ import { paceStep } from './paceStep';
 import { useAdaptiveLayout } from './theme';
 import { spacing } from './tokens';
 
-function PaceStepButton({ direction, value, disabled, onChange }: {
+function PaceStepButton({
+  direction,
+  value,
+  disabled,
+  onChange,
+}: {
   direction: -1 | 1;
   value: number;
   disabled: boolean;
@@ -27,7 +32,9 @@ function PaceStepButton({ direction, value, disabled, onChange }: {
     if (disabled) stop();
   }, [disabled]);
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', state => { if (state !== 'active') stop(); });
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') stop();
+    });
     return () => {
       subscription.remove();
       stop();
@@ -41,46 +48,69 @@ function PaceStepButton({ direction, value, disabled, onChange }: {
     haptic.select();
     latest.current.onChange(next);
   };
-  return <IconButton
-    square
-    icon={direction < 0 ? 'remove' : 'add'}
-    label={direction < 0 ? 'Accélérer l’allure de cinq secondes par kilomètre'
-      : 'Ralentir l’allure de cinq secondes par kilomètre'}
-    disabled={disabled}
-    feedback="none"
-    delayLongPress={350}
-    onPressIn={() => {
-      repeated.current = false;
-      pressedAt.current = Date.now();
-    }}
-    onPressOut={stop}
-    onPress={() => { if (!repeated.current) apply(0); }}
-    onLongPress={() => {
-      repeated.current = true;
-      apply(0);
-      timer.current = setInterval(() => apply(Date.now() - pressedAt.current), 170);
-    }}
-  />;
+  return (
+    <IconButton
+      square
+      icon={direction < 0 ? 'remove' : 'add'}
+      label={
+        direction < 0
+          ? 'Accélérer l’allure de cinq secondes par kilomètre'
+          : 'Ralentir l’allure de cinq secondes par kilomètre'
+      }
+      disabled={disabled}
+      feedback="none"
+      delayLongPress={350}
+      onPressIn={() => {
+        repeated.current = false;
+        pressedAt.current = Date.now();
+      }}
+      onPressOut={stop}
+      onPress={() => {
+        if (!repeated.current) apply(0);
+      }}
+      onLongPress={() => {
+        repeated.current = true;
+        apply(0);
+        timer.current = setInterval(() => apply(Date.now() - pressedAt.current), 170);
+      }}
+    />
+  );
 }
 
-export function PaceStepper({ value, disabled = false, onChange, children }: {
+export function PaceStepper({
+  value,
+  disabled = false,
+  onChange,
+  children,
+}: {
   value: number;
   disabled?: boolean;
   onChange: (value: number) => void;
   children: ReactNode;
 }) {
   const { compact, largeText } = useAdaptiveLayout();
-  const decrement = <PaceStepButton direction={-1} value={value} disabled={disabled || value <= 120} onChange={onChange} />;
-  const increment = <PaceStepButton direction={1} value={value} disabled={disabled || value >= 1200} onChange={onChange} />;
+  const decrement = (
+    <PaceStepButton direction={-1} value={value} disabled={disabled || value <= 120} onChange={onChange} />
+  );
+  const increment = (
+    <PaceStepButton direction={1} value={value} disabled={disabled || value >= 1200} onChange={onChange} />
+  );
   if (largeText || compact) {
-    return <View style={{ gap: spacing.md }}>
-      {children}
-      <View style={[styles.row, { justifyContent: 'center', gap: spacing.xxl }]}>{decrement}{increment}</View>
-    </View>;
+    return (
+      <View style={{ gap: spacing.md }}>
+        {children}
+        <View style={[styles.row, { justifyContent: 'center', gap: spacing.xxl }]}>
+          {decrement}
+          {increment}
+        </View>
+      </View>
+    );
   }
-  return <View style={[styles.row, { justifyContent: 'space-between', gap: spacing.md }]}>
-    {decrement}
-    <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
-    {increment}
-  </View>;
+  return (
+    <View style={[styles.row, { justifyContent: 'space-between', gap: spacing.md }]}>
+      {decrement}
+      <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
+      {increment}
+    </View>
+  );
 }

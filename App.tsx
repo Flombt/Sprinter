@@ -36,7 +36,8 @@ function KeepScreenAwake() {
 const selectAppearance = (state: SessionState) => state.settings.appearance;
 const selectStartup = (state: SessionState) => ({ ready: state.ready, error: state.error });
 const selectMessage = (state: SessionState) => state.message;
-const selectKeepAwake = (state: SessionState) => (state.running || state.autoPaused) && !state.backgroundActive;
+const selectKeepAwake = (state: SessionState) =>
+  (state.running || state.autoPaused) && !state.backgroundActive;
 
 function ForegroundAwake() {
   const enabled = useSessionSelector(selectKeepAwake);
@@ -45,12 +46,14 @@ function ForegroundAwake() {
 
 function SessionToast({ covered }: { covered: boolean }) {
   const message = useSessionSelector(selectMessage);
-  return <Toast
-    message={message}
-    severity={message ? sessionMessageSeverity(message) : 'info'}
-    covered={covered}
-    onClose={session.clearMessage}
-  />;
+  return (
+    <Toast
+      message={message}
+      severity={message ? sessionMessageSeverity(message) : 'info'}
+      covered={covered}
+      onClose={session.clearMessage}
+    />
+  );
 }
 
 function AppContent() {
@@ -63,8 +66,9 @@ function AppContent() {
   const [sheet, setSheet] = useState<Sheet | null>(null);
 
   useEffect(() => {
-    void Promise.all([session.initialize(), progression.initialize()])
-      .then(() => progression.reconcile(session.getSnapshot().history));
+    void Promise.all([session.initialize(), progression.initialize()]).then(() =>
+      progression.reconcile(session.getSnapshot().history),
+    );
     void music.initialize();
     void workouts.initialize();
   }, []);
@@ -81,8 +85,10 @@ function AppContent() {
     const open = (url: string | null | undefined) => {
       if (url === 'sprinter://run') void session.initialize().then(openHome);
     };
-    void Linking.getInitialURL().then(open).catch(() => undefined);
-    const subscription = Linking.addEventListener('url', event => open(event.url));
+    void Linking.getInitialURL()
+      .then(open)
+      .catch(() => undefined);
+    const subscription = Linking.addEventListener('url', (event) => open(event.url));
     return () => subscription.remove();
   }, [openHome]);
 
@@ -90,77 +96,96 @@ function AppContent() {
   const runStart = useRunStart(openHome, openRecovery);
 
   const finish = () => {
-    void session.finish().then(run => {
+    void session.finish().then((run) => {
       if (!run) return;
       haptic.success();
       openHome();
       navigation.navigate('RunSummary', { runId: run.id });
     });
   };
-  const confirmFinish = () => confirm(
-    'Terminer la course ?',
-    'Votre sortie sera enregistrée.',
-    'Enregistrer',
-    finish,
-  );
+  const confirmFinish = () =>
+    confirm('Terminer la course ?', 'Votre sortie sera enregistrée.', 'Enregistrer', finish);
   const modalVisible = sheet !== null || runStart.countdown;
 
-  return <View style={{ flex: 1, backgroundColor: colors.background }}>
-    <View style={{
-      flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center',
-      backgroundColor: colors.background,
-    }}>
-      <StatusBar style={colors.dark ? 'light' : 'dark'} />
-      <ForegroundAwake />
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
-        style={{ flex: 1 }}
-        aria-hidden={modalVisible}
-        accessibilityElementsHidden={modalVisible}
-        importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
+        style={{
+          flex: 1,
+          width: '100%',
+          maxWidth: Platform.OS === 'web' ? 480 : undefined,
+          alignSelf: 'center',
+          backgroundColor: colors.background,
+        }}
       >
-        {startup.ready ? <RootStack
-          navigationRef={navigation}
-          onReady={() => { if (pendingHome.current) openHome(); }}
-          tab={tab}
-          onTabChange={setTab}
-          target={target}
-          onTargetChange={setTarget}
-          starting={runStart.starting}
-          covered={modalVisible}
-          onStart={runStart.request}
-          onFinish={finish}
-          onConfirmFinish={confirmFinish}
-          onOpenSheet={setSheet}
-        /> : <Screen>
-          <View style={{ paddingTop: 100, alignItems: 'center', gap: spacing.xxl }}>
-            <Label>SPRINTER</Label>
-            <Copy variant="title">Le rythme juste.</Copy>
-            {startup.error ? <>
-              <Copy style={{ color: colors.danger, textAlign: 'center' }}>{startup.error}</Copy>
-              <Button title="Réessayer" onPress={() => void session.initialize()} />
-            </> : <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />}
-          </View>
-        </Screen>}
+        <StatusBar style={colors.dark ? 'light' : 'dark'} />
+        <ForegroundAwake />
+        <View
+          style={{ flex: 1 }}
+          aria-hidden={modalVisible}
+          accessibilityElementsHidden={modalVisible}
+          importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
+        >
+          {startup.ready ? (
+            <RootStack
+              navigationRef={navigation}
+              onReady={() => {
+                if (pendingHome.current) openHome();
+              }}
+              tab={tab}
+              onTabChange={setTab}
+              target={target}
+              onTargetChange={setTarget}
+              starting={runStart.starting}
+              covered={modalVisible}
+              onStart={runStart.request}
+              onFinish={finish}
+              onConfirmFinish={confirmFinish}
+              onOpenSheet={setSheet}
+            />
+          ) : (
+            <Screen>
+              <View style={{ paddingTop: 100, alignItems: 'center', gap: spacing.xxl }}>
+                <Label>SPRINTER</Label>
+                <Copy variant="title">Le rythme juste.</Copy>
+                {startup.error ? (
+                  <>
+                    <Copy style={{ color: colors.danger, textAlign: 'center' }}>{startup.error}</Copy>
+                    <Button title="Réessayer" onPress={() => void session.initialize()} />
+                  </>
+                ) : (
+                  <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />
+                )}
+              </View>
+            </Screen>
+          )}
+        </View>
+        <AppSheets
+          sheet={sheet}
+          onClose={() => setSheet(null)}
+          onDetail={(run) => {
+            setSheet(null);
+            navigation.dispatch(StackActions.push('Detail', { runId: run.id }));
+          }}
+          onRecovery={() => {
+            setSheet(null);
+            navigation.navigate('Recovery');
+          }}
+          onApple={() => {
+            setSheet(null);
+            navigation.navigate('Apple');
+          }}
+          onPrepare={() => {
+            setSheet(null);
+            if (!session.getSnapshot().run) navigation.navigate('Preparation');
+          }}
+          onTools={() => setSheet('tools')}
+        />
+        {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
+        <SessionToast covered={modalVisible} />
       </View>
-      <AppSheets
-        sheet={sheet}
-        onClose={() => setSheet(null)}
-        onDetail={run => {
-          setSheet(null);
-          navigation.dispatch(StackActions.push('Detail', { runId: run.id }));
-        }}
-        onRecovery={() => { setSheet(null); navigation.navigate('Recovery'); }}
-        onApple={() => { setSheet(null); navigation.navigate('Apple'); }}
-        onPrepare={() => {
-          setSheet(null);
-          if (!session.getSnapshot().run) navigation.navigate('Preparation');
-        }}
-        onTools={() => setSheet('tools')}
-      />
-      {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
-      <SessionToast covered={modalVisible} />
     </View>
-  </View>;
+  );
 }
 
 export default function App() {
@@ -169,13 +194,24 @@ export default function App() {
     SprinterDisplay: require('./assets/fonts/BarlowCondensed-ExtraBold.ttf'),
     SprinterMetric: require('./assets/fonts/BarlowCondensed-SemiBold.ttf'),
   });
-  return <SafeAreaProvider>
-    <ThemeProvider appearance={appearance}>
-      {fontsLoaded || fontError ? <AppContent /> : <View style={{
-        flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palettes.dark.background,
-      }}>
-        <ActivityIndicator color={palettes.dark.accent} />
-      </View>}
-    </ThemeProvider>
-  </SafeAreaProvider>;
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider appearance={appearance}>
+        {fontsLoaded || fontError ? (
+          <AppContent />
+        ) : (
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: palettes.dark.background,
+            }}
+          >
+            <ActivityIndicator color={palettes.dark.accent} />
+          </View>
+        )}
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
 }

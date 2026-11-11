@@ -7,7 +7,12 @@ import { radii, spacing } from './tokens';
 
 type ToastSeverity = 'info' | 'error';
 
-export const Toast = memo(function Toast({ message, severity = 'info', covered = false, onClose }: {
+export const Toast = memo(function Toast({
+  message,
+  severity = 'info',
+  covered = false,
+  onClose,
+}: {
   message: string | null;
   severity?: ToastSeverity;
   covered?: boolean;
@@ -32,7 +37,9 @@ export const Toast = memo(function Toast({ message, severity = 'info', covered =
       duration: 200,
       useNativeDriver: Platform.OS !== 'web',
     });
-    animation.start(({ finished }) => { if (finished && !visible) setShown(null); });
+    animation.start(({ finished }) => {
+      if (finished && !visible) setShown(null);
+    });
     return () => animation.stop();
   }, [message, severity, visible, reduceMotion, progress]);
 
@@ -44,32 +51,50 @@ export const Toast = memo(function Toast({ message, severity = 'info', covered =
 
   if (!shown) return null;
   const error = shown.severity === 'error';
-  return <Animated.View
-    accessibilityRole={error ? 'alert' : undefined}
-    accessibilityLiveRegion={error ? 'assertive' : 'polite'}
-    accessibilityElementsHidden={!visible}
-    importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
-    aria-hidden={!visible}
-    pointerEvents={visible ? 'auto' : 'none'}
-    style={[styles.toast, {
-      top: top + spacing.sm,
-      backgroundColor: colors.raised,
-      borderColor: error ? colors.danger : colors.line,
-      shadowColor: colors.shadow,
-      opacity: progress,
-      transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
-    }]}
-  >
-    <Copy variant="caption" style={{ flex: 1 }}>{shown.message}</Copy>
-    <IconButton icon="close" label="Fermer le message" onPress={onClose} quiet />
-  </Animated.View>;
+  return (
+    <Animated.View
+      accessibilityRole={error ? 'alert' : undefined}
+      accessibilityLiveRegion={error ? 'assertive' : 'polite'}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
+      aria-hidden={!visible}
+      pointerEvents={visible ? 'auto' : 'none'}
+      style={[
+        styles.toast,
+        {
+          top: top + spacing.sm,
+          backgroundColor: colors.raised,
+          borderColor: error ? colors.danger : colors.line,
+          shadowColor: colors.shadow,
+          opacity: progress,
+          transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
+        },
+      ]}
+    >
+      <Copy variant="caption" style={{ flex: 1 }}>
+        {shown.message}
+      </Copy>
+      <IconButton icon="close" label="Fermer le message" onPress={onClose} quiet />
+    </Animated.View>
+  );
 });
 
 const styles = StyleSheet.create({
   toast: {
-    position: 'absolute', left: spacing.md, right: spacing.md, zIndex: 5,
-    borderRadius: radii.card, borderWidth: 1, paddingLeft: spacing.lg, paddingVertical: spacing.sm,
-    paddingRight: spacing.xs, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    shadowOpacity: .15, shadowRadius: radii.control, elevation: 5,
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    zIndex: 5,
+    borderRadius: radii.card,
+    borderWidth: 1,
+    paddingLeft: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    shadowOpacity: 0.15,
+    shadowRadius: radii.control,
+    elevation: 5,
   },
 });

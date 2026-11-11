@@ -3,7 +3,12 @@ import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { Button, Copy, Icon } from './components';
 import { useTheme } from './theme';
 
-export function RunPauseButton({ paused, autoPaused, disabled, onPress }: {
+export function RunPauseButton({
+  paused,
+  autoPaused,
+  disabled,
+  onPress,
+}: {
   paused: boolean;
   autoPaused: boolean;
   disabled: boolean;
@@ -33,7 +38,7 @@ export function RunPauseButton({ paused, autoPaused, disabled, onPress }: {
       labelOpacity.setValue(1);
       return;
     }
-    labelOpacity.setValue(.25);
+    labelOpacity.setValue(0.25);
     const animation = Animated.timing(labelOpacity, {
       toValue: 1,
       duration: 180,
@@ -43,25 +48,43 @@ export function RunPauseButton({ paused, autoPaused, disabled, onPress }: {
     return () => animation.stop();
   }, [title, reduceMotion, labelOpacity]);
 
-  return <Button title={title} size="run" feedback="medium" disabled={disabled} onPress={onPress}>
-    <View style={styles.icons}>
-      <Animated.View style={[StyleSheet.absoluteFill, {
-        opacity: iconProgress,
-        transform: [{ rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }],
-      }]}>
-        <Icon name="pause" color={colors.accentInk} size={24} />
+  return (
+    <Button title={title} size="run" feedback="medium" disabled={disabled} onPress={onPress}>
+      <View style={styles.icons}>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              opacity: iconProgress,
+              transform: [
+                { rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) },
+              ],
+            },
+          ]}
+        >
+          <Icon name="pause" color={colors.accentInk} size={24} />
+        </Animated.View>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              opacity: Animated.subtract(1, iconProgress),
+              transform: [
+                { rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }) },
+              ],
+            },
+          ]}
+        >
+          <Icon name="play" color={colors.accentInk} size={24} />
+        </Animated.View>
+      </View>
+      <Animated.View style={{ opacity: labelOpacity, flexShrink: 1 }}>
+        <Copy variant="button" style={{ color: colors.accentInk, textAlign: 'center' }}>
+          {title}
+        </Copy>
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, {
-        opacity: Animated.subtract(1, iconProgress),
-        transform: [{ rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }) }],
-      }]}>
-        <Icon name="play" color={colors.accentInk} size={24} />
-      </Animated.View>
-    </View>
-    <Animated.View style={{ opacity: labelOpacity, flexShrink: 1 }}>
-      <Copy variant="button" style={{ color: colors.accentInk, textAlign: 'center' }}>{title}</Copy>
-    </Animated.View>
-  </Button>;
+    </Button>
+  );
 }
 
 const styles = StyleSheet.create({ icons: { width: 24, height: 24 } });

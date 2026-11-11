@@ -57,8 +57,13 @@ export class RecordedTrack {
     let segment = this.segments.at(-1);
     for (let index = this.count; index < count; index++) {
       const point = points[index]!;
-      if (segment?.id === point.segment && index % stride !== 0 && points[index + 1]?.segment === point.segment
-        && index < count - 1) continue;
+      if (
+        segment?.id === point.segment &&
+        index % stride !== 0 &&
+        points[index + 1]?.segment === point.segment &&
+        index < count - 1
+      )
+        continue;
       const sample = { index, coordinate: { latitude: point.fix.latitude, longitude: point.fix.longitude } };
       if (!segment || segment.id !== point.segment) {
         segment = { id: point.segment, kept: [sample], last: sample };
@@ -73,7 +78,7 @@ export class RecordedTrack {
     this.result = [
       ...this.result.slice(0, changedFrom),
       ...this.segments.slice(changedFrom).map(({ kept, last }) => {
-        const coordinates = kept.map(sample => sample.coordinate);
+        const coordinates = kept.map((sample) => sample.coordinate);
         if (kept.at(-1) !== last) coordinates.push(last.coordinate);
         return coordinates;
       }),
@@ -88,5 +93,7 @@ export function recordedSegments(points: readonly TrackPoint[]): RouteCoordinate
 
 export function referenceSegments(reference: RouteCoordinate[][]) {
   const step = Math.max(1, Math.ceil(reference.reduce((count, segment) => count + segment.length, 0) / 1500));
-  return reference.map(segment => segment.filter((_, index) => index === 0 || index === segment.length - 1 || index % step === 0));
+  return reference.map((segment) =>
+    segment.filter((_, index) => index === 0 || index === segment.length - 1 || index % step === 0),
+  );
 }

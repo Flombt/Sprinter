@@ -10,13 +10,21 @@ import { spacing, typography } from '../ui/tokens';
 import { effectiveTarget, segmentTarget } from '../workouts/definition';
 
 function RunValue({ label, value }: { label: string; value: string }) {
-  return <View accessible accessibilityLabel={label + ' ' + value} style={styles.value}>
-    <Copy variant="metric" style={styles.center}>{value}</Copy>
-    <Label style={styles.label}>{label}</Label>
-  </View>;
+  return (
+    <View accessible accessibilityLabel={label + ' ' + value} style={styles.value}>
+      <Copy variant="metric" style={styles.center}>
+        {value}
+      </Copy>
+      <Label style={styles.label}>{label}</Label>
+    </View>
+  );
 }
 
-export function LiveRunMetrics({ run, state, expanded }: {
+export function LiveRunMetrics({
+  run,
+  state,
+  expanded,
+}: {
   run: RunRecord;
   state: SessionState;
   expanded: boolean;
@@ -26,56 +34,80 @@ export function LiveRunMetrics({ run, state, expanded }: {
   const workout = run.workout;
   const block = workout?.segments[workout.currentIndex]?.planned;
   const courseTarget = workout ? null : paceTargetAt(run.target, run.distanceMeters);
-  const target = workout ? (block && workout.status !== 'abandoned' ? effectiveTarget(block) : null)
+  const target = workout
+    ? block && workout.status !== 'abandoned'
+      ? effectiveTarget(block)
+      : null
     : courseTarget;
   const value = pace(state.pace);
-  const targetText = block && target ? segmentTarget(block)
-    : courseTarget ? targetLabel(courseTarget) + ' /km' : 'Allure libre';
-  const targetTitle = block && target ? block.name
-    : run.target.kilometerTargets && target ? 'Kilomètre ' + (Math.floor(run.distanceMeters / 1000) + 1) : 'Cible';
+  const targetText =
+    block && target
+      ? segmentTarget(block)
+      : courseTarget
+        ? targetLabel(courseTarget) + ' /km'
+        : 'Allure libre';
+  const targetTitle =
+    block && target
+      ? block.name
+      : run.target.kilometerTargets && target
+        ? 'Kilomètre ' + (Math.floor(run.distanceMeters / 1000) + 1)
+        : 'Cible';
 
-  return <View style={styles.container}>
-    {!expanded && <>
-      <View style={styles.hero}>
-        <Label style={styles.label}>Allure actuelle · min/km</Label>
-        {largeText ? <NumericReadout variant="pace" value={value} style={styles.center} />
-          : <Copy
-            variant="pace"
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            accessibilityLabel={value === '—' ? 'Allure indisponible' : value + ' par kilomètre'}
-            style={styles.center}
-          >
-            {value}
-          </Copy>}
+  return (
+    <View style={styles.container}>
+      {!expanded && (
+        <>
+          <View style={styles.hero}>
+            <Label style={styles.label}>Allure actuelle · min/km</Label>
+            {largeText ? (
+              <NumericReadout variant="pace" value={value} style={styles.center} />
+            ) : (
+              <Copy
+                variant="pace"
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                accessibilityLabel={value === '—' ? 'Allure indisponible' : value + ' par kilomètre'}
+                style={styles.center}
+              >
+                {value}
+              </Copy>
+            )}
+          </View>
+          <PaceGauge
+            value={state.pace}
+            target={target}
+            tolerance={run.config.toleranceSeconds ?? 0}
+            state={state.paceState}
+            quality={state.quality}
+            running={state.running}
+            autoPaused={state.autoPaused}
+          />
+        </>
+      )}
+      <View style={[styles.row, largeText && styles.stacked]}>
+        {expanded && <RunValue label="Allure actuelle · /km" value={value} />}
+        <RunValue label="Distance · km" value={km(run.distanceMeters)} />
+        {!largeText && <View style={[styles.rule, { backgroundColor: colors.line }]} />}
+        <RunValue label="Temps actif" value={duration(run.activeSeconds)} />
       </View>
-      <PaceGauge
-        value={state.pace}
-        target={target}
-        tolerance={run.config.toleranceSeconds ?? 0}
-        state={state.paceState}
-        quality={state.quality}
-        running={state.running}
-        autoPaused={state.autoPaused}
-      />
-    </>}
-    <View style={[styles.row, largeText && styles.stacked]}>
-      {expanded && <RunValue label="Allure actuelle · /km" value={value} />}
-      <RunValue label="Distance · km" value={km(run.distanceMeters)} />
-      {!largeText && <View style={[styles.rule, { backgroundColor: colors.line }]} />}
-      <RunValue label="Temps actif" value={duration(run.activeSeconds)} />
+      {!expanded && (
+        <View style={[styles.secondary, largeText && styles.stacked]}>
+          <View style={styles.secondaryCell}>
+            <Label style={styles.label}>Allure moyenne</Label>
+            <Copy variant="caption" style={styles.center}>
+              {pace(averagePace(run))} /km
+            </Copy>
+          </View>
+          <View style={styles.secondaryCell}>
+            <Label style={styles.label}>{targetTitle}</Label>
+            <Copy variant="caption" style={styles.center}>
+              {targetText}
+            </Copy>
+          </View>
+        </View>
+      )}
     </View>
-    {!expanded && <View style={[styles.secondary, largeText && styles.stacked]}>
-      <View style={styles.secondaryCell}>
-        <Label style={styles.label}>Allure moyenne</Label>
-        <Copy variant="caption" style={styles.center}>{pace(averagePace(run))} /km</Copy>
-      </View>
-      <View style={styles.secondaryCell}>
-        <Label style={styles.label}>{targetTitle}</Label>
-        <Copy variant="caption" style={styles.center}>{targetText}</Copy>
-      </View>
-    </View>}
-  </View>;
+  );
 }
 
 const styles = StyleSheet.create({

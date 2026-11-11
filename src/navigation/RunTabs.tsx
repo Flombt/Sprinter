@@ -26,8 +26,21 @@ function LiveStats(props: Omit<ComponentProps<typeof RunStats>, 'state'>) {
 }
 
 export function RunTabs({
-  state, tab, onTabChange, target, onTargetChange, starting, covered, onStart, onRecover, onPrepare, onHistory,
-  onSettings, onMusic, onFinish, onConfirmFinish,
+  state,
+  tab,
+  onTabChange,
+  target,
+  onTargetChange,
+  starting,
+  covered,
+  onStart,
+  onRecover,
+  onPrepare,
+  onHistory,
+  onSettings,
+  onMusic,
+  onFinish,
+  onConfirmFinish,
 }: {
   state: SessionStructure;
   tab: Tab;
@@ -51,43 +64,56 @@ export function RunTabs({
   const active = focused && !covered;
   const running = state.running || state.autoPaused;
   const hideTabBar = tab === 'home' && running;
-  const changeTab = useCallback((next: Tab) => {
-    if (next === 'music') setMusicVisited(true);
-    onTabChange(next);
-  }, [onTabChange]);
+  const changeTab = useCallback(
+    (next: Tab) => {
+      if (next === 'music') setMusicVisited(true);
+      onTabChange(next);
+    },
+    [onTabChange],
+  );
 
-  return <BottomBarInsetContext.Provider value={hideTabBar ? 0 : tabBarHeight}>
-    <TabPane visible={tab === 'home'}>
-      <LiveHome
-        active={active && tab === 'home'}
-        target={target}
-        starting={starting}
-        onStart={onStart}
-        onRecovery={onRecover}
-        onPrepare={onPrepare}
-        onHistory={onHistory}
-        onStats={() => changeTab('stats')}
-        onMusic={() => changeTab('music')}
-        onSettings={onSettings}
-        onFinish={onFinish}
-        onConfirmFinish={onConfirmFinish}
+  return (
+    <BottomBarInsetContext.Provider value={hideTabBar ? 0 : tabBarHeight}>
+      <TabPane visible={tab === 'home'}>
+        <LiveHome
+          active={active && tab === 'home'}
+          target={target}
+          starting={starting}
+          onStart={onStart}
+          onRecovery={onRecover}
+          onPrepare={onPrepare}
+          onHistory={onHistory}
+          onStats={() => changeTab('stats')}
+          onMusic={() => changeTab('music')}
+          onSettings={onSettings}
+          onFinish={onFinish}
+          onConfirmFinish={onConfirmFinish}
+        />
+      </TabPane>
+      <TabPane visible={tab === 'stats'}>
+        <LiveStats
+          active={active && tab === 'stats'}
+          target={target}
+          onTargetChange={onTargetChange}
+          onPrepare={onPrepare}
+          onSettings={onSettings}
+          onMusic={onMusic}
+          onFinish={onFinish}
+          onConfirmFinish={onConfirmFinish}
+        />
+      </TabPane>
+      {(musicVisited || tab === 'music') && (
+        <TabPane visible={tab === 'music'}>
+          <Music active={active && tab === 'music'} foregroundOnlyRun={running && !state.backgroundActive} />
+        </TabPane>
+      )}
+      <BottomTabs
+        items={tabs}
+        value={tab}
+        hidden={hideTabBar}
+        onChange={changeTab}
+        onHeightChange={setTabBarHeight}
       />
-    </TabPane>
-    <TabPane visible={tab === 'stats'}>
-      <LiveStats
-        active={active && tab === 'stats'}
-        target={target}
-        onTargetChange={onTargetChange}
-        onPrepare={onPrepare}
-        onSettings={onSettings}
-        onMusic={onMusic}
-        onFinish={onFinish}
-        onConfirmFinish={onConfirmFinish}
-      />
-    </TabPane>
-    {(musicVisited || tab === 'music') && <TabPane visible={tab === 'music'}>
-      <Music active={active && tab === 'music'} foregroundOnlyRun={running && !state.backgroundActive} />
-    </TabPane>}
-    <BottomTabs items={tabs} value={tab} hidden={hideTabBar} onChange={changeTab} onHeightChange={setTabBarHeight} />
-  </BottomBarInsetContext.Provider>;
+    </BottomBarInsetContext.Provider>
+  );
 }

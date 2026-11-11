@@ -11,7 +11,8 @@ export function paceGaugePosition(
   const padding = Math.max(10, (slow - fast) / 3);
   const minimum = fast - padding;
   const span = slow + padding - minimum;
-  const value = measured === null || !Number.isFinite(measured) ? null : exact ? Math.round(measured) : measured;
+  const value =
+    measured === null || !Number.isFinite(measured) ? null : exact ? Math.round(measured) : measured;
 
   return {
     start: (fast - minimum) / span,
