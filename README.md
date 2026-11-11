@@ -15,41 +15,25 @@ Si le réseau local bloque la connexion : `npm run start:tunnel`. Cette option d
 
 Le projet utilise **Expo SDK 58**, React Native 0.88 et React 19.3, alignés sur le client Expo Go SDK 58 signalé dans le journal de connexion de l’iPhone. Le verrou `package-lock.json` et les overrides React/React Native préservent cette compatibilité. Le SDK du projet et celui d’Expo Go doivent correspondre ; ne pas mettre à jour les bibliothèques natives séparément.
 
-## Finition visuelle
+## Interface actuelle et état du projet
 
-Les composants partagés harmonisent les états d’appui, les marges et les transitions discrètes. La navigation respecte les réglages d’accessibilité ; préparation, course et détail adaptent mieux les grands caractères. Les moteurs métier restent inchangés. [Compte rendu et limites de vérification](docs/POLISH.md). Aucun test exécuté.
+Trois onglets : **Stats · Courir · Spotify**. La nouvelle identité associe carbone, craie et orange, une typographie sportive, des cartes compactes et une navigation en verre sur iOS compatible. Les thèmes clair, sombre et système sont disponibles.
 
-## Onglet « Réglages »
+- **Courir** : départ avec compte à rebours, accès à la préparation, pause/reprise et historique.
+- **Stats** : données en direct, cible du bloc courant, vibrations et audio ; carte, séance, navigation et outils de rythme accessibles.
+- **Spotify** : importer un lien ou choisir une playlist, consulter ses morceaux et utiliser le lecteur si le compte le permet.
 
-Les interrupteurs essentiels restent visibles ; coach, suivi et précision disposent de vues dédiées. Les dix types d’annonces et six curseurs restent accessibles, avec réglages repliables et limites premier plan/verrouillage explicites. TypeScript et exports iOS/web réussis, sans test exécuté. [Compte rendu](docs/SETTINGS_UI.md).
+Les séances, défis, objectifs avancés, chaussures et parcours se règlent depuis la préparation. L’historique donne accès aux records, à la comparaison et au calendrier. Les sauvegardes de récupération sont accessibles dans les réglages.
 
-## Onglet « Musique »
+**Dernière vérification, 11 novembre 2026 : 164 tests réussis, TypeScript et exports iOS/web réussis.** Le client natif signé et la recette physique sur iPhone restent à réaliser. Le workflow GitHub est ajouté localement et attend sa première exécution distante.
 
-L’écran distingue le compte Spotify, la lecture réellement reçue et la playlist choisie pour la prochaine course. L’ajout par lien, les playlists enregistrées, la bibliothèque du compte et les commandes existantes sont conservés, avec cartes réutilisables et configuration repliée. Le mini-lecteur partagé reprend les mêmes états. Voir le [compte rendu UI](docs/MUSIC_UI.md). Aucun test créé ou exécuté ; la connexion et la lecture réelles restent à vérifier sur iPhone configuré.
+[Audit des 64 fiches GitHub](docs/AUDIT_2026-11-11.md) · [Travail réalisé et prochaines priorités](docs/STABILISATION_2026-11-11.md) · [Identité et navigation](docs/INTERFACE.md).
 
-## Bibliothèque « Séances & Défis »
+Pour l’aperçu compilé : servir le dossier .expo/performance-export sur le port 8082. Pour le téléphone : lancer npm start (Expo Go, premier plan) ou npm run start:dev avec un client natif reconstruit.
 
-L’onglet organise maintenant création, dernières séances réalisées, modèles essentiels, défis, séances personnelles et favoris locaux. Les cartes distinguent leur origine et affichent volume prévu, répétitions, objectif et complexité de structure. Les onze modèles sont conservés ; l’éditeur ajoute un aperçu du déroulé et des conditions repliables. Les actions modifier/dupliquer/supprimer restent dans le menu « … ».
+## Comptes rendus antérieurs
 
-Les favoris étendent les préférences locales sans changer les données sportives ni les tables SQLite. TypeScript et exports iOS/web réussissent ; aucun test exécuté. Voir le [compte rendu de la bibliothèque](docs/WORKOUT_LIBRARY.md) pour les choix et les vérifications sur iPhone restantes.
-
-## Onglet « Sorties »
-
-L’onglet distingue maintenant le cumul enregistré, les dernières activités, les outils d’analyse et les archives mensuelles. Les lignes donnent date/heure, distance, temps actif et allure moyenne, avec les informations de séance ou de provenance Santé disponibles. L’état vide guide vers une première course ou le retour à une activité en cours ; la comparaison explique son minimum de deux sorties. L’historique complet reste accessible par lots d’affichage supplémentaires.
-
-Les moteurs et la navigation existants sont conservés. TypeScript et exports iOS/web réussis ; aucun test exécuté. Le [compte rendu de Sorties](docs/HISTORY.md) décrit les états et les vérifications physiques restantes.
-
-## Accueil « Courir »
-
-L’accueil privilégie maintenant l’usage quotidien : coach d’allure dans un hero compact, bouton de départ ou retour à la course, kilomètres et temps actif de la semaine, sorties et jours avec sortie. Les objectifs hebdomadaires déjà configurés complètent le bilan. L’accès « Progression & calendrier » est explicite et la dernière sortie reste directement consultable. Les états vides évitent de répéter de grands blocs promotionnels.
-
-L’écran de course en direct et ses moteurs restent inchangés. Les compilations TypeScript et les exports iOS/web réussissent ; aucun test n’a été exécuté. Le [compte rendu de l’accueil](docs/HOME.md) documente le périmètre et les vérifications physiques restantes.
-
-## Design system et cohérence UI
-
-Le socle visuel existant est consolidé : palette claire/lime conservée, thèmes clair/sombre/système, typographie et espacements centralisés, boutons primaire/secondaire/discret, cartes hero/métrique/liste/réglage et contrôles natifs partagés. La barre basse garde les cinq destinations avec une sélection plus légère et un espace de contenu mesuré. Les dispositions de métriques, formulaires et tableaux s’adaptent au texte agrandi.
-
-L’[inventaire, l’audit UI/UX et le guide des composants](docs/DESIGN_SYSTEM.md) décrivent les choix et les API réutilisables. Le projet conserve React Native/Expo Go ; aucune reconstruction SwiftUI ni modification des moteurs sportifs. Les compilations sont consignées dans [docs/VALIDATION.md](docs/VALIDATION.md). Aucun test exécuté ; le rendu réel, VoiceOver et les tailles d’accessibilité restent à examiner sur iPhone, l’aperçu navigateur étant désactivé dans cet environnement.
+Les sections suivantes décrivent les étapes précédentes. Le bilan du 11 novembre ci-dessus est la référence pour l’interface, les dépendances et les vérifications actuelles.
 
 ## Audit technique — Module 9
 
