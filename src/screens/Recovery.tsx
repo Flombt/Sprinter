@@ -1,13 +1,14 @@
+import { useTheme } from '../ui/theme';
+import { Button, Card, Copy, IconButton, Label, Screen } from '../ui/components';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { session, type SessionState } from '../services/session';
 import type { DraftArchiveInfo } from '../storage/repository';
 import { shareDocument } from '../services/documentShare';
 import { confirm } from '../ui/confirm';
-import { ActionButton, ActionIcon, AppScreen, BodyText, useDesign, DisplayText, Kicker, Surface } from '../ui/design';
 
 export default function Recovery({ state, onBack }: { state: SessionState; onBack: () => void }) {
-  const design = useDesign();
+  const { colors } = useTheme();
   const [archives, setArchives] = useState<DraftArchiveInfo[]>([]), [message, setMessage] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const load = useCallback(() => {
     let current = true;
@@ -29,21 +30,21 @@ export default function Recovery({ state, onBack }: { state: SessionState; onBac
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   };
-  return <AppScreen>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><View><Kicker>VOS DONNÉES</Kicker><DisplayText style={{ fontSize: 36, lineHeight: 42 }}>RÉCUPÉRATION.</DisplayText></View><ActionIcon icon="arrow-back" label="Retour" onPress={onBack} /></View>
-    {state.recoveryBlocked && <Surface paper contentStyle={{ gap: 14 }}>
-      <BodyText style={{ fontSize: 17, fontWeight: '700', color: design.ink }}>Une sauvegarde est illisible</BodyText>
-      <BodyText style={{ color: '#65615C' }}>Conservez une archive de la course interrompue pour débloquer un nouveau départ. Aucune donnée de cette sauvegarde ne sera supprimée.</BodyText>
-      <ActionButton title="Conserver et débloquer" onPress={archive} disabled={state.busy} compact />
-    </Surface>}
-    <Kicker>SAUVEGARDES CONSERVÉES</Kicker>
-    {!archives.length && <BodyText style={{ color: design.secondary }}>Aucune sauvegarde archivée pour le moment.</BodyText>}
-    {archives.map(archive => <Surface key={archive.id} contentStyle={{ gap: 12 }}>
-      <BodyText style={{ fontWeight: '600' }}>{new Date(archive.archivedAt).toLocaleString('fr-FR')}</BodyText>
-      <BodyText style={{ color: design.secondary, fontSize: 12 }}>Archive privée · {Math.max(1, Math.ceil(archive.bytes / 1024))} Ko</BodyText>
-      <ActionButton title="Exporter la sauvegarde privée" icon="download-outline" secondary compact disabled={busy} onPress={() => void exportArchive(archive.id)} />
-    </Surface>)}
-    {!!archives.length && <BodyText style={{ color: design.secondary, fontSize: 12 }}>Ces sauvegardes brutes peuvent contenir vos positions GPS. Conservez-les dans un emplacement privé.</BodyText>}
-    {message && <BodyText accessibilityRole="alert" style={{ color: design.danger }}>{message}</BodyText>}
-  </AppScreen>;
+  return <Screen>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><View><Label>VOS DONNÉES</Label><Copy variant="condensedTitle" style={{ fontSize: 36, lineHeight: 42 }}>RÉCUPÉRATION.</Copy></View><IconButton square icon="arrow-back" label="Retour" onPress={onBack} /></View>
+    {state.recoveryBlocked && <Card variant="paper" contentStyle={{ gap: 14 }}>
+      <Copy variant="bodyCompact" style={{ fontSize: 17, fontWeight: '700', color: colors.heroText }}>Une sauvegarde est illisible</Copy>
+      <Copy variant="bodyCompact" style={{ color: '#65615C' }}>Conservez une archive de la course interrompue pour débloquer un nouveau départ. Aucune donnée de cette sauvegarde ne sera supprimée.</Copy>
+      <Button highContrast arrow size="compact" title="Conserver et débloquer" onPress={archive} disabled={state.busy} />
+    </Card>}
+    <Label>SAUVEGARDES CONSERVÉES</Label>
+    {!archives.length && <Copy variant="bodyCompact" style={{ color: colors.secondary }}>Aucune sauvegarde archivée pour le moment.</Copy>}
+    {archives.map(archive => <Card key={archive.id} contentStyle={{ gap: 12 }}>
+      <Copy variant="bodyCompact" style={{ fontWeight: '600' }}>{new Date(archive.archivedAt).toLocaleString('fr-FR')}</Copy>
+      <Copy variant="bodyCompact" style={{ color: colors.secondary, fontSize: 12 }}>Archive privée · {Math.max(1, Math.ceil(archive.bytes / 1024))} Ko</Copy>
+      <Button highContrast size="compact" title="Exporter la sauvegarde privée" icon="download-outline" variant="secondary" disabled={busy} onPress={() => void exportArchive(archive.id)} />
+    </Card>)}
+    {!!archives.length && <Copy variant="bodyCompact" style={{ color: colors.secondary, fontSize: 12 }}>Ces sauvegardes brutes peuvent contenir vos positions GPS. Conservez-les dans un emplacement privé.</Copy>}
+    {message && <Copy variant="bodyCompact" accessibilityRole="alert" style={{ color: colors.danger }}>{message}</Copy>}
+  </Screen>;
 }

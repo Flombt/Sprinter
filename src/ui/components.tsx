@@ -5,7 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdaptiveLayout, useTheme } from './theme';
-import { cardStyles, interaction, layout, radii, spacing, typography, type TextVariant } from './tokens';
+import {
+  cardStyles, contrastAccent, interaction, layout, paperColors, radii, spacing, typography, type TextVariant,
+} from './tokens';
 import { useBottomBarInset } from './layout';
 import { ScreenEntrance } from './motion';
 import { haptic, type HapticFeedback } from './haptics';
@@ -26,18 +28,29 @@ export function Icon({ name, size = 22, color }: { name: IconName; size?: number
 }
 export function Button({
   title, onPress, icon, secondary = false, variant, danger = false, disabled = false, style, hint, onHero = false,
-  feedback = 'light', size, children,
+  feedback = 'light', size, children, arrow = false, highContrast = false,
 }: {
   title: string; onPress: () => void; icon?: IconName; secondary?: boolean; danger?: boolean; disabled?: boolean;
   style?: StyleProp<ViewStyle>; hint?: string; variant?: 'primary' | 'secondary' | 'quiet'; onHero?: boolean;
   feedback?: HapticFeedback;
-  size?: 'run' | 'toolbar';
+  size?: 'run' | 'toolbar' | 'compact' | 'large';
   children?: React.ReactNode;
+  arrow?: boolean;
+  highContrast?: boolean;
 }) {
   const { colors, reduceMotion } = useTheme(); const scale = useRef(new Animated.Value(1)).current;
   const kind = variant ?? (secondary ? 'secondary' : 'primary');
-  const color = onHero ? colors.heroActionText : danger ? kind === 'primary' ? colors.background : colors.danger : kind === 'primary' ? colors.accentInk : colors.text;
-  const backgroundColor = onHero ? colors.heroAction : danger ? kind === 'primary' ? colors.danger : colors.dangerSurface : kind === 'primary' ? colors.accent : kind === 'secondary' ? colors.raised : 'transparent';
+  const primary = kind === 'primary';
+  const color = highContrast && disabled ? colors.muted
+    : onHero ? colors.heroActionText
+      : danger ? primary ? colors.background : colors.danger
+        : primary ? colors.accentInk : colors.text;
+  const backgroundColor = highContrast && disabled ? colors.raised
+    : onHero ? colors.heroAction
+      : danger ? primary ? colors.danger : colors.dangerSurface
+        : primary ? highContrast ? contrastAccent(colors) : colors.accent
+          : kind === 'secondary' ? colors.raised : 'transparent';
+  const showArrow = arrow && primary;
   useEffect(() => { if (reduceMotion || disabled) { scale.stopAnimation(); scale.setValue(1); } return () => scale.stopAnimation(); }, [disabled, reduceMotion, scale]);
   const animate = (toValue: number) => {
     if (!reduceMotion) Animated.timing(scale, {
@@ -56,21 +69,38 @@ export function Button({
       kind === 'quiet' && { minHeight: layout.touch, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm },
       size === 'run' && { minHeight: layout.runButton },
       size === 'toolbar' && { minHeight: layout.toolbarButton },
-      { backgroundColor, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 },
+      size === 'compact' && styles.compactButton,
+      size === 'large' && styles.largeButton,
+      showArrow && { justifyContent: 'space-between' },
+      highContrast && (disabled || !primary) && { borderWidth: 1, borderColor: colors.line },
+      { backgroundColor, opacity: disabled && !highContrast ? interaction.disabledOpacity
+        : pressed ? interaction.pressedOpacity : 1 },
     ]}>
     {children ?? <>
-      {icon && <Icon name={icon} color={color} size={22} />}
-      <Copy variant="button" style={{ color, flexShrink: 1, textAlign: 'center' }}>{title}</Copy>
+      <View style={styles.buttonLabel}>
+        {icon && <Icon name={icon} color={color} size={highContrast ? 19 : 22} />}
+        <Copy variant={size === 'compact' ? 'bodyCompact' : 'button'} style={{
+          color, flexShrink: 1, textAlign: showArrow ? 'left' : 'center',
+          fontWeight: highContrast ? '700' : typography.button.fontWeight,
+        }}>
+          {title}
+        </Copy>
+      </View>
+      {showArrow && <Icon name="arrow-forward" size={22} color={color} />}
     </>}
   </Pressable></Animated.View>;
 }
-export function IconButton({ icon, label, onPress, quiet = false, disabled = false, feedback = 'light' }: {
+export function IconButton({
+  icon, label, onPress, quiet = false, disabled = false, feedback = 'light', square = false, paper = false,
+}: {
   icon: IconName;
   label: string;
   onPress: () => void;
   quiet?: boolean;
   disabled?: boolean;
   feedback?: HapticFeedback;
+  square?: boolean;
+  paper?: boolean;
 }) {
   const { colors } = useTheme();
   const press = () => {
@@ -79,11 +109,32 @@ export function IconButton({ icon, label, onPress, quiet = false, disabled = fal
   };
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}
     disabled={disabled} onPress={press}
-    style={({ pressed }) => ({ width: layout.touch, height: layout.touch, borderRadius: radii.pill, justifyContent: 'center', alignItems: 'center',
-      backgroundColor: quiet ? 'transparent' : colors.surface, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 })}><Icon name={icon} /></Pressable>;
+    style={({ pressed }) => [
+      styles.iconButton,
+      square && { borderRadius: radii.control, borderWidth: 1, borderColor: paper ? paperColors.line : colors.line },
+      { backgroundColor: square && pressed ? paper ? paperColors.pressed : colors.raised
+        : quiet || paper ? 'transparent' : colors.surface,
+      opacity: disabled ? square ? .3 : interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 },
+    ]}>
+    <Icon name={icon} size={square ? 19 : 22} color={paper ? colors.heroText : colors.text} />
+  </Pressable>;
 }
-export function Card({ children, style, variant = 'default', ...props }: ViewProps & { variant?: keyof typeof cardStyles }) {
+export function Card({ children, style, contentStyle, variant = 'default', ...props }: ViewProps & {
+  variant?: keyof typeof cardStyles;
+  contentStyle?: StyleProp<ViewStyle>;
+}) {
   const { colors } = useTheme();
+  const paper = variant === 'paper';
+  if (paper || contentStyle) {
+    return <View {...props} style={[
+      styles.outlinedCard,
+      { backgroundColor: paper ? colors.heroStart : colors.surface,
+        borderColor: paper ? colors.heroStart : colors.line },
+      style,
+    ]}>
+      <View style={[{ padding: spacing.xl }, contentStyle]}>{children}</View>
+    </View>;
+  }
   const container = [{ backgroundColor: colors.surface }, cardStyles[variant], style];
   return variant === 'hero'
     ? <LinearGradient {...props} colors={[colors.heroStart, colors.heroEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={container}>{children}</LinearGradient>
@@ -91,6 +142,40 @@ export function Card({ children, style, variant = 'default', ...props }: ViewPro
 }
 /** Backward-compatible name for the shared card; existing screens keep their content/actions. */
 export const Panel = Card;
+
+export function StatusBadge({ label, active = false, paper = false }: {
+  label: string;
+  active?: boolean;
+  paper?: boolean;
+}) {
+  const { colors } = useTheme();
+  const accent = contrastAccent(colors);
+  return <View style={[styles.statusBadge, {
+    backgroundColor: paper ? paperColors.badge : active ? colors.accentSoft : colors.raised,
+  }]}>
+    <View style={[styles.statusDot, { backgroundColor: active ? accent : colors.muted }]} />
+    <Label style={{ color: paper ? paperColors.badgeText : active ? accent : colors.secondary,
+      letterSpacing: .7, flexShrink: 1 }}>
+      {label}
+    </Label>
+  </View>;
+}
+
+export function SectionLabel({ title, meta }: { title: string; meta?: string }) {
+  return <View style={[styles.row, styles.sectionLabel]}>
+    <Label>{title}</Label>
+    {meta && <Copy variant="small" muted>{meta}</Copy>}
+  </View>;
+}
+
+export function AppBackground() {
+  const { colors } = useTheme();
+  return <View
+    pointerEvents="none"
+    accessible={false}
+    style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+  />;
+}
 export function ListRow({ title, subtitle, trailing, icon, onPress, label }: {
   title: string; subtitle?: React.ReactNode; trailing?: React.ReactNode; icon?: IconName | React.ReactElement;
   onPress: () => void; label?: string;
@@ -114,12 +199,17 @@ export function ListRow({ title, subtitle, trailing, icon, onPress, label }: {
 export function Divider() {
   const { colors } = useTheme(); return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.line }} />;
 }
-export function Screen({ children, bottom = spacing.xxl, scroll = true }: { children: React.ReactNode; bottom?: number; scroll?: boolean }) {
+export function Screen({ children, bottom = spacing.xxl, gap = spacing.xxl, scroll = true }: {
+  children: React.ReactNode;
+  bottom?: number;
+  gap?: number;
+  scroll?: boolean;
+}) {
   const { colors } = useTheme(); const inset = useSafeAreaInsets(), barInset = useBottomBarInset();
   const { compact, largeText } = useAdaptiveLayout();
   const gutter = compact || largeText ? layout.compactGutter : layout.screenGutter;
   const content = { paddingTop: inset.top + spacing.lg, paddingHorizontal: Math.max(gutter, inset.left, inset.right),
-    paddingBottom: Math.max(inset.bottom + bottom, barInset + spacing.xxl), gap: spacing.xxl, width: '100%' as const, maxWidth: layout.contentWidth, alignSelf: 'center' as const };
+    paddingBottom: Math.max(inset.bottom + bottom, barInset + spacing.xxl), gap, width: '100%' as const, maxWidth: layout.contentWidth, alignSelf: 'center' as const };
   return <ScreenEntrance>{scroll ? <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={content}
     keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>{children}</ScrollView>
     : <View style={[{ flex: 1, backgroundColor: colors.background }, content]}>{children}</View>}</ScreenEntrance>;
@@ -186,4 +276,18 @@ export function Hero({ onStart, hasRun, title, description }: { onStart: () => v
 export const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   button: { borderRadius: radii.button, minHeight: layout.button, paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  buttonLabel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexShrink: 1, gap: spacing.sm },
+  compactButton: { minHeight: 50, paddingVertical: spacing.sm },
+  largeButton: { minHeight: 60 },
+  iconButton: {
+    width: layout.touch, height: layout.touch, borderRadius: radii.pill,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  outlinedCard: { borderRadius: radii.card, borderWidth: 1, overflow: 'hidden' },
+  statusBadge: {
+    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radii.sm, flexShrink: 1,
+  },
+  statusDot: { width: 5, height: 5, borderRadius: radii.pill },
+  sectionLabel: { justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm },
 });

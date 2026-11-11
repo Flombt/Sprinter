@@ -39,7 +39,7 @@ export function Switch({ trackColor, accessibilityState, onValueChange, style, .
   return <View style={{ minHeight: layout.touch, minWidth: 52, justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
     <NativeSwitch hitSlop={{ top: 7, bottom: 7, left: 0, right: 0 }} {...props} accessibilityState={{ ...accessibilityState, disabled: props.disabled, checked: props.value }}
       trackColor={{ false: colors.line, true: colors.switchOn, ...trackColor }} thumbColor={colors.switchThumb}
-      ios_backgroundColor={colors.line} style={style} onValueChange={change} />
+      ios_backgroundColor={trackColor?.false ?? colors.line} style={style} onValueChange={change} />
   </View>;
 }
 export function Toggle({ title, body, value, onChange, disabled = false }: { title: string; body?: string; value: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {

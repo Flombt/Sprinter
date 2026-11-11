@@ -1,3 +1,5 @@
+import { contrastAccent, typography } from '../ui/tokens';
+import { Button, Card, Copy, IconButton } from '../ui/components';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,18 +8,17 @@ import { SpotifyError } from './auth';
 import { Artwork } from './components';
 import { playlistTitle } from './presentation';
 import type { PlaylistReference, SpotifyTrack } from './types';
-import { ActionButton, ActionIcon, BodyText, useDesign, DisplayText, Surface } from '../ui/design';
 import { useTheme } from '../ui/theme';
 
 export function TrackSheet({ playlist, onClose, onOpenTrack, onOpenPlaylist }: {
   playlist: PlaylistReference; onClose: () => void;
   onOpenTrack: (track: SpotifyTrack) => void; onOpenPlaylist: () => void;
 }) {
-  const design = useDesign();
   const [tracks, setTracks] = useState<SpotifyTrack[]>([]), [next, setNext] = useState<number | null>(null);
   const [busy, setBusy] = useState(true), [error, setError] = useState<string | null>(null);
   const request = useRef(0), active = useRef(false), loading = useRef(false);
-  const { reduceMotion } = useTheme(), insets = useSafeAreaInsets();
+  const { colors, reduceMotion } = useTheme(), insets = useSafeAreaInsets();
+  const accent = contrastAccent(colors);
   const load = async (offset = 0) => {
     if (loading.current) return;
     loading.current = true;
@@ -43,31 +44,31 @@ export function TrackSheet({ playlist, onClose, onOpenTrack, onOpenPlaylist }: {
     return () => { active.current = false; request.current++; loading.current = false; };
   }, [playlist.id]);
   return <Modal visible animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={onClose}>
-    <View style={{ flex: 1, backgroundColor: design.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: 22, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 28, gap: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <DisplayText style={{ flex: 1, fontSize: 30, lineHeight: 35 }}>LES MORCEAUX.</DisplayText>
-          <ActionIcon icon="close" label="Fermer les morceaux" onPress={onClose} />
+          <Copy variant="condensedTitle" style={{ flex: 1, fontSize: 30, lineHeight: 35 }}>LES MORCEAUX.</Copy>
+          <IconButton square icon="close" label="Fermer les morceaux" onPress={onClose} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <Artwork image={playlist.image} size={64} />
-          <BodyText style={{ flex: 1, fontSize: 18, fontWeight: '600' }}>{playlistTitle(playlist)}</BodyText>
+          <Copy variant="bodyCompact" style={{ flex: 1, fontSize: 18, fontWeight: '600' }}>{playlistTitle(playlist)}</Copy>
         </View>
-        <ActionButton title="Ouvrir dans Spotify" secondary compact icon="open-outline" onPress={onOpenPlaylist} />
-        {error && <BodyText accessibilityRole="alert" style={{ fontSize: 13, color: design.danger }}>{error}</BodyText>}
+        <Button highContrast size="compact" title="Ouvrir dans Spotify" variant="secondary" icon="open-outline" onPress={onOpenPlaylist} />
+        {error && <Copy variant="bodyCompact" accessibilityRole="alert" style={{ fontSize: 13, color: colors.danger }}>{error}</Copy>}
         <View style={{ gap: 8 }}>{tracks.map((track, index) => <Pressable key={track.id + '-' + index} accessibilityRole="link"
           accessibilityLabel={track.title + ', ' + track.artist + (track.explicit ? ', contenu explicite' : '') + '. Ouvrir dans Spotify.'}
           accessibilityState={{ disabled: !track.url }} disabled={!track.url} onPress={() => onOpenTrack(track)}>
-          <Surface contentStyle={{ padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Card contentStyle={{ padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Artwork image={track.image} size={44} /><View style={{ flex: 1, gap: 3 }}>
-              <BodyText style={{ fontSize: 13, fontWeight: '500' }}>{track.title}</BodyText>
-              <BodyText style={{ fontSize: 11, color: design.secondary }}>{track.artist}{track.explicit ? ' · E' : ''}</BodyText>
+              <Copy variant="bodyCompact" style={{ fontSize: 13, fontWeight: '500' }}>{track.title}</Copy>
+              <Copy variant="bodyCompact" style={{ fontSize: typography.small.fontSize, color: colors.secondary }}>{track.artist}{track.explicit ? ' · E' : ''}</Copy>
             </View>
-          </Surface>
+          </Card>
         </Pressable>)}</View>
-        {busy ? <ActivityIndicator color={design.accent} accessibilityLabel="Chargement des morceaux" />
-          : next !== null || error ? <ActionButton secondary title={error ? 'Réessayer' : 'Voir plus de morceaux'} onPress={() => void load(next ?? 0)} />
-          : !tracks.length && <BodyText style={{ color: design.secondary }}>Aucun morceau accessible dans cette playlist.</BodyText>}
+        {busy ? <ActivityIndicator color={accent} accessibilityLabel="Chargement des morceaux" />
+          : next !== null || error ? <Button highContrast size="large" variant="secondary" title={error ? 'Réessayer' : 'Voir plus de morceaux'} onPress={() => void load(next ?? 0)} />
+          : !tracks.length && <Copy variant="bodyCompact" style={{ color: colors.secondary }}>Aucun morceau accessible dans cette playlist.</Copy>}
       </ScrollView>
     </View>
   </Modal>;

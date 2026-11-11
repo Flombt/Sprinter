@@ -4,7 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { RunRecord } from '../core/types';
 import { duration, km, pace, runDate, targetLabel } from '../core/format';
 import { Button, Copy, Divider, Header, Label, Metric, MetricGrid, NumericReadout, Panel, Screen, SectionHeading, styles } from '../ui/components';
-import { RunnerGlyph } from '../ui/design';
+import { RunnerGlyph } from '../ui/brand';
 import { spacing } from '../ui/tokens';
 import RouteMap from '../ui/RouteMap';
 import { PaceChart } from '../ui/PaceChart';

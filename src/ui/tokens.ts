@@ -23,6 +23,13 @@ export const palettes = {
   },
 };
 export type ThemeColors = typeof palettes.light;
+export const paperColors = {
+  line: '#D7D4CC',
+  pressed: '#DDDAD2',
+  badge: '#E3E0D8',
+  badgeText: '#5F5D58',
+} as const;
+export const contrastAccent = (colors: ThemeColors) => colors.dark ? colors.accent : colors.accentText;
 export const spacing = { none: 0, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, section: 40 } as const;
 export const radii = { sm: 6, control: 12, button: 12, card: 18, hero: 20, pill: 999 } as const;
 export const layout = {
@@ -37,6 +44,13 @@ export const interaction = {
   screenDuration: 160,
 } as const;
 export const typography = {
+  condensedTitle: {
+    fontFamily: 'SprinterDisplay', fontSize: 42, lineHeight: 46, fontWeight: 'normal', letterSpacing: -.5,
+  },
+  condensedMetric: {
+    fontFamily: 'SprinterMetric', fontSize: 42, lineHeight: 46, fontWeight: 'normal', letterSpacing: -.5,
+    fontVariant: ['tabular-nums'],
+  },
   hero: { fontFamily: 'SprinterDisplay', fontSize: 44, lineHeight: 48, fontWeight: 'normal', letterSpacing: -.5 },
   display: { fontFamily: 'SprinterMetric', fontSize: 44, lineHeight: 52, fontWeight: 'normal', letterSpacing: -.5, fontVariant: ['tabular-nums'] },
   distance: { fontFamily: 'SprinterMetric', fontSize: 64, lineHeight: 76, fontWeight: 'normal', letterSpacing: -1, fontVariant: ['tabular-nums'] },
@@ -45,6 +59,7 @@ export const typography = {
   heading: { fontFamily: 'SprinterDisplay', fontSize: 27, lineHeight: 32, fontWeight: 'normal', letterSpacing: -.2 },
   section: { fontSize: 20, lineHeight: 27, fontWeight: '600', letterSpacing: -.4 },
   body: { fontSize: 15, lineHeight: 23, fontWeight: '400' },
+  bodyCompact: { fontSize: 14, lineHeight: 20, fontWeight: '400', letterSpacing: -.15 },
   emphasis: { fontSize: 15, lineHeight: 23, fontWeight: '600' },
   caption: { fontSize: 13, lineHeight: 19, fontWeight: '400' },
   small: { fontSize: 12, lineHeight: 18, fontWeight: '400' },
@@ -61,4 +76,5 @@ export const cardStyles = {
   metric: { borderRadius: radii.card, padding: spacing.xl },
   list: { borderRadius: radii.card, padding: spacing.lg },
   setting: { borderRadius: radii.card, padding: spacing.lg },
+  paper: { borderRadius: radii.card, padding: spacing.xl },
 } as const;

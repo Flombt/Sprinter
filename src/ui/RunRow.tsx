@@ -4,7 +4,7 @@ import type { RunRecord } from '../core/types';
 import { averagePace, duration, km, pace, runDate } from '../core/format';
 import { CHALLENGE_STATUS } from '../workouts/types';
 import { Copy, ListRow } from './components';
-import { RunnerGlyph } from './design';
+import { RunnerGlyph } from './brand';
 import { useTheme } from './theme';
 import { spacing } from './tokens';
 

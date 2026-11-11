@@ -8,7 +8,7 @@ import { duration, estimatedDuration, pace, validateTarget } from '../core/forma
 import { session, SessionState } from '../services/session';
 import { CAN_BACKGROUND } from '../services/capabilities';
 import { Button, Copy, Header, Icon, IconButton, Label, NumericReadout, Panel, Screen, styles } from '../ui/components';
-import { RunnerGlyph } from '../ui/design';
+import { RunnerGlyph } from '../ui/brand';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
 import { interaction, radii, spacing } from '../ui/tokens';
 import { MusicSelection } from '../spotify/components';

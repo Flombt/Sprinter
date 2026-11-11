@@ -1,3 +1,6 @@
+import { Switch } from '../ui/controls';
+import { contrastAccent, interaction, paperColors, spacing, typography } from '../ui/tokens';
+import { Button, Card, Copy, Icon, IconButton, Label, Screen, SectionLabel, StatusBadge } from '../ui/components';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -9,18 +12,15 @@ import { ConnectionCard } from '../spotify/ConnectionCard';
 import { playbackPresentation, playlistTitle } from '../spotify/presentation';
 import { controlReason, selectedPlaylist } from '../spotify/store';
 import type { PlaylistReference, SpotifyTrack } from '../spotify/types';
-import { Icon } from '../ui/components';
-import { ActionButton, ActionIcon, AppScreen, BodyText, useDesign, DisplayText, Kicker, SectionLabel, StatusBadge, Surface, ToggleSwitch } from '../ui/design';
 import { useTheme } from '../ui/theme';
-import { interaction, typography } from '../ui/tokens';
 
 export default function Music({ onClose, foregroundOnlyRun = false, active = true }: {
   onClose?: () => void;
   foregroundOnlyRun?: boolean;
   active?: boolean;
 }) {
-  const design = useDesign();
   const state = useMusic(), { colors, reduceMotion } = useTheme(), insets = useSafeAreaInsets();
+  const accent = contrastAccent(colors);
   const [input, setInput] = useState(''), [adding, setAdding] = useState(false), [connection, setConnection] = useState(false);
   const [notice, setNotice] = useState<string | null>(null), [noticeError, setNoticeError] = useState(false);
   const [libraryBusy, setLibraryBusy] = useState(false);
@@ -68,109 +68,109 @@ export default function Music({ onClose, foregroundOnlyRun = false, active = tru
     setLibraryBusy(true);
     try { await music.loadLibrary(true); } finally { if (mounted.current) setLibraryBusy(false); }
   };
-  return <AppScreen gap={18}>
+  return <Screen gap={spacing.xl}>
     <View style={s.row}>
-      <View><Kicker>VOTRE BANDE-SON</Kicker><DisplayText accessibilityRole="header">MUSIQUE.</DisplayText></View>
-      <ActionIcon icon={onClose ? 'close' : 'person-outline'} label={onClose ? 'Fermer Spotify' : 'Connexion et compte Spotify'} onPress={onClose ?? (() => setConnection(true))} />
+      <View><Label>VOTRE BANDE-SON</Label><Copy variant="condensedTitle" accessibilityRole="header">MUSIQUE.</Copy></View>
+      <IconButton square icon={onClose ? 'close' : 'person-outline'} label={onClose ? 'Fermer Spotify' : 'Connexion et compte Spotify'} onPress={onClose ?? (() => setConnection(true))} />
     </View>
 
-    <Surface paper contentStyle={{ padding: 18, gap: 13 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon name="link-outline" color={design.ink} size={17} /><Kicker style={{ color: '#706C65' }}>AJOUTER UNE PLAYLIST</Kicker></View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 9, borderWidth: 1, borderColor: design.paperLine, backgroundColor: '#E6E3DC' }}>
+    <Card variant="paper" contentStyle={{ padding: 18, gap: 13 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon name="link-outline" color={colors.heroText} size={17} /><Label style={{ color: '#706C65' }}>AJOUTER UNE PLAYLIST</Label></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 9, borderWidth: 1, borderColor: paperColors.line, backgroundColor: '#E6E3DC' }}>
         <TextInput accessibilityLabel="Lien de playlist Spotify" placeholder="Collez votre lien Spotify…" placeholderTextColor="#77736D"
           value={input} onChangeText={value => { inputRevision.current++; setInput(value); setNotice(null); }} autoCapitalize="none" autoCorrect={false}
           keyboardType="url" returnKeyType="done" onSubmitEditing={() => void importPlaylist()} maxLength={2048} editable={!adding}
-          selectionColor={design.accent} style={{ flex: 1, minWidth: 0, minHeight: 50, paddingHorizontal: 12, color: design.ink, fontSize: 13 }} />
+          selectionColor={accent} style={{ flex: 1, minWidth: 0, minHeight: 50, paddingHorizontal: 12, color: colors.heroText, fontSize: 13 }} />
         <Pressable accessibilityRole="button" accessibilityLabel="Coller le lien Spotify" disabled={adding} onPress={() => void paste()} style={{ width: 44, minHeight: 50, alignItems: 'center', justifyContent: 'center' }}><Icon name="clipboard-outline" size={17} color="#706C65" /></Pressable>
       </View>
-      <ActionButton title={adding ? 'Import en cours…' : 'Importer la playlist'} icon="add" compact onPress={() => void importPlaylist()} disabled={!input.trim() || adding || state.busy || !state.ready} />
-    </Surface>
+      <Button highContrast arrow size="compact" title={adding ? 'Import en cours…' : 'Importer la playlist'} icon="add" onPress={() => void importPlaylist()} disabled={!input.trim() || adding || state.busy || !state.ready} />
+    </Card>
 
     {(notice || state.message) && <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-      <Icon name={notice && !noticeError ? 'checkmark-circle-outline' : 'information-circle-outline'} size={17} color={notice && !noticeError ? design.accent : design.danger} />
-      <BodyText style={{ flex: 1, fontSize: 12, color: notice && !noticeError ? design.accent : design.danger }}>{notice ?? state.message}</BodyText>
-      <ActionIcon icon="close" label="Fermer le message Spotify" onPress={() => { setNotice(null); music.clearMessage(); }} />
+      <Icon name={notice && !noticeError ? 'checkmark-circle-outline' : 'information-circle-outline'} size={17} color={notice && !noticeError ? accent : colors.danger} />
+      <Copy variant="bodyCompact" style={{ flex: 1, fontSize: 12, color: notice && !noticeError ? accent : colors.danger }}>{notice ?? state.message}</Copy>
+      <IconButton square icon="close" label="Fermer le message Spotify" onPress={() => { setNotice(null); music.clearMessage(); }} />
     </View>}
 
     {selected && <View style={{ gap: 13 }}>
-      <View style={s.row}><Kicker>POUR LA COURSE</Kicker><StatusBadge label={state.preferencesSaving ? 'ENREGISTREMENT…' : 'SÉLECTIONNÉE'} active={!state.preferencesSaving} /></View>
-      <Surface style={{ borderLeftWidth: 3, borderLeftColor: design.accent }} contentStyle={{ padding: 17, gap: 16 }}>
+      <View style={s.row}><Label>POUR LA COURSE</Label><StatusBadge label={state.preferencesSaving ? 'ENREGISTREMENT…' : 'SÉLECTIONNÉE'} active={!state.preferencesSaving} /></View>
+      <Card style={{ borderLeftWidth: 3, borderLeftColor: accent }} contentStyle={{ padding: 17, gap: 16 }}>
         <View style={{ flexDirection: 'row', gap: 17, alignItems: 'center' }}>
           <Artwork image={selected.image} size={64} />
-          <View style={{ flex: 1, gap: 5 }}><BodyText numberOfLines={2} style={{ fontSize: 17, lineHeight: 23, fontWeight: '600', letterSpacing: -.3 }}>{playlistTitle(selected)}</BodyText>
-            <BodyText numberOfLines={1} style={{ fontSize: typography.small.fontSize, color: design.secondary }}>{[selected.owner, selected.count !== null ? selected.count + ' titres' : 'Playlist Spotify'].filter(Boolean).join(' · ')}</BodyText>
+          <View style={{ flex: 1, gap: 5 }}><Copy variant="bodyCompact" numberOfLines={2} style={{ fontSize: 17, lineHeight: 23, fontWeight: '600', letterSpacing: -.3 }}>{playlistTitle(selected)}</Copy>
+            <Copy variant="bodyCompact" numberOfLines={1} style={{ fontSize: typography.small.fontSize, color: colors.secondary }}>{[selected.owner, selected.count !== null ? selected.count + ' titres' : 'Playlist Spotify'].filter(Boolean).join(' · ')}</Copy>
           </View>
         </View>
-        <ActionButton title={connected && !controlReason(state, 'play') ? 'Lancer la playlist' : 'Ouvrir dans Spotify'} icon="play" compact onPress={() => {
+        <Button highContrast arrow size="compact" title={connected && !controlReason(state, 'play') ? 'Lancer la playlist' : 'Ouvrir dans Spotify'} icon="play" onPress={() => {
           if (connected && !controlReason(state, 'play')) void music.playSelected();
           else open(selected);
         }} />
-        {connected && <View style={s.row}><BodyText style={{ flex: 1, fontSize: 12, color: design.secondary }}>Lancer avec la course</BodyText>
-          <ToggleSwitch label="Lancer Spotify avec la course" value={state.preferences.autoPlay} disabled={state.busy || state.preferencesSaving}
-            onChange={value => void music.setAutoPlay(value)} /></View>}
+        {connected && <View style={s.row}><Copy variant="bodyCompact" style={{ flex: 1, fontSize: 12, color: colors.secondary }}>Lancer avec la course</Copy>
+          <Switch accessibilityRole="switch" trackColor={{ false: '#424248', true: accent }} accessibilityLabel="Lancer Spotify avec la course" value={state.preferences.autoPlay} disabled={state.busy || state.preferencesSaving}
+            onValueChange={value => void music.setAutoPlay(value)} /></View>}
         <View style={s.row}>
-          {connected && <Pressable accessibilityRole="button" onPress={() => setTrackPlaylist(selected)} style={{ minHeight: 44, justifyContent: 'center' }}><BodyText style={{ fontSize: 12, color: design.accent }}>Voir les morceaux</BodyText></Pressable>}
-          <Pressable accessibilityRole="button" disabled={state.busy || state.preferencesSaving} onPress={() => void music.select(null)} style={{ minHeight: 44, justifyContent: 'center' }}><BodyText style={{ fontSize: 12, color: design.secondary }}>Partir sans playlist</BodyText></Pressable>
+          {connected && <Pressable accessibilityRole="button" onPress={() => setTrackPlaylist(selected)} style={{ minHeight: 44, justifyContent: 'center' }}><Copy variant="bodyCompact" style={{ fontSize: 12, color: accent }}>Voir les morceaux</Copy></Pressable>}
+          <Pressable accessibilityRole="button" disabled={state.busy || state.preferencesSaving} onPress={() => void music.select(null)} style={{ minHeight: 44, justifyContent: 'center' }}><Copy variant="bodyCompact" style={{ fontSize: 12, color: colors.secondary }}>Partir sans playlist</Copy></Pressable>
         </View>
-      </Surface>
+      </Card>
     </View>}
 
-    {connected && state.playback?.track && <Surface contentStyle={{ gap: 15 }}>
-      <View style={s.row}><Kicker>EN ÉCOUTE</Kicker><ActionIcon icon="refresh-outline" label="Actualiser le lecteur Spotify" onPress={() => void music.refreshPlayback(true)} disabled={state.playerBusy} /></View>
+    {connected && state.playback?.track && <Card contentStyle={{ gap: 15 }}>
+      <View style={s.row}><Label>EN ÉCOUTE</Label><IconButton square icon="refresh-outline" label="Actualiser le lecteur Spotify" onPress={() => void music.refreshPlayback(true)} disabled={state.playerBusy} /></View>
       <View style={{ flexDirection: 'row', gap: 13, alignItems: 'center' }}><Artwork image={state.playback.track.image} size={48} /><View style={{ flex: 1, gap: 2 }}>
-        <BodyText numberOfLines={1} style={{ fontSize: 14, fontWeight: '500' }}>{state.playback.track.title}</BodyText>
-        <BodyText numberOfLines={1} style={{ fontSize: typography.small.fontSize, color: design.secondary }}>{state.playback.track.artist}</BodyText>
+        <Copy variant="bodyCompact" numberOfLines={1} style={{ fontSize: 14, fontWeight: '500' }}>{state.playback.track.title}</Copy>
+        <Copy variant="bodyCompact" numberOfLines={1} style={{ fontSize: typography.small.fontSize, color: colors.secondary }}>{state.playback.track.artist}</Copy>
       </View></View>
       <PlaybackControls state={state} />
-      <BodyText style={{ fontSize: typography.small.fontSize, color: playback.fresh ? design.accent : design.secondary, textAlign: 'center' }}>{playback.label}</BodyText>
-    </Surface>}
+      <Copy variant="bodyCompact" style={{ fontSize: typography.small.fontSize, color: playback.fresh ? accent : colors.secondary, textAlign: 'center' }}>{playback.label}</Copy>
+    </Card>}
 
     {connected && <View style={{ gap: 12 }}>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: playerOptions }} onPress={() => setPlayerOptions(!playerOptions)} style={{ ...s.row, minHeight: 44 }}>
-        <BodyText style={{ fontSize: 12, color: design.secondary }}>Options du lecteur</BodyText><Icon name={playerOptions ? 'chevron-up' : 'chevron-down'} size={16} color={design.secondary} />
+        <Copy variant="bodyCompact" style={{ fontSize: 12, color: colors.secondary }}>Options du lecteur</Copy><Icon name={playerOptions ? 'chevron-up' : 'chevron-down'} size={16} color={colors.secondary} />
       </Pressable>
       {playerOptions && <PlayerPanel state={state} openSpotify={() => openTrack(state.playback?.track ?? undefined)} />}
     </View>}
 
     <View style={{ gap: 13 }}>
       <View style={s.row}><SectionLabel title="VOS PLAYLISTS" meta={playlists.length > 0 ? String(playlists.length).padStart(2, '0') : undefined} />
-        {connected && <ActionIcon icon="refresh-outline" label="Actualiser mes playlists" onPress={() => void music.loadLibrary()} disabled={state.busy} />}
+        {connected && <IconButton square icon="refresh-outline" label="Actualiser mes playlists" onPress={() => void music.loadLibrary()} disabled={state.busy} />}
       </View>
-      {!state.ready ? <ActivityIndicator color={design.accent} accessibilityLabel="Chargement des playlists" /> : playlists.length ? playlists.map(playlist => {
+      {!state.ready ? <ActivityIndicator color={accent} accessibilityLabel="Chargement des playlists" /> : playlists.length ? playlists.map(playlist => {
         const chosen = selected?.id === playlist.id, saved = state.preferences.playlists.some(p => p.id === playlist.id);
-        return <Surface key={playlist.id} style={{ borderRadius: 12, borderLeftWidth: 3, borderLeftColor: chosen ? design.accent : design.line }} contentStyle={{ padding: 11, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        return <Card key={playlist.id} style={{ borderRadius: 12, borderLeftWidth: 3, borderLeftColor: chosen ? accent : colors.line }} contentStyle={{ padding: 11, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" accessibilityLabel={'Choisir ' + playlistTitle(playlist)} accessibilityState={{ selected: chosen, disabled: state.busy }} disabled={state.busy}
             onPress={() => void music.select(playlist)} style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? interaction.pressedOpacity : 1, minHeight: 54 })}>
             <Artwork image={playlist.image} size={48} />
-            <View style={{ flex: 1, gap: 3 }}><BodyText numberOfLines={1} style={{ fontSize: 13, fontWeight: '500' }}>{playlistTitle(playlist)}</BodyText><BodyText style={{ color: chosen ? design.accent : design.secondary, fontSize: typography.small.fontSize }}>{chosen ? 'Pour la prochaine course' : playlist.owner ?? 'Enregistrée dans Sprinter'}</BodyText></View>
-            <Icon name={chosen ? 'checkmark-circle' : 'radio-button-off-outline'} color={chosen ? design.accent : design.muted} size={21} />
+            <View style={{ flex: 1, gap: 3 }}><Copy variant="bodyCompact" numberOfLines={1} style={{ fontSize: 13, fontWeight: '500' }}>{playlistTitle(playlist)}</Copy><Copy variant="bodyCompact" style={{ color: chosen ? accent : colors.secondary, fontSize: typography.small.fontSize }}>{chosen ? 'Pour la prochaine course' : playlist.owner ?? 'Enregistrée dans Sprinter'}</Copy></View>
+            <Icon name={chosen ? 'checkmark-circle' : 'radio-button-off-outline'} color={chosen ? accent : colors.muted} size={21} />
           </Pressable>
-          {connected && <ActionIcon icon="list-outline" label={'Voir les morceaux de ' + playlistTitle(playlist)} onPress={() => setTrackPlaylist(playlist)} />}
-          {saved && <Pressable accessibilityRole="button" accessibilityLabel={'Retirer ' + playlistTitle(playlist) + ' de Sprinter'} disabled={state.busy} onPress={() => void music.remove(playlist.id)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="close" color={design.muted} size={16} /></Pressable>}
-        </Surface>;
-      }) : <Surface contentStyle={{ flexDirection: 'row', gap: 14, alignItems: 'center', paddingVertical: 23 }}>
-        <Icon name="albums-outline" size={26} color={design.secondary} />
-        <View style={{ flex: 1, gap: 4 }}><BodyText style={{ fontSize: 14, fontWeight: '600' }}>Aucune playlist pour le moment</BodyText>
-          <BodyText style={{ color: design.secondary, fontSize: 12, lineHeight: 18 }}>Importez un lien ou retrouvez votre compte.</BodyText>
+          {connected && <IconButton square icon="list-outline" label={'Voir les morceaux de ' + playlistTitle(playlist)} onPress={() => setTrackPlaylist(playlist)} />}
+          {saved && <Pressable accessibilityRole="button" accessibilityLabel={'Retirer ' + playlistTitle(playlist) + ' de Sprinter'} disabled={state.busy} onPress={() => void music.remove(playlist.id)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="close" color={colors.muted} size={16} /></Pressable>}
+        </Card>;
+      }) : <Card contentStyle={{ flexDirection: 'row', gap: 14, alignItems: 'center', paddingVertical: 23 }}>
+        <Icon name="albums-outline" size={26} color={colors.secondary} />
+        <View style={{ flex: 1, gap: 4 }}><Copy variant="bodyCompact" style={{ fontSize: 14, fontWeight: '600' }}>Aucune playlist pour le moment</Copy>
+          <Copy variant="bodyCompact" style={{ color: colors.secondary, fontSize: 12, lineHeight: 18 }}>Importez un lien ou retrouvez votre compte.</Copy>
         </View>
-      </Surface>}
-      {connected && state.nextOffset !== null && <ActionButton title={libraryBusy ? 'Chargement…' : 'Voir plus de playlists'} secondary disabled={libraryBusy} onPress={() => void loadMore()} />}
+      </Card>}
+      {connected && state.nextOffset !== null && <Button highContrast size="large" title={libraryBusy ? 'Chargement…' : 'Voir plus de playlists'} variant="secondary" disabled={libraryBusy} onPress={() => void loadMore()} />}
     </View>
 
-    <Pressable accessibilityRole="button" accessibilityLabel={connected ? 'Gérer le compte Spotify' : 'Connecter mon compte Spotify'} onPress={() => setConnection(true)} style={{ minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderTopWidth: 1, borderTopColor: design.line }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={connected ? 'Gérer le compte Spotify' : 'Connecter mon compte Spotify'} onPress={() => setConnection(true)} style={{ minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderTopWidth: 1, borderTopColor: colors.line }}>
       <Image source={colors.dark ? require('../../assets/spotify/logo-white.png') : require('../../assets/spotify/logo-black.png')} resizeMode="contain" accessibilityLabel="Spotify" style={{ width: 84, height: 25, zIndex: 1 }} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><BodyText style={{ color: design.secondary, fontSize: typography.small.fontSize }}>{connected ? state.profile?.name ?? 'Compte connecté' : 'Connecter mon compte'}</BodyText><Icon name="arrow-forward" color={design.secondary} size={14} /></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Copy variant="bodyCompact" style={{ color: colors.secondary, fontSize: typography.small.fontSize }}>{connected ? state.profile?.name ?? 'Compte connecté' : 'Connecter mon compte'}</Copy><Icon name="arrow-forward" color={colors.secondary} size={14} /></View>
     </Pressable>
 
     <Modal visible={active && connection} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setConnection(false)}>
-      <View style={{ flex: 1, backgroundColor: design.background }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 24, gap: 24 }}>
-        <View style={s.row}><DisplayText style={{ fontSize: 32, lineHeight: 38 }}>VOTRE COMPTE</DisplayText><ActionIcon icon="close" label="Fermer les réglages Spotify" onPress={() => setConnection(false)} /></View>
+      <View style={{ flex: 1, backgroundColor: colors.background }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 24, gap: 24 }}>
+        <View style={s.row}><Copy variant="condensedTitle" style={{ fontSize: 32, lineHeight: 38 }}>VOTRE COMPTE</Copy><IconButton square icon="close" label="Fermer les réglages Spotify" onPress={() => setConnection(false)} /></View>
         <ConnectionCard state={state} openExternal={openExternal} onMessage={setNotice} />
       </ScrollView></View>
     </Modal>
     {active && trackPlaylist && connected && <TrackSheet key={trackPlaylist.id} playlist={trackPlaylist} onClose={() => setTrackPlaylist(null)}
       onOpenPlaylist={() => open(trackPlaylist)} onOpenTrack={track => openTrack(track, trackPlaylist)} />}
-  </AppScreen>;
+  </Screen>;
 }
 
 const s = StyleSheet.create({

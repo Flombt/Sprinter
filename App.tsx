@@ -7,12 +7,12 @@ import { DEFAULT_EXACT_TARGET, type PaceTarget, type RunRecord } from './src/cor
 import { useKeepAwake } from 'expo-keep-awake';
 import { session } from './src/services/session';
 import { ThemeProvider, useTheme } from './src/ui/theme';
-import { Button, Copy, IconButton, Label, Screen } from './src/ui/components';
+import { AppBackground, Button, Copy, IconButton, Label, Screen } from './src/ui/components';
 import { BottomTabs, TabPane, type TabItem } from './src/ui/navigation';
 import { BottomBarInsetContext } from './src/ui/layout';
-import { radii, spacing } from './src/ui/tokens';
+import { palettes, radii, spacing } from './src/ui/tokens';
 import { confirm } from './src/ui/confirm';
-import { design, useDesign, AppBackground, PageTransition, BodyText, ActionIcon } from './src/ui/design';
+import { PageTransition } from './src/ui/motion';
 import { haptic } from './src/ui/haptics';
 import { RunCountdown } from './src/ui/RunCountdown';
 import { startPreparedRun } from './src/services/runPreparation';
@@ -45,7 +45,6 @@ const TAB_ITEMS: readonly TabItem<Tab>[] = [
 ];
 function KeepScreenAwake() { useKeepAwake('sprinter-active-screen'); return null; }
 function AppContent() {
-  const design = useDesign();
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const { colors, reduceMotion } = useTheme(); const inset = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('home'); const [page, setPage] = useState<Page>({ name: 'tabs' });
@@ -128,7 +127,7 @@ function AppContent() {
   else if (page.name === 'apple') content = <AppleIntegrations onBack={tabs} />;
   else if (page.name === 'recovery') content = <Recovery state={state} onBack={tabs} />;
   else if (page.name === 'history') content = <History state={state} onBack={tabs} onDetail={detail} onStart={start} onRecords={() => setPage({ name: 'records' })} onCompare={() => setPage({ name: 'compare' })} onProgression={progress} />;
-  return <View style={{ flex: 1, backgroundColor: colors.background }}><View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center', backgroundColor: design.background }}><StatusBar style={colors.dark ? 'light' : 'dark'} />
+  return <View style={{ flex: 1, backgroundColor: colors.background }}><View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center', backgroundColor: colors.background }}><StatusBar style={colors.dark ? 'light' : 'dark'} />
     <AppBackground />
     {foregroundOnlyRun && <KeepScreenAwake />}
     <BottomBarInsetContext.Provider value={tabsVisible && !hideTabBar ? tabBarHeight : 0}>
@@ -193,7 +192,11 @@ function AppContent() {
     </Modal>
     <Modal visible={settingsVisible} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setSettingsVisible(false)}>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ paddingTop: inset.top + 8, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><BodyText style={{ fontSize: 18, fontWeight: '600' }}>Réglages avancés</BodyText><ActionIcon icon="close" label="Fermer les réglages" onPress={() => setSettingsVisible(false)} /></View>
+        <View style={{ paddingTop: inset.top + spacing.sm, paddingHorizontal: spacing.xl,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Copy variant="section">Réglages avancés</Copy>
+          <IconButton square icon="close" label="Fermer les réglages" onPress={() => setSettingsVisible(false)} />
+        </View>
         {settingsVisible && <Settings state={state} onRecovery={() => { setSettingsVisible(false); setPage({ name: 'recovery' }); }} onApple={() => { setSettingsVisible(false); applePage(); }} onTools={() => { setSettingsVisible(false); openTools(); }} />}
       </View>
     </Modal>
@@ -217,6 +220,10 @@ export default function App() {
     SprinterMetric: require('./assets/fonts/BarlowCondensed-SemiBold.ttf'),
   });
   return <SafeAreaProvider><ThemeProvider appearance={state.settings.appearance}>
-    {fontsLoaded || fontError ? <AppContent /> : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: design.background }}><ActivityIndicator color={design.accent} /></View>}
+    {fontsLoaded || fontError ? <AppContent /> : <View style={{
+      flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palettes.dark.background,
+    }}>
+      <ActivityIndicator color={palettes.dark.accent} />
+    </View>}
   </ThemeProvider></SafeAreaProvider>;
 }

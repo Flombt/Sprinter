@@ -1,3 +1,6 @@
+import { contrastAccent, spacing, typography } from '../ui/tokens';
+import { Brand } from '../ui/brand';
+import { Button, Copy, Icon, IconButton, Label } from '../ui/components';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated, BackHandler, Easing, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions,
@@ -10,15 +13,12 @@ import { selectedPlaylist } from '../spotify/store';
 import { useMusic } from '../spotify/components';
 import { playlistTitle } from '../spotify/presentation';
 import { useTools } from '../tools/components';
-import { Button, Icon } from '../ui/components';
-import { ActionButton, ActionIcon, BodyText, Brand, DisplayText, Kicker, useDesign } from '../ui/design';
 import { useBottomBarInset } from '../ui/layout';
 import RouteMap from '../ui/RouteMap';
 import { EMPTY_TRACK, type MapCommand } from '../ui/routeMapData';
 import { useTheme } from '../ui/theme';
 import { useMapPosition } from '../ui/useMapPosition';
 import { useRunSetup } from '../ui/useRunSetup';
-import { spacing, typography } from '../ui/tokens';
 import { LiveRunMetrics } from './LiveRunMetrics';
 import { HoldToFinish } from '../ui/HoldToFinish';
 import { RunPauseButton } from '../ui/RunPauseButton';
@@ -27,8 +27,8 @@ export { RunRow } from '../ui/RunRow';
 
 function RunMetric({ value, label, unit }: { value: string; label: string; unit?: string }) {
   return <View accessible accessibilityLabel={[label, value, unit].filter(Boolean).join(' ')} style={styles.metric}>
-    <DisplayText numeric adjustsFontSizeToFit numberOfLines={1} style={styles.metricValue}>{value}</DisplayText>
-    <Kicker style={styles.metricLabel}>{label}{unit ? ' · ' + unit : ''}</Kicker>
+    <Copy variant="condensedMetric" adjustsFontSizeToFit numberOfLines={1} style={styles.metricValue}>{value}</Copy>
+    <Label style={styles.metricLabel}>{label}{unit ? ' · ' + unit : ''}</Label>
   </View>;
 }
 
@@ -50,8 +50,8 @@ export default function Home({
   onFinish: () => void;
   onConfirmFinish: () => void;
 }) {
-  const design = useDesign();
   const { colors, reduceMotion } = useTheme();
+  const accent = contrastAccent(colors);
   const { top, bottom } = useSafeAreaInsets();
   const { fontScale, height } = useWindowDimensions();
   const scroll = fontScale > 1 || height < 700;
@@ -149,25 +149,25 @@ export default function Home({
   };
   const content = <>
     <View style={styles.header}>
-      <ActionIcon icon={expanded ? 'arrow-back' : 'time-outline'} label={expanded ? 'Revenir aux statistiques de course' : 'Historique des courses'}
+      <IconButton square icon={expanded ? 'arrow-back' : 'time-outline'} label={expanded ? 'Revenir aux statistiques de course' : 'Historique des courses'}
         onPress={expanded ? () => setExpanded(false) : onHistory} />
       <Brand />
-      <ActionIcon icon={expanded ? 'contract-outline' : 'expand-outline'} label={expanded ? 'Réduire la carte' : 'Agrandir la carte'}
+      <IconButton square icon={expanded ? 'contract-outline' : 'expand-outline'} label={expanded ? 'Réduire la carte' : 'Agrandir la carte'}
         onPress={() => setExpanded(value => !value)} />
     </View>
-    <Animated.View style={[styles.readouts, { borderBottomColor: design.line, opacity: readoutOpacity }]}>
+    <Animated.View style={[styles.readouts, { borderBottomColor: colors.line, opacity: readoutOpacity }]}>
       {run ? <LiveRunMetrics run={run} state={state} expanded={expanded} /> : <>
       {!expanded && <View style={[styles.hero, { minHeight: heroHeight }]}>
-        <DisplayText numeric maxFontSizeMultiplier={1.6} numberOfLines={1} adjustsFontSizeToFit style={styles.heroValue}>
+        <Copy variant="condensedMetric" maxFontSizeMultiplier={1.6} numberOfLines={1} adjustsFontSizeToFit style={styles.heroValue}>
           {distance}
-        </DisplayText>
-        <Kicker style={{ fontSize: typography.caption.fontSize }}>Distance · km</Kicker>
+        </Copy>
+        <Label style={{ fontSize: typography.caption.fontSize }}>Distance · km</Label>
       </View>}
       <View style={styles.metricRow}>
         {expanded ? <RunMetric label="Distance" unit="km" value={distance} /> : <RunMetric label="Temps actif" value="00:00" />}
-        <View style={[styles.divider, { backgroundColor: design.line }]} />
+        <View style={[styles.divider, { backgroundColor: colors.line }]} />
         <RunMetric label="Dénivelé −" unit="m" value="0" />
-        <View style={[styles.divider, { backgroundColor: design.line }]} />
+        <View style={[styles.divider, { backgroundColor: colors.line }]} />
         <RunMetric label="Allure moy." unit="/km" value="00:00" />
       </View>
       </>}
@@ -179,37 +179,37 @@ export default function Home({
         command={command} onPan={() => setFollow(false)} />
       {!expanded && <Pressable accessibilityRole="button" accessibilityLabel="Agrandir la carte du parcours"
         accessibilityHint="Ouvre les commandes de la carte sur cet écran" onPress={() => setExpanded(true)} style={StyleSheet.absoluteFill} />}
-      <View pointerEvents="none" style={[styles.mapStatus, { backgroundColor: colors.surface, borderColor: design.line }]}>
-        <Icon name="navigate-circle-outline" size={16} color={state.quality === 'good' || (!run && preview.position) ? design.accent : design.secondary} />
-        <BodyText style={styles.mapStatusText}>{gpsLabel}</BodyText>
+      <View pointerEvents="none" style={[styles.mapStatus, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+        <Icon name="navigate-circle-outline" size={16} color={state.quality === 'good' || (!run && preview.position) ? accent : colors.secondary} />
+        <Copy variant="bodyCompact" style={styles.mapStatusText}>{gpsLabel}</Copy>
       </View>
       {expanded && <View style={styles.mapTools}>
-        <ActionIcon icon="locate-outline" label="Centrer sur ma position" onPress={recenter} disabled={!!run && !lastFix} />
-        <ActionIcon icon="git-commit-outline" label="Voir le tracé entier" onPress={frameRoute} disabled={!hasRoute || isWeb} />
-        {!isWeb && <ActionIcon icon="layers-outline" label={satellite ? 'Afficher la carte standard' : 'Afficher la carte satellite'} onPress={() => setSatellite(value => !value)} />}
+        <IconButton square icon="locate-outline" label="Centrer sur ma position" onPress={recenter} disabled={!!run && !lastFix} />
+        <IconButton square icon="git-commit-outline" label="Voir le tracé entier" onPress={frameRoute} disabled={!hasRoute || isWeb} />
+        {!isWeb && <IconButton square icon="layers-outline" label={satellite ? 'Afficher la carte standard' : 'Afficher la carte satellite'} onPress={() => setSatellite(value => !value)} />}
       </View>}
       {mapEmpty && <View pointerEvents="none" style={[styles.mapNote, { backgroundColor: colors.surface }]}>
-        <BodyText style={styles.mapNoteText}>{isWeb ? 'Carte détaillée sur iPhone' : mapHint}</BodyText>
-        {isWeb && <BodyText style={[styles.mapNoteText, { color: design.secondary }]}>Le tracé GPS apparaît ici pendant la course.</BodyText>}
+        <Copy variant="bodyCompact" style={styles.mapNoteText}>{isWeb ? 'Carte détaillée sur iPhone' : mapHint}</Copy>
+        {isWeb && <Copy variant="bodyCompact" style={[styles.mapNoteText, { color: colors.secondary }]}>Le tracé GPS apparaît ici pendant la course.</Copy>}
       </View>}
       {reference && <View pointerEvents="none" style={[styles.routeLegend, { backgroundColor: colors.surface }]}>
         <View style={[styles.legendStroke, { backgroundColor: colors.routeReference }]} />
-        <BodyText numberOfLines={1} style={styles.mapStatusText}>{reference.name}</BodyText>
+        <Copy variant="bodyCompact" numberOfLines={1} style={styles.mapStatusText}>{reference.name}</Copy>
       </View>}
     </View>
 
-    <View style={[styles.controls, { borderTopColor: design.line }]}>
+    <View style={[styles.controls, { borderTopColor: colors.line }]}>
       {state.autoPaused && <View style={styles.autoPause}>
-        {expanded && <BodyText accessibilityRole="header" style={styles.autoPauseTitle}>Pause automatique</BodyText>}
-        <BodyText>
+        {expanded && <Copy variant="bodyCompact" accessibilityRole="header" style={styles.autoPauseTitle}>Pause automatique</Copy>}
+        <Copy variant="bodyCompact">
           Le temps actif est suspendu. Le GPS attend un mouvement confirmé pour reprendre automatiquement.
           {' '}« Pause manuelle » arrête cette détection.
-        </BodyText>
-        <ActionButton
+        </Copy>
+        <Button highContrast size="large"
           title="Reprendre maintenant"
           feedback="medium"
           icon="play"
-          secondary
+          variant="secondary"
           disabled={state.busy}
           onPress={() => void session.resume()}
         />
@@ -234,25 +234,25 @@ export default function Home({
         </View>
         <HoldToFinish key={run.id} disabled={state.busy} onFinish={onFinish} onConfirm={onConfirmFinish} />
       </View> : <>
-      {state.recoveryBlocked && <BodyText accessibilityRole="alert" style={[styles.note, { color: design.danger }]}>Une sauvegarde interrompue doit être récupérée avant le départ.</BodyText>}
-      {!run && !state.recoveryBlocked && setup.error && <BodyText accessibilityRole="alert" style={[styles.note, { color: design.danger }]}>{setup.error}</BodyText>}
+      {state.recoveryBlocked && <Copy variant="bodyCompact" accessibilityRole="alert" style={[styles.note, { color: colors.danger }]}>Une sauvegarde interrompue doit être récupérée avant le départ.</Copy>}
+      {!run && !state.recoveryBlocked && setup.error && <Copy variant="bodyCompact" accessibilityRole="alert" style={[styles.note, { color: colors.danger }]}>{setup.error}</Copy>}
       <View style={styles.context}>
         <Pressable accessibilityRole="button" accessibilityLabel="Préparer ma course" onPress={onPrepare}
           style={styles.contextLink}>
-          <Icon name="speedometer-outline" size={15} color={design.accent} />
-          <BodyText numberOfLines={1} style={[styles.contextText, { color: design.secondary }]}>{paceHint}</BodyText>
-          <Icon name="chevron-forward" size={13} color={design.secondary} />
+          <Icon name="speedometer-outline" size={15} color={accent} />
+          <Copy variant="bodyCompact" numberOfLines={1} style={[styles.contextText, { color: colors.secondary }]}>{paceHint}</Copy>
+          <Icon name="chevron-forward" size={13} color={colors.secondary} />
         </Pressable>
         {!expanded && <Pressable accessibilityRole="button" accessibilityLabel="Centrer sur ma position" onPress={recenter} style={styles.locate}>
-          <Icon name="locate-outline" size={18} color={design.secondary} />
+          <Icon name="locate-outline" size={18} color={colors.secondary} />
         </Pressable>}
       </View>
       <View style={styles.actionRow}>
-        <ActionIcon icon="musical-notes-outline" label={playlist ? 'Playlist Spotify : ' + playlistTitle(playlist) : 'Choisir une playlist Spotify'} onPress={onMusic} />
+        <IconButton square icon="musical-notes-outline" label={playlist ? 'Playlist Spotify : ' + playlistTitle(playlist) : 'Choisir une playlist Spotify'} onPress={onMusic} />
         <View style={styles.startAction}>
-          <ActionButton title={actionTitle} compact disabled={state.busy || starting} icon="play" onPress={start} />
+          <Button highContrast arrow size="compact" title={actionTitle} disabled={state.busy || starting} icon="play" onPress={start} />
         </View>
-        <ActionIcon icon="options-outline" label="Réglages de course" onPress={onSettings} />
+        <IconButton square icon="options-outline" label="Réglages de course" onPress={onSettings} />
       </View>
       </>}
     </View>
