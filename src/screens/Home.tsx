@@ -131,7 +131,8 @@ export default function Home({
   const gpsLabel = run ? QUALITY_LABELS[state.quality]
     : preview.status === 'locating' ? 'Localisation…'
       : preview.status === 'unavailable' ? 'GPS indisponible'
-        : preview.position ? 'Position trouvée' : preview.status === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
+        : preview.status === 'cached' ? 'Dernière position connue'
+          : preview.position ? 'Position trouvée' : preview.status === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
   const mapHint = run ? 'En attente d’un point GPS fiable'
     : preview.status === 'denied' ? 'Autorisez la localisation dans les réglages.'
       : preview.status === 'unavailable' ? 'Position indisponible. Réessayez à l’extérieur.'

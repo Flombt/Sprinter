@@ -1,6 +1,6 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { Pressable, View } from 'react-native';
-import { useIsFocused, usePreventRemove } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PaceTarget } from '../core/types';
 import { duration, estimatedDuration, km, pace, targetLabel, validateTarget } from '../core/format';
@@ -90,7 +90,6 @@ export default function Preparation({
     setEditing(null);
     setPane(null);
   }, []);
-  usePreventRemove(pane !== null, close);
 
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
   const tools = useTools();
@@ -112,7 +111,8 @@ export default function Preparation({
   const gpsLabel = preview.status === 'locating' ? 'Localisation en cours'
     : preview.status === 'denied' ? 'Localisation à autoriser'
       : preview.status === 'unavailable' ? 'Position GPS indisponible'
-        : preview.position ? 'Position GPS disponible' : 'GPS en attente';
+        : preview.status === 'cached' ? 'Dernière position connue'
+          : preview.position ? 'Position GPS disponible' : 'GPS en attente';
 
   const setTarget = onTargetChange;
   const openEditor = (key: 'fast' | 'slow') => {
@@ -148,7 +148,7 @@ export default function Preparation({
         <Header title="Prêt à partir" onBack={onBack} />
         {!state.runId && <View style={{ gap: spacing.sm }}>
           <Copy variant="caption" muted accessibilityLiveRegion="polite">{gpsLabel}</Copy>
-          {!preview.position && <Button
+          {preview.status !== 'ready' && <Button
             title="Actualiser la position"
             icon="locate-outline"
             variant="quiet"
@@ -262,7 +262,8 @@ export default function Preparation({
             }} />}
           {estimate && !error && <Copy variant="caption">
             Temps prévu · {duration(estimate[0])} – {duration(estimate[1])}
-            {target.finishSeconds != null && ' · Objectif ' + duration(target.finishSeconds)}
+            {target.finishSeconds != null && ' · Objectif ' + duration(target.finishSeconds)
+              + (target.timeBasis === 'total' ? ' en temps total' : ' en temps actif')}
           </Copy>}
         </>)}
       {pane === 'workout' && <>

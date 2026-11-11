@@ -30,6 +30,9 @@ export default function Detail({ run, history, onBack, onCompare, onRecords, onA
   const { colors } = useTheme();
   const { largeText } = useAdaptiveLayout();
   const percentage = analysis.deviations.percentage;
+  const activeSeconds = Math.max(1, run.activeSeconds);
+  const altitudeCoverage = Math.min(100, analysis.elevationSeconds / activeSeconds * 100).toFixed(0);
+  const paceCoverage = Math.min(100, analysis.deviations.reliableSeconds / activeSeconds * 100).toFixed(0);
   const [section, setSection] = useState<'summary' | 'paces' | 'kilometers' | 'map'>('summary');
   const [selected, setSelected] = useState<TrackPoint>();
   const select = useCallback((sample: SeriesPoint) => {
@@ -62,18 +65,15 @@ export default function Detail({ run, history, onBack, onCompare, onRecords, onA
     <FavouriteActions run={run} onTools={onTools} onRepeat={onRepeat} />
     <Panel style={{ gap: 24 }}><MetricGrid><Metric label="Temps actif" value={duration(run.activeSeconds)} /><Metric label="Allure moyenne active" value={pace(analysis.averagePace)} unit="/km" /></MetricGrid>
       <MetricGrid><Metric label="Temps total" value={run.totalSeconds === undefined ? '—' : duration(run.totalSeconds)} /><Metric label="Pauses" value={run.totalSeconds === undefined ? '—' : duration(Math.max(0, run.totalSeconds - run.activeSeconds))} /></MetricGrid>
-      {run.totalEstimated && <Copy muted variant="small">Le temps total inclut une estimation de l’interruption après récupération. Le temps actif est conservé séparément.</Copy>}
       <Copy muted variant="small">{run.healthKit ? 'Temps issus de Santé ; détail des pauses indisponible.' : run.autoPauseEnabled ? `${run.autoPauseCount ?? 0} pause(s) automatique(s).` : 'Pause automatique désactivée pour cette sortie.'}</Copy>
       <Divider /><MetricGrid><Metric label="Plus rapide fiable" value={pace(analysis.fastestReliablePace)} unit="/km" /><Metric label="Plus lente fiable" value={pace(analysis.slowestReliablePace)} unit="/km" /></MetricGrid>
       <Metric label="Vitesse moyenne active" value={speed === null ? '—' : speed.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} unit="km/h" />
-      <Copy muted variant="small">Les extrêmes sont issus des allures lissées fiables enregistrées. Le meilleur segment chronométré est présenté séparément.</Copy>
     </Panel>
     <Panel style={{ gap: 15 }}><MetricGrid><Metric label="Dénivelé positif" value={analysis.ascent === null ? '—' : Math.round(analysis.ascent).toString()} unit="m" /><Metric label="Dénivelé négatif" value={analysis.descent === null ? '—' : Math.round(analysis.descent).toString()} unit="m" /></MetricGrid>
-      <Copy muted variant="caption">{analysis.elevationSeconds > 0 ? `Estimation sur ${duration(analysis.elevationSeconds)} d’altitude fiable (${Math.min(100, analysis.elevationSeconds / Math.max(1, run.activeSeconds) * 100).toFixed(0)} % du temps actif). Les portions non fiables et les pauses ne sont pas extrapolées.` : 'Mesures d’altitude fiables indisponibles pour cette sortie.'}</Copy></Panel>
+    </Panel>
     <Panel style={{ gap: spacing.lg }}><View style={{ flexDirection: largeText ? 'column' : 'row', alignItems: largeText ? 'stretch' : 'center', gap: spacing.xl }}>
       {largeText ? <Metric label="Temps dans la cible" value={percentage === null ? '—' : `${Math.round(percentage)} %`} /> : <TargetRing percentage={percentage} />}
       <View style={{ flex: largeText ? undefined : 1, minWidth: 0, gap: spacing.sm }}><Label style={{ color: colors.accentText }}>Le rythme juste</Label><Copy variant="section">Du temps dans votre cible</Copy><Copy muted variant="caption">{run.targetUnavailable ? 'Objectif d’allure non disponible dans cet import Santé' : run.workout ? 'Selon la cible de chaque segment' : run.target.kilometerTargets ? 'Selon la cible de chaque kilomètre' : `${targetLabel(run.target)} /km`}</Copy></View></View>
-      <Copy muted variant="caption">{analysis.deviations.reliableSeconds > 0 ? `Calculé sur ${duration(analysis.deviations.reliableSeconds)} de mesures fiables, soit ${Math.min(100, analysis.deviations.reliableSeconds / Math.max(1, run.activeSeconds) * 100).toFixed(0)} % du temps actif.` : 'Pas assez de mesures fiables pour calculer ce pourcentage.'} Les pauses, pertes de signal et phases de stabilisation sont exclues.</Copy>
     </Panel>
     {run.workoutError && <Copy style={{ color: colors.orange }}>{run.workoutError}</Copy>}
     {run.workout && <WorkoutResult workout={run.workout} />}
@@ -109,6 +109,24 @@ export default function Detail({ run, history, onBack, onCompare, onRecords, onA
     </>}
     <SettingsDisclosure title="À propos de ces mesures" icon="information-circle-outline">
       {analysis.warnings.map(warning => <Copy key={warning} style={{ color: colors.orange }}>{warning}</Copy>)}
+      {run.totalEstimated && <Copy muted variant="caption">
+        Le temps total inclut une estimation de l’interruption après récupération. Le temps actif est séparé.
+      </Copy>}
+      <Copy muted variant="caption">
+        Les allures extrêmes proviennent des mesures lissées fiables. Le meilleur segment est présenté séparément.
+      </Copy>
+      <Copy muted variant="caption">
+        {analysis.elevationSeconds > 0
+          ? 'Dénivelé estimé sur ' + duration(analysis.elevationSeconds)
+            + ' d’altitude fiable (' + altitudeCoverage + ' % du temps actif).'
+          : 'Mesures d’altitude fiables indisponibles pour cette sortie.'}
+      </Copy>
+      <Copy muted variant="caption">
+        {analysis.deviations.reliableSeconds > 0
+          ? 'Temps dans la cible calculé sur ' + duration(analysis.deviations.reliableSeconds)
+            + ' de mesures fiables (' + paceCoverage + ' % du temps actif).'
+          : 'Pas assez de mesures fiables pour calculer le temps dans la cible.'}
+      </Copy>
       <Copy muted variant="caption">
         Les graphiques et les records utilisent les mesures fiables. Les pauses et les interruptions
         de localisation sont exclues des portions mesurées.

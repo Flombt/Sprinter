@@ -1,11 +1,13 @@
 import type { TextStyle } from 'react-native';
 
 /** Shared identity, including the secondary screens and native controls. */
+// prettier-ignore
 const brand = {
   accent: '#FF5C35', accentInk: '#FFFFFF', heroStart: '#F2F0E9', heroEnd: '#F2F0E9',
   heroText: '#171719', heroSecondary: '#65615C', heroAction: '#FF5C35', heroActionText: '#FFFFFF', heroDecoration: '#C3BFB6',
   routeReference: '#6D9FDA', routeStart: '#719B35', routeFinish: '#F0A57E', routePosition: '#4395E6',
 };
+// prettier-ignore
 export const palettes = {
   light: {
     ...brand, dark: false, background: '#F2F0E9', surface: '#FFFFFF', raised: '#E7E4DD', field: '#F7F6F2',

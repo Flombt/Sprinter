@@ -17,10 +17,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test",
+    "check": "npm run lint && npm run typecheck && npm test",
     "export:ios": "expo export --platform ios",
     "build:ios": "npx eas-cli@latest build --platform ios --profile development",
-    "qr": "node scripts/qr.cjs"
+    "qr": "node scripts/qr.cjs",
+    "lint": "eslint App.tsx src",
+    "format": "prettier --write App.tsx src/navigation src/screens src/ui src/analysis/SeriesChart.tsx src/settings/TrackingPanel.tsx src/spotify/TrackSheet.tsx src/spotify/components.tsx"
   },
   "dependencies": {
     "@expo/ui": "~58.0.26",
@@ -68,6 +70,9 @@
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/react": "~19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~58.0.4",
+    "prettier": "^3.10.0",
     "qrcode": "^1.5.4",
     "typescript": "~6.0.3",
     "vitest": "^5.0.5"

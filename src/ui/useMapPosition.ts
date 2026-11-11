@@ -4,7 +4,10 @@ import * as Location from 'expo-location';
 import { validCoordinate } from '../routes/geometry';
 import type { RouteCoordinate } from '../routes/types';
 
-type Preview = { position?: RouteCoordinate; status: 'idle' | 'locating' | 'ready' | 'denied' | 'unavailable' };
+type Preview = {
+  position?: RouteCoordinate;
+  status: 'idle' | 'locating' | 'ready' | 'cached' | 'denied' | 'unavailable';
+};
 
 let cachedPosition: RouteCoordinate | undefined;
 let attemptedAutomaticFix = false;
@@ -20,7 +23,7 @@ function suitablePosition(value: Location.LocationObject | null, maximumAge: num
 export function useMapPosition(enabled: boolean) {
   const [preview, setPreview] = useState<Preview>(() => ({
     position: cachedPosition,
-    status: cachedPosition ? 'ready' : 'idle',
+    status: cachedPosition ? 'cached' : 'idle',
   }));
   const pending = useRef<AbortController | null>(null);
 
@@ -53,8 +56,8 @@ export function useMapPosition(enabled: boolean) {
         : undefined;
       if (signal.aborted) return;
       if (last) cachedPosition = last;
-      if (!ask && (last || attemptedAutomaticFix)) {
-        setPreview({ position: cachedPosition, status: cachedPosition ? 'ready' : 'idle' });
+      if (!ask && (cachedPosition || attemptedAutomaticFix)) {
+        setPreview({ position: cachedPosition, status: last ? 'ready' : cachedPosition ? 'cached' : 'idle' });
         return;
       }
       attemptedAutomaticFix = true;
