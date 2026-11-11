@@ -1,35 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, Platform } from 'react-native';
+import { Animated, Platform } from 'react-native';
 import { useTheme } from './theme';
 import { interaction } from './tokens';
-
-export function PageTransition({ children }: { children: ReactNode }) {
-  const { reduceMotion } = useTheme();
-  const progress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
-
-  useEffect(() => {
-    if (reduceMotion) {
-      progress.setValue(1);
-      return;
-    }
-    const animation = Animated.timing(progress, {
-      toValue: 1,
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web',
-    });
-    animation.start();
-    return () => animation.stop();
-  }, [progress, reduceMotion]);
-
-  return <Animated.View style={{
-    flex: 1,
-    opacity: progress,
-    transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }],
-  }}>
-    {children}
-  </Animated.View>;
-}
 
 /** One short entrance per mount, independent of live metrics or business state. */
 export function ScreenEntrance({ children }: { children: ReactNode }) {

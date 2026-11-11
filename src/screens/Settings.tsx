@@ -3,7 +3,7 @@ import { Platform, View } from 'react-native';
 import type { Appearance } from '../core/types';
 import { session, type SessionState } from '../services/session';
 import { CAN_BACKGROUND, IS_EXPO_GO } from '../services/capabilities';
-import { Button, Copy, Divider, Header, Label, ListRow, Panel, Screen, SectionHeading } from '../ui/components';
+import { Button, Copy, Divider, Header, IconButton, Label, ListRow, Panel, Screen, SectionHeading } from '../ui/components';
 import { SegmentedControl, Toggle } from '../ui/controls';
 import { SettingsDisclosure, SettingsNotice } from '../ui/settings';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
@@ -34,7 +34,13 @@ function PrivacyPanel({ onApple }: { onApple?: () => void }) {
   </>;
 }
 
-export default function Settings({ state, onApple, onTools, onRecovery }: { state: SessionState; onApple?: () => void; onTools?: () => void; onRecovery?: () => void }) {
+export default function Settings({ state, onApple, onTools, onRecovery, onClose }: {
+  state: SessionState;
+  onApple?: () => void;
+  onTools?: () => void;
+  onRecovery?: () => void;
+  onClose?: () => void;
+}) {
   const { colors } = useTheme(); const { largeText } = useAdaptiveLayout();
   const [page, setPage] = useState<SettingsPage>('main');
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
@@ -46,9 +52,10 @@ export default function Settings({ state, onApple, onTools, onRecovery }: { stat
   const coachSummary = `${coach.label}${coach.customized ? ' personnalisé' : ''} · ${coach.enabled} type${coach.enabled > 1 ? 's' : ''} d’annonce`;
   const voiceMessage = library.message && <Copy accessibilityRole="alert" variant="caption" style={{ color: colors.danger }}>{library.message}</Copy>;
   const main = () => setPage('main');
+  const close = onClose && <IconButton icon="close" label="Fermer les réglages" onPress={onClose} quiet />;
 
   if (page !== 'main') return <Screen key={page}>
-    <Header title={PAGE_TITLE[page]} subtitle="Réglages" onBack={main} />
+    <Header title={PAGE_TITLE[page]} subtitle="Réglages" onBack={main} right={close} />
     {page === 'coach' && <>
       <SettingsNotice icon="mic-outline" title={library.preferences.voiceEnabled && audio ? 'Voix activée au premier plan' : 'Votre configuration du coach'}
         body={library.preferences.voiceEnabled && !audio ? 'La voix est activée, mais nécessite aussi les signaux audio. Activez-les dans les réglages principaux pour entendre les consignes.'
@@ -63,7 +70,7 @@ export default function Settings({ state, onApple, onTools, onRecovery }: { stat
   </Screen>;
 
   return <Screen key="settings-main">
-    <Header title="Réglages" subtitle="Sprinter" />
+    <Header title="Réglages" subtitle="Sprinter" right={close} />
     <Copy muted>Un coach à votre mesure, des réglages faciles à retrouver.</Copy>
     <View style={{ gap: spacing.md }}><SectionHeading title="Coach de course" />
       <Panel variant="setting" style={{ gap: spacing.lg }}>

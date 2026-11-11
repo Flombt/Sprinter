@@ -1,104 +1,104 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ActivityIndicator, Linking, Modal, Platform, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StackActions, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { DEFAULT_EXACT_TARGET, type PaceTarget, type RunRecord } from './src/core/types';
 import { useKeepAwake } from 'expo-keep-awake';
+import { DEFAULT_EXACT_TARGET, type PaceTarget } from './src/core/types';
+import { AppSheets, type Sheet } from './src/navigation/AppSheets';
+import { RootStack } from './src/navigation/RootStack';
+import type { Tab } from './src/navigation/RunTabs';
+import type { RootRoutes } from './src/navigation/routes';
 import { session } from './src/services/session';
+import { startPreparedRun } from './src/services/runPreparation';
 import { ThemeProvider, useTheme } from './src/ui/theme';
-import { AppBackground, Button, Copy, IconButton, Label, Screen } from './src/ui/components';
-import { BottomTabs, TabPane, type TabItem } from './src/ui/navigation';
-import { BottomBarInsetContext } from './src/ui/layout';
+import { Button, Copy, IconButton, Label, Screen } from './src/ui/components';
 import { palettes, radii, spacing } from './src/ui/tokens';
 import { confirm } from './src/ui/confirm';
-import { PageTransition } from './src/ui/motion';
 import { haptic } from './src/ui/haptics';
 import { RunCountdown } from './src/ui/RunCountdown';
-import { startPreparedRun } from './src/services/runPreparation';
-import Home from './src/screens/Home';
-import Preparation from './src/screens/Preparation';
-import RunStats from './src/screens/RunStats';
-import Recovery from './src/screens/Recovery';
-import History from './src/screens/History';
-import Detail from './src/screens/Detail';
-import Settings from './src/screens/Settings';
-import Music from './src/screens/Music';
 import { music } from './src/spotify/device';
-import Workouts from './src/screens/Workouts';
 import { workouts } from './src/workouts/store';
-import PersonalRecords from './src/screens/PersonalRecords';
-import Comparison from './src/screens/Comparison';
-import Progression from './src/screens/Progression';
 import { progression } from './src/progression/store';
-import AppleIntegrations from './src/screens/AppleIntegrations';
 import { connectAppleIntegrations } from './src/apple/connect';
-import RunningTools from './src/screens/RunningTools';
 import { connectRunningTools } from './src/tools/connect';
 
-type Tab = 'stats' | 'home' | 'music';
-type Page = { name: 'tabs' } | { name: 'recovery' } | { name: 'history' } | { name: 'apple' } | { name: 'prepare' } | { name: 'detail'; run: RunRecord; justFinished?: boolean; returnTo?: 'progression' } | { name: 'records'; returnTo?: 'progression' } | { name: 'compare'; initialId?: string } | { name: 'progression' };
-const TAB_ITEMS: readonly TabItem<Tab>[] = [
-  { key: 'stats', title: 'Stats', icon: 'stats-chart-outline', selectedIcon: 'stats-chart' },
-  { key: 'home', title: 'Courir', icon: 'flash-outline', selectedIcon: 'flash-outline' },
-  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline', selectedIcon: 'musical-notes' },
-];
-function KeepScreenAwake() { useKeepAwake('sprinter-active-screen'); return null; }
+function KeepScreenAwake() {
+  useKeepAwake('sprinter-active-screen');
+  return null;
+}
+
 function AppContent() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
-  const { colors, reduceMotion } = useTheme(); const inset = useSafeAreaInsets();
-  const [tab, setTab] = useState<Tab>('home'); const [page, setPage] = useState<Page>({ name: 'tabs' });
-  const [musicVisited, setMusicVisited] = useState(false);
-  const [tabBarHeight, setTabBarHeight] = useState(0);
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigationContainerRef<RootRoutes>();
+  const pendingHome = useRef(false);
+  const startInFlight = useRef(false);
+  const [tab, setTab] = useState<Tab>('home');
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [countdown, setCountdown] = useState(false);
   const [startingRun, setStartingRun] = useState(false);
-  const startInFlight = useRef(false);
-  const [settingsVisible, setSettingsVisible] = useState(false);
-  const [musicVisible, setMusicVisible] = useState(false);
-  const [workoutsVisible, setWorkoutsVisible] = useState(false);
-  const [toolsVisible, setToolsVisible] = useState(false);
-  useEffect(() => { void Promise.all([session.initialize(), progression.initialize()]).then(() => progression.reconcile(session.getSnapshot().history)); void music.initialize(); void workouts.initialize(); }, []);
+  const [sheet, setSheet] = useState<Sheet | null>(null);
+
+  useEffect(() => {
+    void Promise.all([session.initialize(), progression.initialize()])
+      .then(() => progression.reconcile(session.getSnapshot().history));
+    void music.initialize();
+    void workouts.initialize();
+  }, []);
   useEffect(connectAppleIntegrations, []);
   useEffect(connectRunningTools, []);
+
+  const openHome = useCallback(() => {
+    setTab('home');
+    pendingHome.current = !navigation.isReady();
+    if (navigation.isReady() && navigation.canGoBack()) navigation.dispatch(StackActions.popToTop());
+  }, [navigation]);
+
   useEffect(() => {
     const open = (url: string | null | undefined) => {
-      if (url !== 'sprinter://run') return;
-      void session.initialize().then(() => { setTab('home'); setPage({ name: 'tabs' }); });
+      if (url === 'sprinter://run') void session.initialize().then(openHome);
     };
     void Linking.getInitialURL().then(open).catch(() => undefined);
     const subscription = Linking.addEventListener('url', event => open(event.url));
     return () => subscription.remove();
-  }, []);
-  const tabs = () => setPage({ name: 'tabs' });
-  const home = () => { setTab('home'); tabs(); };
+  }, [openHome]);
+
   const start = () => {
-    if (state.recoveryBlocked) { setPage({ name: 'recovery' }); return; }
-    home();
-    if (!state.run && !state.busy && !startInFlight.current) setCountdown(true);
+    const current = session.getSnapshot();
+    if (current.recoveryBlocked) {
+      navigation.navigate('Recovery');
+      return;
+    }
+    openHome();
+    if (!current.run && !current.busy && !startInFlight.current) setCountdown(true);
   };
+
   const beginRun = () => {
     setCountdown(false);
     if (startInFlight.current) return;
     startInFlight.current = true;
     setStartingRun(true);
     void startPreparedRun(target).then(started => {
-      if (started) { home(); void music.onRunStarted(); }
-    }).catch(() => session.reportMessage('Le départ a échoué. Réessayez depuis Courir.')).finally(() => {
+      if (!started) return;
+      openHome();
+      void music.onRunStarted();
+    }).catch(() => {
+      session.reportMessage('Le départ a échoué. Réessayez depuis Courir.');
+    }).finally(() => {
       startInFlight.current = false;
       setStartingRun(false);
     });
   };
-  const detail = (run: RunRecord, justFinished = false) => setPage({ name: 'detail', run, justFinished });
-  const history = () => setPage({ name: 'history' });
-  const progress = () => setPage({ name: 'progression' });
-  const applePage = () => setPage({ name: 'apple' });
-  const openTools = () => setToolsVisible(true);
+
   const finish = () => {
     void session.finish().then(run => {
       if (!run) return;
       haptic.success();
-      detail(run, true);
+      openHome();
+      navigation.navigate('RunSummary', { runId: run.id });
     });
   };
   const confirmFinish = () => confirm(
@@ -107,123 +107,92 @@ function AppContent() {
     'Enregistrer',
     finish,
   );
-  const modalVisible = musicVisible || workoutsVisible || toolsVisible || settingsVisible || countdown;
-  const tabsVisible = state.ready && page.name === 'tabs';
-  const hideTabBar = tab === 'home' && (state.running || state.autoPaused);
-  const tabsActive = tabsVisible && !modalVisible;
+  const modalVisible = sheet !== null || countdown;
   const foregroundOnlyRun = (state.running || state.autoPaused) && !state.backgroundActive;
-  const changeTab = (next: Tab) => {
-    if (next === 'music') setMusicVisited(true);
-    setTab(next);
-  };
-  let content: React.ReactNode;
-  if (!state.ready) content = <Screen><View style={{ paddingTop: 100, alignItems: 'center', gap: spacing.xxl }}><Label>SPRINTER</Label><Copy variant="title">Le rythme juste.</Copy>
-    {state.error ? <><Copy style={{ color: colors.danger, textAlign: 'center' }}>{state.error}</Copy><Button title="Réessayer" onPress={() => void session.initialize()} /></> : <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />}</View></Screen>;
-  else if (page.name === 'prepare') content = <Preparation state={state} initialTarget={target} onTargetChange={setTarget} onBack={tabs} onStarted={() => { setTab('home'); tabs(); }} onMusic={() => setMusicVisible(true)} onWorkouts={() => setWorkoutsVisible(true)} onTools={openTools} />;
-  else if (page.name === 'detail') content = <Detail run={page.run} history={state.history} justFinished={page.justFinished} onBack={page.justFinished ? home : page.returnTo === 'progression' ? progress : history} onCompare={() => setPage({ name: 'compare', initialId: page.run.id })} onRecords={() => setPage({ name: 'records', returnTo: page.returnTo })} onApple={applePage} onTools={openTools} onRepeat={() => setPage({ name: 'prepare' })} />;
-  else if (page.name === 'records') content = <PersonalRecords history={state.history} onBack={page.returnTo === 'progression' ? progress : history} onDetail={detail} />;
-  else if (page.name === 'compare') content = <Comparison history={state.history} initialId={page.initialId} onBack={history} />;
-  else if (page.name === 'progression') content = <Progression history={state.history} canStart={!state.run} onBack={history} onDetail={run => setPage({ name: 'detail', run, returnTo: 'progression' })} onStart={() => setPage({ name: 'prepare' })} onRecords={() => setPage({ name: 'records', returnTo: 'progression' })} />;
-  else if (page.name === 'apple') content = <AppleIntegrations onBack={tabs} />;
-  else if (page.name === 'recovery') content = <Recovery state={state} onBack={tabs} />;
-  else if (page.name === 'history') content = <History state={state} onBack={tabs} onDetail={detail} onStart={start} onRecords={() => setPage({ name: 'records' })} onCompare={() => setPage({ name: 'compare' })} onProgression={progress} />;
-  return <View style={{ flex: 1, backgroundColor: colors.background }}><View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center', backgroundColor: colors.background }}><StatusBar style={colors.dark ? 'light' : 'dark'} />
-    <AppBackground />
-    {foregroundOnlyRun && <KeepScreenAwake />}
-    <BottomBarInsetContext.Provider value={tabsVisible && !hideTabBar ? tabBarHeight : 0}>
+
+  return <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{
+      flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center',
+      backgroundColor: colors.background,
+    }}>
+      <StatusBar style={colors.dark ? 'light' : 'dark'} />
+      {foregroundOnlyRun && <KeepScreenAwake />}
       <View
         style={{ flex: 1 }}
         aria-hidden={modalVisible}
         accessibilityElementsHidden={modalVisible}
         importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
       >
-        {state.ready && <View
-          style={{ flex: 1, display: tabsVisible ? 'flex' : 'none' }}
-          accessibilityElementsHidden={!tabsVisible}
-          importantForAccessibility={tabsVisible ? 'auto' : 'no-hide-descendants'}
-          aria-hidden={!tabsVisible}
-        >
-          <TabPane visible={tab === 'home'}>
-            <Home
-              active={tabsActive && tab === 'home'}
-              state={state}
-              target={target}
-              starting={countdown || startingRun}
-              onStart={start}
-              onRecovery={() => setPage({ name: 'recovery' })}
-              onPrepare={() => setPage({ name: 'prepare' })}
-              onHistory={history}
-              onStats={() => changeTab('stats')}
-              onMusic={() => changeTab('music')}
-              onSettings={() => setSettingsVisible(true)}
-              onFinish={finish}
-              onConfirmFinish={confirmFinish}
-            />
-          </TabPane>
-          <TabPane visible={tab === 'stats'}>
-            <RunStats
-              active={tabsActive && tab === 'stats'}
-              state={state}
-              target={target}
-              onTargetChange={setTarget}
-              onPrepare={() => setPage({ name: 'prepare' })}
-              onSettings={() => setSettingsVisible(true)}
-              onMusic={() => setMusicVisible(true)}
-              onFinish={finish}
-              onConfirmFinish={confirmFinish}
-            />
-          </TabPane>
-          {musicVisited && <TabPane visible={tab === 'music'}>
-            <Music active={tabsActive && tab === 'music'} foregroundOnlyRun={foregroundOnlyRun} />
-          </TabPane>}
-          <BottomTabs
-            items={TAB_ITEMS}
-            value={tab}
-            hidden={hideTabBar}
-            onChange={changeTab}
-            onHeightChange={setTabBarHeight}
-          />
-        </View>}
-        {!tabsVisible && <PageTransition key={page.name}>{content}</PageTransition>}
+        {state.ready ? <RootStack
+          navigationRef={navigation}
+          onReady={() => { if (pendingHome.current) openHome(); }}
+          state={state}
+          tab={tab}
+          onTabChange={setTab}
+          target={target}
+          onTargetChange={setTarget}
+          starting={countdown || startingRun}
+          covered={modalVisible}
+          onStart={start}
+          onHome={openHome}
+          onFinish={finish}
+          onConfirmFinish={confirmFinish}
+          onOpenSheet={setSheet}
+        /> : <Screen>
+          <View style={{ paddingTop: 100, alignItems: 'center', gap: spacing.xxl }}>
+            <Label>SPRINTER</Label>
+            <Copy variant="title">Le rythme juste.</Copy>
+            {state.error ? <>
+              <Copy style={{ color: colors.danger, textAlign: 'center' }}>{state.error}</Copy>
+              <Button title="Réessayer" onPress={() => void session.initialize()} />
+            </> : <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />}
+          </View>
+        </Screen>}
       </View>
-    </BottomBarInsetContext.Provider>
-    <Modal visible={musicVisible} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setMusicVisible(false)}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}><AppBackground />{musicVisible && <Music onClose={() => setMusicVisible(false)} foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive} />}</View>
-    </Modal>
-    <Modal visible={settingsVisible} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setSettingsVisible(false)}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ paddingTop: inset.top + spacing.sm, paddingHorizontal: spacing.xl,
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Copy variant="section">Réglages avancés</Copy>
-          <IconButton square icon="close" label="Fermer les réglages" onPress={() => setSettingsVisible(false)} />
-        </View>
-        {settingsVisible && <Settings state={state} onRecovery={() => { setSettingsVisible(false); setPage({ name: 'recovery' }); }} onApple={() => { setSettingsVisible(false); applePage(); }} onTools={() => { setSettingsVisible(false); openTools(); }} />}
-      </View>
-    </Modal>
-    <Modal visible={workoutsVisible} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setWorkoutsVisible(false)}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>{workoutsVisible && <Workouts onClose={() => setWorkoutsVisible(false)} onSelected={() => setWorkoutsVisible(false)} onDetail={run => { setWorkoutsVisible(false); detail(run); }} />}</View>
-    </Modal>
-    {countdown && <RunCountdown onCancel={() => setCountdown(false)} onComplete={beginRun} />}
-    <Modal visible={toolsVisible} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setToolsVisible(false)}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>{toolsVisible && <RunningTools onBack={() => setToolsVisible(false)} onPrepare={() => { setToolsVisible(false); if (!session.getSnapshot().run) setPage({ name: 'prepare' }); }} />}</View>
-    </Modal>
-    {state.message && <View accessibilityRole="alert" style={{ position: 'absolute', top: inset.top + spacing.sm, left: spacing.md, right: spacing.md, borderRadius: radii.card, backgroundColor: colors.raised,
-      borderWidth: 1, borderColor: colors.line, paddingLeft: spacing.lg, paddingVertical: spacing.sm, paddingRight: spacing.xs, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', shadowColor: colors.shadow, shadowOpacity: .15, shadowRadius: radii.control, elevation: 5 }}>
-      <Copy variant="caption" style={{ flex: 1 }}>{state.message}</Copy><IconButton icon="close" label="Fermer le message" onPress={session.clearMessage} quiet />
-    </View>}
-  </View></View>;
+      <AppSheets
+        sheet={sheet}
+        state={state}
+        onClose={() => setSheet(null)}
+        onDetail={run => {
+          setSheet(null);
+          navigation.dispatch(StackActions.push('Detail', { runId: run.id }));
+        }}
+        onRecovery={() => { setSheet(null); navigation.navigate('Recovery'); }}
+        onApple={() => { setSheet(null); navigation.navigate('Apple'); }}
+        onPrepare={() => {
+          setSheet(null);
+          if (!session.getSnapshot().run) navigation.navigate('Preparation');
+        }}
+        onTools={() => setSheet('tools')}
+      />
+      {countdown && <RunCountdown onCancel={() => setCountdown(false)} onComplete={beginRun} />}
+      {state.message && <View accessibilityRole="alert" style={{
+        position: 'absolute', top: insets.top + spacing.sm, left: spacing.md, right: spacing.md,
+        borderRadius: radii.card, backgroundColor: colors.raised, borderWidth: 1, borderColor: colors.line,
+        paddingLeft: spacing.lg, paddingVertical: spacing.sm, paddingRight: spacing.xs, flexDirection: 'row',
+        gap: spacing.sm, alignItems: 'center', shadowColor: colors.shadow, shadowOpacity: .15,
+        shadowRadius: radii.control, elevation: 5,
+      }}>
+        <Copy variant="caption" style={{ flex: 1 }}>{state.message}</Copy>
+        <IconButton icon="close" label="Fermer le message" onPress={session.clearMessage} quiet />
+      </View>}
+    </View>
+  </View>;
 }
+
 export default function App() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const [fontsLoaded, fontError] = useFonts({
     SprinterDisplay: require('./assets/fonts/BarlowCondensed-ExtraBold.ttf'),
     SprinterMetric: require('./assets/fonts/BarlowCondensed-SemiBold.ttf'),
   });
-  return <SafeAreaProvider><ThemeProvider appearance={state.settings.appearance}>
-    {fontsLoaded || fontError ? <AppContent /> : <View style={{
-      flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palettes.dark.background,
-    }}>
-      <ActivityIndicator color={palettes.dark.accent} />
-    </View>}
-  </ThemeProvider></SafeAreaProvider>;
+  return <SafeAreaProvider>
+    <ThemeProvider appearance={state.settings.appearance}>
+      {fontsLoaded || fontError ? <AppContent /> : <View style={{
+        flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palettes.dark.background,
+      }}>
+        <ActivityIndicator color={palettes.dark.accent} />
+      </View>}
+    </ThemeProvider>
+  </SafeAreaProvider>;
 }
