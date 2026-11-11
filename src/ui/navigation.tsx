@@ -6,6 +6,8 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Icon, type IconName } from './components';
 import { BodyText, useDesign, RunnerGlyph } from './design';
 import { useTheme } from './theme';
+import { haptic } from './haptics';
+import { interaction, typography } from './tokens';
 
 export interface TabItem<T extends string> { key: T; title: string; icon: IconName; selectedIcon?: IconName }
 
@@ -19,7 +21,11 @@ export function BottomTabs<T extends string>({ items, value, onChange, onHeightC
   useEffect(() => {
     if (!width) return;
     if (!positioned.current || reduceMotion) { x.setValue(index * itemWidth); positioned.current = true; return; }
-    const animation = Animated.spring(x, { toValue: index * itemWidth, useNativeDriver: Platform.OS !== 'web', damping: 24, stiffness: 240, mass: .8 });
+    const animation = Animated.timing(x, {
+      toValue: index * itemWidth,
+      duration: 180,
+      useNativeDriver: Platform.OS !== 'web',
+    });
     animation.start(); return () => animation.stop();
   }, [index, itemWidth, reduceMotion, width, x]);
   return <View accessibilityRole="tablist" accessibilityLabel="Navigation principale" onLayout={event => onHeightChange(event.nativeEvent.layout.height)}
@@ -37,10 +43,14 @@ export function BottomTabs<T extends string>({ items, value, onChange, onHeightC
         {items.map(item => {
           const selected = value === item.key, color = selected ? design.accent : design.secondary;
           return <Pressable key={item.key} accessibilityRole="tab" accessibilityLabel={item.title} accessibilityState={{ selected }} aria-selected={selected}
-            onPress={() => onChange(item.key)} style={({ pressed }) => ({ flex: 1, minWidth: 0, minHeight: 64, paddingVertical: 11, paddingHorizontal: 4,
-              alignItems: 'center', justifyContent: 'center', gap: 4, opacity: pressed ? .6 : 1 })}>
+            onPress={() => {
+              if (selected) return;
+              haptic.select();
+              onChange(item.key);
+            }} style={({ pressed }) => ({ flex: 1, minWidth: 0, minHeight: 64, paddingVertical: 11, paddingHorizontal: 4,
+              alignItems: 'center', justifyContent: 'center', gap: 4, opacity: pressed ? interaction.pressedOpacity : 1 })}>
             {item.key === 'home' ? <RunnerGlyph size={23} color={color} /> : <Icon name={item.icon} size={21} color={color} />}
-            <BodyText style={{ fontSize: 10, lineHeight: 14, fontWeight: selected ? '600' : '400', color: selected ? design.text : design.secondary }}>{item.title}</BodyText>
+            <BodyText style={[typography.tab, { fontWeight: selected ? '600' : '400', color: selected ? design.text : design.secondary }]}>{item.title}</BodyText>
           </Pressable>;
         })}
       </View>

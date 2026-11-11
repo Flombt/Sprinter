@@ -3,6 +3,8 @@ import { averagePace, duration, km, pace } from '../core/format';
 import { QUALITY_LABELS, type PaceTarget } from '../core/types';
 import { session, type SessionState } from '../services/session';
 import { CAN_BACKGROUND } from '../services/capabilities';
+import { haptic } from '../ui/haptics';
+import { typography } from '../ui/tokens';
 import { Icon, type IconName } from '../ui/components';
 import { ActionButton, ActionIcon, AppScreen, BodyText, useDesign, DisplayText, Kicker, SectionLabel, StatusBadge, Surface, ToggleSwitch } from '../ui/design';
 import { useRunSetup } from '../ui/useRunSetup';
@@ -19,7 +21,7 @@ function Setting({ icon, title, detail, value, onChange, disabled = false }: {
   return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 53 }}>
     <Icon name={icon} size={19} color={design.secondary} />
     <View style={{ flex: 1, gap: 1 }}><BodyText style={{ fontSize: 13, fontWeight: '500' }}>{title}</BodyText>
-      {detail && <BodyText style={{ color: design.secondary, fontSize: 10, lineHeight: 14 }}>{detail}</BodyText>}
+      {detail && <BodyText style={{ color: design.secondary, fontSize: typography.small.fontSize, lineHeight: typography.small.lineHeight }}>{detail}</BodyText>}
     </View>
     <ToggleSwitch label={title} hint={disabled ? 'Modifiable entre deux courses' : detail} value={value} disabled={disabled} onChange={onChange} />
   </View>;
@@ -87,16 +89,19 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
         <BodyText style={{ fontSize: 12, color: design.secondary }}>{liveTarget ? liveTarget.fast === liveTarget.slow ? 'min / km · sans marge' : 'min / km · ' + pace(liveTarget.fast) + ' à ' + pace(liveTarget.slow) : 'Aucune consigne d’allure pour ce bloc.'}</BodyText>
       </Surface> : <Surface contentStyle={{ padding: 13, gap: 12 }}>
         <View style={s.row}>
-          <ActionIcon icon="remove" label="Accélérer l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center - 5)} disabled={!!run || advanced || center <= 120} />
+          <ActionIcon icon="remove" feedback="select" label="Accélérer l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center - 5)} disabled={!!run || advanced || center <= 120} />
           <Pressable accessibilityRole="button" accessibilityLabel="Choisir précisément mon allure" disabled={advanced} onPress={onPrepare} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><DisplayText numeric style={{ fontSize: 36, lineHeight: 39 }}>{pace(center)}</DisplayText>
-            <BodyText style={{ fontSize: 10, lineHeight: 15, color: design.secondary }}>{activeTarget.fast === activeTarget.slow ? 'min / km · sans marge' : 'min / km · ± ' + Math.round((activeTarget.slow - activeTarget.fast) / 2) + ' s'}</BodyText>
+            <BodyText style={{ fontSize: typography.small.fontSize, lineHeight: typography.small.lineHeight, color: design.secondary }}>{activeTarget.fast === activeTarget.slow ? 'min / km · sans marge' : 'min / km · ± ' + Math.round((activeTarget.slow - activeTarget.fast) / 2) + ' s'}</BodyText>
           </Pressable>
-          <ActionIcon icon="add" label="Ralentir l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center + 5)} disabled={!!run || advanced || center >= 1200} />
+          <ActionIcon icon="add" feedback="select" label="Ralentir l’allure cible de 5 secondes par kilomètre" onPress={() => setPace(center + 5)} disabled={!!run || advanced || center >= 1200} />
         </View>
         <View accessibilityRole="radiogroup" accessibilityLabel="Distance cible" style={{ flexDirection: 'row', gap: 5, flexWrap: 'wrap' }}>
           {([[null, 'Libre'], [5000, '5 km'], [10000, '10 km'], [21097.5, 'Semi']] as const).map(([meters, label]) => <Pressable key={label}
             accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: activeTarget.distanceMeters === meters, disabled: !!run || advanced }}
-            aria-checked={activeTarget.distanceMeters === meters} disabled={!!run || advanced} onPress={() => onTargetChange({ ...target, distanceMeters: meters })}
+            aria-checked={activeTarget.distanceMeters === meters} disabled={!!run || advanced} onPress={() => {
+              if (activeTarget.distanceMeters !== meters) haptic.select();
+              onTargetChange({ ...target, distanceMeters: meters });
+            }}
             style={({ pressed }) => ({ flexGrow: 1, minWidth: 54, minHeight: 42, paddingHorizontal: 9, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
               backgroundColor: activeTarget.distanceMeters === meters ? design.paper : pressed ? '#36363A' : design.raised })}>
             <BodyText style={{ fontSize: 12, fontWeight: '600', color: activeTarget.distanceMeters === meters ? design.ink : design.secondary }}>{label}</BodyText>
@@ -107,7 +112,7 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
 
     <View style={{ gap: 9 }}><SectionLabel title="RÉGLAGES DE COURSE" />
       <Surface contentStyle={{ paddingVertical: 2, paddingHorizontal: 15 }}>
-        <Setting icon="phone-portrait-outline" title="Vibrations" value={state.settings.hapticsEnabled} onChange={hapticsEnabled => void session.updateSettings({ hapticsEnabled })} />
+        <Setting icon="phone-portrait-outline" title="Vibrations" detail="Retours tactiles et repères du coach." value={state.settings.hapticsEnabled} onChange={hapticsEnabled => void session.updateSettings({ hapticsEnabled })} />
         <View style={s.separator} />
         <Setting icon="volume-medium-outline" title="Signaux audio" value={state.settings.audioEnabled} onChange={audioEnabled => void session.updateSettings({ audioEnabled })} />
         <View style={s.separator} />
@@ -116,10 +121,10 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
       </Surface>
     </View>
 
-    {run && <View style={{ gap: 9 }}><ActionButton title={state.running || state.autoPaused ? 'Mettre en pause' : 'Reprendre la course'} icon={state.running || state.autoPaused ? 'pause' : 'play'} disabled={state.busy}
+    {run && <View style={{ gap: 9 }}><ActionButton feedback="medium" title={state.autoPaused ? 'Pause manuelle' : state.running ? 'Mettre en pause' : 'Reprendre la course'} icon={state.running || state.autoPaused ? 'pause' : 'play'} disabled={state.busy}
       onPress={() => { if (state.running || state.autoPaused) void session.pause(); else void session.resume(); }} />
       <ActionButton title="Terminer la course" icon="stop-outline" secondary disabled={state.busy} onPress={onFinish} />
-      {!state.backgroundActive && <BodyText style={{ fontSize: 11, color: design.secondary, textAlign: 'center' }}>Gardez Sprinter ouvert pendant la course.</BodyText>}
+      {!state.backgroundActive && <BodyText style={{ fontSize: typography.small.fontSize, color: design.secondary, textAlign: 'center' }}>Gardez Sprinter ouvert pendant la course.</BodyText>}
     </View>}
     {run && <RunInsights state={state} onMusic={onMusic} />}
   </AppScreen>;
@@ -128,7 +133,7 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
 const createStyles = (design: ReturnType<typeof useDesign>) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   caption: { fontSize: 12, lineHeight: 18, color: design.secondary },
-  paperLabel: { color: '#706C65', fontSize: 9, letterSpacing: 1 },
+  paperLabel: { color: '#706C65', fontSize: typography.label.fontSize, letterSpacing: 1 },
   paperNumber: { color: design.ink, fontSize: 36, lineHeight: 42 },
   separator: { height: 1, marginLeft: 31, backgroundColor: design.line },
 });

@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { RunRecord } from '../core/types';
 import { duration, km, pace, runDate, targetLabel } from '../core/format';
-import { Button, Copy, Divider, Header, Icon, Label, Metric, MetricGrid, NumericReadout, Panel, Screen, SectionHeading, styles } from '../ui/components';
+import { Button, Copy, Divider, Header, Label, Metric, MetricGrid, NumericReadout, Panel, Screen, SectionHeading, styles } from '../ui/components';
+import { RunnerGlyph } from '../ui/design';
 import { spacing } from '../ui/tokens';
 import RouteMap from '../ui/RouteMap';
 import { PaceChart } from '../ui/PaceChart';
@@ -26,7 +27,7 @@ export default function Detail({ run, history, onBack, justFinished = false, onC
   const splits = analysis.splits, speed = analysis.averageSpeed;
   const remove = () => confirm('Supprimer cette course ?', 'Son parcours et ses statistiques seront définitivement supprimés de cet appareil.', 'Supprimer', () => { void session.deleteRun(run.id).then(ok => { if (ok) onBack(); }); }, true);
   return <Screen bottom={40}><Header title={justFinished ? 'Course enregistrée' : 'Votre sortie'} onBack={onBack} />
-    <View style={{ gap: spacing.sm }}><View style={[styles.row, { gap: spacing.sm, flexWrap: 'wrap' }]}><Icon name="walk-outline" size={18} color={colors.secondary} /><Label>Course à pied · {runDate(run.startedAt)}</Label></View>
+    <View style={{ gap: spacing.sm }}><View style={[styles.row, { gap: spacing.sm, flexWrap: 'wrap' }]}><RunnerGlyph size={18} color={colors.secondary} /><Label>Course à pied · {runDate(run.startedAt)}</Label></View>
       <View style={[styles.row, { alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.sm }]}><NumericReadout value={km(run.distanceMeters)} variant="distance" label={`${km(run.distanceMeters)} kilomètres`} /><Copy muted variant="section">km</Copy></View>
       <Copy muted variant="caption">{new Date(run.startedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {duration(run.activeSeconds)} de temps actif · {pace(analysis.averagePace)} /km</Copy></View>
     <View style={{ gap: spacing.sm }}>

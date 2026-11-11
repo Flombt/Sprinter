@@ -6,7 +6,7 @@ import { Copy } from './components';
 import { MapPlaceholder } from './MapPlaceholder';
 import { EMPTY_REFERENCE, recordedSegments, referenceSegments, type RouteMapProps } from './routeMapData';
 import { useTheme } from './theme';
-import { radii } from './tokens';
+import { radii, typography } from './tokens';
 
 export default function RouteMap({ points, reference = EMPTY_REFERENCE, current, height = 220, live = false }: RouteMapProps) {
   const { colors } = useTheme();
@@ -53,5 +53,5 @@ export default function RouteMap({ points, reference = EMPTY_REFERENCE, current,
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  caption: { position: 'absolute', bottom: 8, left: 12, fontSize: 10 },
+  caption: { position: 'absolute', bottom: 8, left: 12, fontSize: typography.small.fontSize },
 });

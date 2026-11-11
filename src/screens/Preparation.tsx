@@ -8,6 +8,7 @@ import { duration, estimatedDuration, pace, validateTarget } from '../core/forma
 import { session, SessionState } from '../services/session';
 import { CAN_BACKGROUND } from '../services/capabilities';
 import { Button, Copy, Header, Icon, IconButton, Label, NumericReadout, Panel, Screen, styles } from '../ui/components';
+import { RunnerGlyph } from '../ui/design';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
 import { interaction, radii, spacing } from '../ui/tokens';
 import { MusicSelection } from '../spotify/components';
@@ -25,8 +26,8 @@ import { RhythmTools, SelectedRoute, WeatherPanel, useTools } from '../tools/com
 
 function PaceControl({ label, value, onChange, onEdit }: { label: string; value: number; onChange: (value: number) => void; onEdit: () => void }) {
   const { largeText, compact } = useAdaptiveLayout(); const stacked = largeText || compact;
-  const decrement = <IconButton icon="remove" label={`Réduire ${label} de cinq secondes`} onPress={() => onChange(Math.max(120, value - 5))} />;
-  const increment = <IconButton icon="add" label={`Augmenter ${label} de cinq secondes`} onPress={() => onChange(Math.min(1200, value + 5))} />;
+  const decrement = <IconButton icon="remove" feedback="select" label={`Réduire ${label} de cinq secondes`} onPress={() => onChange(Math.max(120, value - 5))} />;
+  const increment = <IconButton icon="add" feedback="select" label={`Augmenter ${label} de cinq secondes`} onPress={() => onChange(Math.min(1200, value + 5))} />;
   const edit = <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={`${label}, ${pace(value)} par kilomètre. Modifier les minutes et secondes.`}
     style={({ pressed }) => ({ minHeight: 60, minWidth: 0, justifyContent: 'center', flex: stacked ? undefined : 1, alignItems: 'center', opacity: pressed ? interaction.pressedOpacity : 1 })}>
     <NumericReadout variant="display" value={pace(value)} />
@@ -60,7 +61,7 @@ export default function Preparation({ state, initialTarget, onTargetChange, onBa
   };
   return <View style={{ flex: 1, backgroundColor: colors.background }}><Screen bottom={Math.max(spacing.xxl, footerHeight - insets.bottom + spacing.lg)}>
     <Header title="Votre prochaine sortie" onBack={onBack} />
-    <View style={[styles.row, { alignSelf: 'flex-start', gap: 9, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.raised, borderRadius: 30 }]}><Icon name="walk-outline" size={18} /><Copy style={{ fontSize: 13, fontWeight: '600' }}>Course à pied</Copy></View>
+    <View style={[styles.row, { alignSelf: 'flex-start', gap: 9, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.raised, borderRadius: 30 }]}><RunnerGlyph size={18} color={colors.text} /><Copy style={{ fontSize: 13, fontWeight: '600' }}>Course à pied</Copy></View>
     <View style={{ gap: spacing.sm }}><Copy accessibilityRole="header" variant="title">Fixez le rythme.{"\n"}On garde le tempo.</Copy>
       <Copy muted>{selected ? 'Votre séance guidera les changements d’allure, les efforts et les récupérations.' : 'Choisissez l’allure à suivre. Le coach vous indique quand accélérer ou ralentir.'}</Copy></View>
     <Panel style={{ gap: 12 }}><Label>Séance de cette sortie</Label><Copy variant="section">{selected?.name ?? 'Course libre'}</Copy>

@@ -23,5 +23,5 @@ export function PaceChart({ run, analysis: supplied }: { run: RunRecord; analysi
     return [{ from, to: timeAt(Math.min((index + 1) * 1000, run.target.distanceMeters!)) ?? run.activeSeconds, low: target.fast, high: target.slow }];
   }) : [{ from: 0, to: run.activeSeconds, low: run.target.fast, high: run.target.slow }];
   return <View style={{ gap: 8 }}><SeriesChart series={analysis.paceSeries} seconds={run.activeSeconds} kind="pace" bands={bands} />
-    <Copy muted style={{ fontSize: 11 }}>Les zones vertes représentent les plages prévues pour chaque portion ciblée.</Copy></View>;
+    <Copy muted variant="small">Les zones vertes représentent les plages prévues pour chaque portion ciblée.</Copy></View>;
 }

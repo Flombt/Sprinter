@@ -16,6 +16,7 @@ import { EMPTY_TRACK, type MapCommand } from '../ui/routeMapData';
 import { useTheme } from '../ui/theme';
 import { useMapPosition } from '../ui/useMapPosition';
 import { useRunSetup } from '../ui/useRunSetup';
+import { typography } from '../ui/tokens';
 
 export { RunRow } from '../ui/RunRow';
 
@@ -176,6 +177,7 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
         </BodyText>
         <ActionButton
           title="Reprendre maintenant"
+          feedback="medium"
           icon="play"
           secondary
           disabled={state.busy}
@@ -198,7 +200,7 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
       </View>
       <View style={styles.actionRow}>
         <ActionIcon icon="musical-notes-outline" label={playlist ? 'Playlist Spotify : ' + playlistTitle(playlist) : 'Choisir une playlist Spotify'} onPress={onMusic} />
-        <View style={styles.startAction}><ActionButton title={actionTitle} compact disabled={state.busy || starting} icon={run && (state.running || state.autoPaused) ? 'pause' : 'play'} onPress={startOrPause} /></View>
+        <View style={styles.startAction}><ActionButton title={actionTitle} feedback={run ? 'medium' : 'light'} compact disabled={state.busy || starting} icon={run && (state.running || state.autoPaused) ? 'pause' : 'play'} onPress={startOrPause} /></View>
         <ActionIcon icon={run ? 'stop-outline' : 'options-outline'} label={run ? 'Terminer et enregistrer la course' : 'Réglages de course'}
           disabled={!!run && state.busy} onPress={run ? onFinish : onSettings} />
       </View>
@@ -217,14 +219,14 @@ const styles = StyleSheet.create({
   metricRow: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 8, paddingVertical: 12 },
   metric: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   metricValue: { fontSize: 35, lineHeight: 39, textAlign: 'center' },
-  metricLabel: { fontSize: 9, letterSpacing: .8, textAlign: 'center' },
+  metricLabel: { fontSize: typography.caption.fontSize, letterSpacing: .8, textAlign: 'center' },
   divider: { width: StyleSheet.hairlineWidth, marginVertical: 6 },
   map: { flex: 1, minHeight: 220, overflow: 'hidden' },
   mapStatus: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 9, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 5, maxWidth: '75%' },
-  mapStatusText: { fontSize: 11, fontWeight: '600', flexShrink: 1 },
+  mapStatusText: { fontSize: typography.caption.fontSize, fontWeight: '600', flexShrink: 1 },
   mapTools: { position: 'absolute', top: 12, right: 12, gap: 8 },
   mapNote: { position: 'absolute', bottom: 12, alignSelf: 'center', maxWidth: '84%', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9 },
-  mapNoteText: { fontSize: 11, lineHeight: 16, textAlign: 'center' },
+  mapNoteText: { ...typography.caption, textAlign: 'center' },
   routeLegend: { position: 'absolute', bottom: 20, right: 12, maxWidth: '60%', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   legendStroke: { width: 14, height: 3, borderRadius: 2 },
   controls: { paddingHorizontal: 16, paddingBottom: 7, borderTopWidth: StyleSheet.hairlineWidth },
@@ -232,9 +234,9 @@ const styles = StyleSheet.create({
   autoPauseTitle: { fontWeight: '700' },
   context: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   contextLink: { minHeight: 44, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  contextText: { flexShrink: 1, fontSize: 12, fontWeight: '500' },
+  contextText: { flexShrink: 1, fontSize: typography.caption.fontSize, fontWeight: '500' },
   locate: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   startAction: { flex: 1, minWidth: 0 },
-  note: { fontSize: 12, marginTop: 6 },
+  note: { fontSize: typography.caption.fontSize, marginTop: 6 },
 });

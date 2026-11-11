@@ -67,7 +67,7 @@ export default function Settings({ state, onApple, onTools, onRecovery }: { stat
     <Copy muted>Un coach à votre mesure, des réglages faciles à retrouver.</Copy>
     <View style={{ gap: spacing.md }}><SectionHeading title="Coach de course" />
       <Panel variant="setting" style={{ gap: spacing.lg }}>
-        <Toggle title="Vibrations" body="Repères tactiles au premier plan."
+        <Toggle title="Vibrations" body="Retours tactiles de l’interface et repères du coach au premier plan."
           value={haptics} onChange={hapticsEnabled => void session.updateSettings({ hapticsEnabled })} />
         <Divider />
         <Toggle title="Signaux audio" body="Repères sonores pour accélérer ou ralentir."

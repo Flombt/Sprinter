@@ -5,6 +5,8 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Icon, type IconName } from './components';
 import { useBottomBarInset } from './layout';
 import { useTheme } from './theme';
+import { haptic, type HapticFeedback } from './haptics';
+import { interaction, typography } from './tokens';
 
 /** The running identity: carbon, chalk, and a single high-visibility accent. */
 export const design = {
@@ -36,7 +38,7 @@ export function DisplayText({ style, numeric = false, ...props }: TextProps & { 
 
 export function Kicker({ style, ...props }: TextProps) {
   const design = useDesign();
-  return <BodyText {...props} style={[{ color: design.secondary, fontSize: 10, lineHeight: 15, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }, style]} />;
+  return <BodyText {...props} style={[typography.label, { color: design.secondary }, style]} />;
 }
 
 export function Surface({ children, paper = false, style, contentStyle }: {
@@ -72,32 +74,52 @@ export function PageTransition({ children }: { children: ReactNode }) {
   return <Animated.View style={{ flex: 1, opacity: progress, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>{children}</Animated.View>;
 }
 
-export function ActionIcon({ icon, label, onPress, disabled = false, paper = false }: {
-  icon: IconName; label: string; onPress: () => void; disabled?: boolean; paper?: boolean;
+export function ActionIcon({ icon, label, onPress, disabled = false, paper = false, feedback = 'light' }: {
+  icon: IconName; label: string; onPress: () => void; disabled?: boolean; paper?: boolean; feedback?: HapticFeedback;
 }) {
   const design = useDesign();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+  const press = () => {
+    if (feedback !== 'none') haptic[feedback]();
+    onPress();
+  };
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}
+    disabled={disabled} onPress={press}
     style={({ pressed }) => ({ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12,
       borderWidth: 1, borderColor: paper ? design.paperLine : design.line, backgroundColor: pressed ? paper ? '#DDDAD2' : design.raised : paper ? 'transparent' : design.surface, opacity: disabled ? .3 : 1 })}>
     <Icon name={icon} size={19} color={paper ? design.ink : design.text} />
   </Pressable>;
 }
 
-export function ActionButton({ title, icon, onPress, disabled = false, secondary = false, compact = false }: {
+export function ActionButton({
+  title, icon, onPress, disabled = false, secondary = false, compact = false, feedback = 'light',
+}: {
   title: string; icon?: IconName; onPress: () => void; disabled?: boolean; secondary?: boolean; compact?: boolean;
+  feedback?: HapticFeedback;
 }) {
   const design = useDesign();
   const { reduceMotion } = useTheme(), scale = useRef(new Animated.Value(1)).current;
-  const animate = (toValue: number) => { if (!reduceMotion) Animated.spring(scale, { toValue, useNativeDriver: Platform.OS !== 'web', speed: 40, bounciness: 0 }).start(); };
-  useEffect(() => () => scale.stopAnimation(), [scale]);
+  const animate = (toValue: number) => {
+    if (!reduceMotion) Animated.timing(scale, {
+      toValue, duration: interaction.pressDuration, useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  };
+  useEffect(() => {
+    if (reduceMotion || disabled) scale.setValue(1);
+    return () => scale.stopAnimation();
+  }, [disabled, reduceMotion, scale]);
+  const press = () => {
+    if (feedback !== 'none') haptic[feedback]();
+    onPress();
+  };
   const foreground = disabled ? design.muted : secondary ? design.text : '#FFFFFF';
   return <Animated.View style={{ transform: [{ scale }] }}>
-    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-      onPressIn={() => animate(.985)} onPressOut={() => animate(1)}
+    <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }}
+      disabled={disabled} onPress={press}
+      onPressIn={() => animate(interaction.buttonScale)} onPressOut={() => animate(1)}
       style={({ pressed }) => ({ minHeight: compact ? 50 : 60, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12,
         flexDirection: 'row', alignItems: 'center', justifyContent: secondary ? 'center' : 'space-between', gap: 12,
         backgroundColor: disabled || secondary ? design.raised : design.accent, borderWidth: secondary || disabled ? 1 : 0, borderColor: design.line,
-        opacity: pressed ? .85 : 1 })}>
+        opacity: pressed ? interaction.pressedOpacity : 1 })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
         {icon && <Icon name={icon} size={19} color={foreground} />}
         <BodyText style={{ fontSize: compact ? 14 : 16, lineHeight: 22, fontWeight: '700', color: foreground }}>{title}</BodyText>
@@ -112,7 +134,9 @@ export function StatusBadge({ label, active = false, paper = false }: { label: s
   return <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6,
     backgroundColor: paper ? '#E3E0D8' : active ? design.accentSoft : design.raised }}>
     <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: active ? design.accent : design.muted }} />
-    <Kicker style={{ color: paper ? '#5F5D58' : active ? design.accent : design.secondary, fontSize: 9, letterSpacing: .7, lineHeight: 13 }}>{label}</Kicker>
+    <Kicker style={{ color: paper ? '#5F5D58' : active ? design.accent : design.secondary, letterSpacing: .7 }}>
+      {label}
+    </Kicker>
   </View>;
 }
 
@@ -126,15 +150,21 @@ export function ToggleSwitch({ label, hint, value, onChange, disabled = false }:
     const animation = Animated.spring(position, { toValue: value ? 18 : 0, damping: 24, stiffness: 300, mass: .7, useNativeDriver: Platform.OS !== 'web' });
     animation.start(); return () => animation.stop();
   }, [position, reduceMotion, value]);
+  const change = () => {
+    haptic.select();
+    onChange(!value);
+  };
   // React Native Web handles Enter; Space needs an explicit handler for role=switch.
   const keyboard = Platform.OS === 'web' ? { onKeyDown: (event: KeyDownEvent) => {
     if (!disabled && (event.nativeEvent.key === ' ' || event.nativeEvent.key === 'Spacebar')) {
-      event.preventDefault(); if (!event.nativeEvent.repeat) onChange(!value);
+      event.preventDefault();
+      if (!event.nativeEvent.repeat) change();
     }
   } } : {};
   return <Pressable {...keyboard} accessibilityRole="switch" accessibilityLabel={label} accessibilityHint={hint} accessibilityState={{ checked: value, disabled }}
-    aria-checked={value} disabled={disabled} onPress={() => onChange(!value)}
-    style={({ pressed }) => ({ minWidth: 48, minHeight: 44, alignItems: 'center', justifyContent: 'center', opacity: disabled ? .35 : pressed ? .8 : 1 })}>
+    aria-checked={value} disabled={disabled} onPress={change}
+    style={({ pressed }) => ({ minWidth: 48, minHeight: 44, alignItems: 'center', justifyContent: 'center',
+      opacity: disabled ? .35 : pressed ? interaction.pressedOpacity : 1 })}>
     <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: value ? design.accent : '#424248', justifyContent: 'center' }}>
       <Animated.View style={{ position: 'absolute', left: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF', transform: [{ translateX: position }] }} />
     </View>
@@ -144,7 +174,8 @@ export function ToggleSwitch({ label, hint, value, onChange, disabled = false }:
 export function SectionLabel({ title, meta }: { title: string; meta?: string }) {
   const design = useDesign();
   return <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-    <Kicker>{title}</Kicker>{meta && <BodyText style={{ fontSize: 11, color: design.secondary }}>{meta}</BodyText>}
+    <Kicker>{title}</Kicker>
+    {meta && <BodyText style={[typography.small, { color: design.secondary }]}>{meta}</BodyText>}
   </View>;
 }
 

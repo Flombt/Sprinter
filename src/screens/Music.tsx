@@ -12,6 +12,7 @@ import type { PlaylistReference, SpotifyTrack } from '../spotify/types';
 import { Icon } from '../ui/components';
 import { ActionButton, ActionIcon, AppScreen, BodyText, useDesign, DisplayText, Kicker, SectionLabel, StatusBadge, Surface, ToggleSwitch } from '../ui/design';
 import { useTheme } from '../ui/theme';
+import { interaction, typography } from '../ui/tokens';
 
 export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?: () => void; foregroundOnlyRun?: boolean }) {
   const design = useDesign();
@@ -89,7 +90,7 @@ export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?
         <View style={{ flexDirection: 'row', gap: 17, alignItems: 'center' }}>
           <Artwork image={selected.image} size={64} />
           <View style={{ flex: 1, gap: 5 }}><BodyText numberOfLines={2} style={{ fontSize: 17, lineHeight: 23, fontWeight: '600', letterSpacing: -.3 }}>{playlistTitle(selected)}</BodyText>
-            <BodyText numberOfLines={1} style={{ fontSize: 11, color: design.secondary }}>{[selected.owner, selected.count !== null ? selected.count + ' titres' : 'Playlist Spotify'].filter(Boolean).join(' · ')}</BodyText>
+            <BodyText numberOfLines={1} style={{ fontSize: typography.small.fontSize, color: design.secondary }}>{[selected.owner, selected.count !== null ? selected.count + ' titres' : 'Playlist Spotify'].filter(Boolean).join(' · ')}</BodyText>
           </View>
         </View>
         <ActionButton title={connected && !controlReason(state, 'play') ? 'Lancer la playlist' : 'Ouvrir dans Spotify'} icon="play" compact onPress={() => {
@@ -110,10 +111,10 @@ export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?
       <View style={s.row}><Kicker>EN ÉCOUTE</Kicker><ActionIcon icon="refresh-outline" label="Actualiser le lecteur Spotify" onPress={() => void music.refreshPlayback(true)} disabled={state.playerBusy} /></View>
       <View style={{ flexDirection: 'row', gap: 13, alignItems: 'center' }}><Artwork image={state.playback.track.image} size={48} /><View style={{ flex: 1, gap: 2 }}>
         <BodyText numberOfLines={1} style={{ fontSize: 14, fontWeight: '500' }}>{state.playback.track.title}</BodyText>
-        <BodyText numberOfLines={1} style={{ fontSize: 11, color: design.secondary }}>{state.playback.track.artist}</BodyText>
+        <BodyText numberOfLines={1} style={{ fontSize: typography.small.fontSize, color: design.secondary }}>{state.playback.track.artist}</BodyText>
       </View></View>
       <PlaybackControls state={state} />
-      <BodyText style={{ fontSize: 11, color: playback.fresh ? design.accent : design.secondary, textAlign: 'center' }}>{playback.label}</BodyText>
+      <BodyText style={{ fontSize: typography.small.fontSize, color: playback.fresh ? design.accent : design.secondary, textAlign: 'center' }}>{playback.label}</BodyText>
     </Surface>}
 
     {connected && <View style={{ gap: 12 }}>
@@ -131,9 +132,9 @@ export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?
         const chosen = selected?.id === playlist.id, saved = state.preferences.playlists.some(p => p.id === playlist.id);
         return <Surface key={playlist.id} style={{ borderRadius: 12, borderLeftWidth: 3, borderLeftColor: chosen ? design.accent : design.line }} contentStyle={{ padding: 11, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" accessibilityLabel={'Choisir ' + playlistTitle(playlist)} accessibilityState={{ selected: chosen, disabled: state.busy }} disabled={state.busy}
-            onPress={() => void music.select(playlist)} style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? .7 : 1, minHeight: 54 })}>
+            onPress={() => void music.select(playlist)} style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? interaction.pressedOpacity : 1, minHeight: 54 })}>
             <Artwork image={playlist.image} size={48} />
-            <View style={{ flex: 1, gap: 3 }}><BodyText numberOfLines={1} style={{ fontSize: 13, fontWeight: '500' }}>{playlistTitle(playlist)}</BodyText><BodyText style={{ color: chosen ? design.accent : design.secondary, fontSize: 10 }}>{chosen ? 'Pour la prochaine course' : playlist.owner ?? 'Enregistrée dans Sprinter'}</BodyText></View>
+            <View style={{ flex: 1, gap: 3 }}><BodyText numberOfLines={1} style={{ fontSize: 13, fontWeight: '500' }}>{playlistTitle(playlist)}</BodyText><BodyText style={{ color: chosen ? design.accent : design.secondary, fontSize: typography.small.fontSize }}>{chosen ? 'Pour la prochaine course' : playlist.owner ?? 'Enregistrée dans Sprinter'}</BodyText></View>
             <Icon name={chosen ? 'checkmark-circle' : 'radio-button-off-outline'} color={chosen ? design.accent : design.muted} size={21} />
           </Pressable>
           {connected && <ActionIcon icon="list-outline" label={'Voir les morceaux de ' + playlistTitle(playlist)} onPress={() => setTrackPlaylist(playlist)} />}
@@ -150,7 +151,7 @@ export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?
 
     <Pressable accessibilityRole="button" accessibilityLabel={connected ? 'Gérer le compte Spotify' : 'Connecter mon compte Spotify'} onPress={() => setConnection(true)} style={{ minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderTopWidth: 1, borderTopColor: design.line }}>
       <Image source={colors.dark ? require('../../assets/spotify/logo-white.png') : require('../../assets/spotify/logo-black.png')} resizeMode="contain" accessibilityLabel="Spotify" style={{ width: 84, height: 25, zIndex: 1 }} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><BodyText style={{ color: design.secondary, fontSize: 11 }}>{connected ? state.profile?.name ?? 'Compte connecté' : 'Connecter mon compte'}</BodyText><Icon name="arrow-forward" color={design.secondary} size={14} /></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><BodyText style={{ color: design.secondary, fontSize: typography.small.fontSize }}>{connected ? state.profile?.name ?? 'Compte connecté' : 'Connecter mon compte'}</BodyText><Icon name="arrow-forward" color={design.secondary} size={14} /></View>
     </Pressable>
 
     <Modal visible={connection} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setConnection(false)}>

@@ -4,6 +4,7 @@ import { Picker as NativePicker, type PickerProps } from '@react-native-picker/p
 import { Copy, Label } from './components';
 import { useAdaptiveLayout, useTheme } from './theme';
 import { interaction, layout, radii, spacing, typography } from './tokens';
+import { haptic } from './haptics';
 
 export type InputProps = React.ComponentProps<typeof NativeInput> & { invalid?: boolean };
 /** The native input stays controlled by its caller; parsing/validation belongs to each feature. */
@@ -29,12 +30,16 @@ export function TextField({ label, description, error, style, ...props }: Omit<I
   </View>;
 }
 
-export function Switch({ trackColor, accessibilityState, style, ...props }: React.ComponentProps<typeof NativeSwitch>) {
+export function Switch({ trackColor, accessibilityState, onValueChange, style, ...props }: React.ComponentProps<typeof NativeSwitch>) {
   const { colors } = useTheme();
+  const change = (value: boolean) => {
+    if (value !== props.value) haptic.select();
+    onValueChange?.(value);
+  };
   return <View style={{ minHeight: layout.touch, minWidth: 52, justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
     <NativeSwitch hitSlop={{ top: 7, bottom: 7, left: 0, right: 0 }} {...props} accessibilityState={{ ...accessibilityState, disabled: props.disabled, checked: props.value }}
       trackColor={{ false: colors.line, true: colors.switchOn, ...trackColor }} thumbColor={colors.switchThumb}
-      ios_backgroundColor={colors.line} style={style} />
+      ios_backgroundColor={colors.line} style={style} onValueChange={change} />
   </View>;
 }
 export function Toggle({ title, body, value, onChange, disabled = false }: { title: string; body?: string; value: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
@@ -55,7 +60,10 @@ export function ChoiceGroup<T extends string | number>({ value, choices, onChang
     {choices.map(([key, title]) => {
       const selected = key === value;
       return <Pressable key={key} accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{ checked: selected, disabled }} aria-checked={selected}
-        disabled={disabled} onPress={() => onChange(key)} style={({ pressed }) => ({
+        disabled={disabled} onPress={() => {
+          if (!selected) haptic.select();
+          onChange(key);
+        }} style={({ pressed }) => ({
           minHeight: layout.touch, minWidth: layout.touch, borderRadius: radii.control, borderWidth: 1,
           paddingHorizontal: spacing.md, paddingVertical: spacing.sm, justifyContent: 'center',
           backgroundColor: selected ? segmented ? colors.surface : colors.accentSoft : segmented ? 'transparent' : colors.surface,

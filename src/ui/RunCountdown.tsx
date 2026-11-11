@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Easing, Modal, Platform, View } from 'react-native';
 import { ActionIcon, AppBackground, BodyText, useDesign, DisplayText, Kicker, SpeedMark } from './design';
 import { useTheme } from './theme';
+import { haptic } from './haptics';
 
 export function RunCountdown({ onComplete, onCancel }: { onComplete: () => void; onCancel: () => void }) {
   const design = useDesign();
@@ -10,12 +11,32 @@ export function RunCountdown({ onComplete, onCancel }: { onComplete: () => void;
   const complete = useRef(onComplete), cancel = useRef(onCancel);
   complete.current = onComplete; cancel.current = onCancel;
   useEffect(() => {
-    const timer = setTimeout(() => { if (count === 1) complete.current(); else setCount(count - 1); }, 1000);
-    if (!reduceMotion) {
-      scale.setValue(.78);
-      Animated.timing(scale, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }).start();
+    haptic.light();
+    const timer = setTimeout(() => {
+      if (count > 1) {
+        setCount(count - 1);
+        return;
+      }
+      haptic.medium();
+      complete.current();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [count]);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      scale.setValue(1);
+      return;
     }
-    return () => { clearTimeout(timer); scale.stopAnimation(); };
+    scale.setValue(.78);
+    const animation = Animated.timing(scale, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animation.start();
+    return () => animation.stop();
   }, [count, reduceMotion, scale]);
   useEffect(() => {
     const listener = AppState.addEventListener('change', next => { if (next !== 'active') cancel.current(); });

@@ -8,6 +8,7 @@ import { useAdaptiveLayout, useTheme } from './theme';
 import { cardStyles, interaction, layout, radii, spacing, typography, type TextVariant } from './tokens';
 import { useBottomBarInset } from './layout';
 import { ScreenEntrance } from './motion';
+import { haptic, type HapticFeedback } from './haptics';
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 export function Copy({ children, style, muted = false, variant = 'body', ...props }: React.ComponentProps<typeof Text> & { muted?: boolean; variant?: TextVariant }) {
@@ -23,25 +24,50 @@ export function Label({ children, style, ...props }: React.ComponentProps<typeof
 export function Icon({ name, size = 22, color }: { name: IconName; size?: number; color?: string }) {
   const { colors } = useTheme(); return <Ionicons accessible={false} allowFontScaling={false} name={name} size={size} color={color ?? colors.text} />;
 }
-export function Button({ title, onPress, icon, secondary = false, variant, danger = false, disabled = false, style, hint, onHero = false }: {
+export function Button({
+  title, onPress, icon, secondary = false, variant, danger = false, disabled = false, style, hint, onHero = false,
+  feedback = 'light',
+}: {
   title: string; onPress: () => void; icon?: IconName; secondary?: boolean; danger?: boolean; disabled?: boolean;
   style?: StyleProp<ViewStyle>; hint?: string; variant?: 'primary' | 'secondary' | 'quiet'; onHero?: boolean;
+  feedback?: HapticFeedback;
 }) {
   const { colors, reduceMotion } = useTheme(); const scale = useRef(new Animated.Value(1)).current;
   const kind = variant ?? (secondary ? 'secondary' : 'primary');
   const color = onHero ? colors.heroActionText : danger ? kind === 'primary' ? colors.background : colors.danger : kind === 'primary' ? colors.accentInk : colors.text;
   const backgroundColor = onHero ? colors.heroAction : danger ? kind === 'primary' ? colors.danger : colors.dangerSurface : kind === 'primary' ? colors.accent : kind === 'secondary' ? colors.raised : 'transparent';
   useEffect(() => { if (reduceMotion || disabled) { scale.stopAnimation(); scale.setValue(1); } return () => scale.stopAnimation(); }, [disabled, reduceMotion, scale]);
-  const animate = (toValue: number) => { if (!reduceMotion) Animated.spring(scale, { toValue, useNativeDriver: Platform.OS !== 'web', speed: 32, bounciness: 1 }).start(); };
+  const animate = (toValue: number) => {
+    if (!reduceMotion) Animated.timing(scale, {
+      toValue, duration: interaction.pressDuration, useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  };
+  const press = () => {
+    if (feedback !== 'none') haptic[feedback]();
+    onPress();
+  };
   return <Animated.View style={[{ minWidth: 0, transform: [{ scale }] }, style]}><Pressable accessibilityRole="button" accessibilityLabel={title}
-    accessibilityHint={hint} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={() => animate(interaction.buttonScale)} onPressOut={() => animate(1)}
+    accessibilityHint={hint} accessibilityState={{ disabled }} disabled={disabled}
+    onPress={press} onPressIn={() => animate(interaction.buttonScale)} onPressOut={() => animate(1)}
     style={({ pressed }) => [styles.button, kind === 'quiet' && { minHeight: layout.touch, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm }, { backgroundColor, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 }]}>
     {icon && <Icon name={icon} color={color} size={22} />}<Copy variant="button" style={{ color, flexShrink: 1, textAlign: 'center' }}>{title}</Copy>
   </Pressable></Animated.View>;
 }
-export function IconButton({ icon, label, onPress, quiet = false, disabled = false }: { icon: IconName; label: string; onPress: () => void; quiet?: boolean; disabled?: boolean }) {
+export function IconButton({ icon, label, onPress, quiet = false, disabled = false, feedback = 'light' }: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  quiet?: boolean;
+  disabled?: boolean;
+  feedback?: HapticFeedback;
+}) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+  const press = () => {
+    if (feedback !== 'none') haptic[feedback]();
+    onPress();
+  };
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}
+    disabled={disabled} onPress={press}
     style={({ pressed }) => ({ width: layout.touch, height: layout.touch, borderRadius: radii.pill, justifyContent: 'center', alignItems: 'center',
       backgroundColor: quiet ? 'transparent' : colors.surface, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 })}><Icon name={icon} /></Pressable>;
 }
@@ -55,14 +81,17 @@ export function Card({ children, style, variant = 'default', ...props }: ViewPro
 /** Backward-compatible name for the shared card; existing screens keep their content/actions. */
 export const Panel = Card;
 export function ListRow({ title, subtitle, trailing, icon, onPress, label }: {
-  title: string; subtitle?: React.ReactNode; trailing?: React.ReactNode; icon?: IconName; onPress: () => void; label?: string;
+  title: string; subtitle?: React.ReactNode; trailing?: React.ReactNode; icon?: IconName | React.ReactElement;
+  onPress: () => void; label?: string;
 }) {
   const { colors } = useTheme(); const { largeText } = useAdaptiveLayout();
   return <Pressable accessibilityRole="button" accessibilityLabel={label ?? title} onPress={onPress}
     style={({ pressed }) => ({ opacity: pressed ? interaction.pressedOpacity : 1, minHeight: layout.touch })}>
     <Card variant="list" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
       {icon && !largeText && <View style={{ width: layout.touch, height: layout.touch, borderRadius: radii.control, backgroundColor: colors.raised,
-        alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} color={colors.accentText} /></View>}
+        alignItems: 'center', justifyContent: 'center' }}>
+        {typeof icon === 'string' ? <Icon name={icon} color={colors.accentText} /> : icon}
+      </View>}
       <View style={{ flex: 1, minWidth: 0, gap: spacing.sm }}>
         <Copy variant="emphasis">{title}</Copy>{subtitle}
         {largeText && trailing}

@@ -4,9 +4,12 @@ import type { RunRecord } from '../core/types';
 import { averagePace, duration, km, pace, runDate } from '../core/format';
 import { CHALLENGE_STATUS } from '../workouts/types';
 import { Copy, ListRow } from './components';
+import { RunnerGlyph } from './design';
+import { useTheme } from './theme';
 import { spacing } from './tokens';
 
 export function RunRow({ run, onPress, detailed = false }: { run: RunRecord; onPress: () => void; detailed?: boolean }) {
+  const { colors } = useTheme();
   const date = useMemo(() => {
     if (!detailed) return '';
     const started = new Date(run.startedAt);
@@ -15,7 +18,7 @@ export function RunRow({ run, onPress, detailed = false }: { run: RunRecord; onP
     }) : 'Date indisponible';
   }, [detailed, run.startedAt]);
   const average = pace(averagePace(run));
-  return <ListRow icon="walk-outline" title={`${km(run.distanceMeters)} km`} onPress={onPress}
+  return <ListRow icon={<RunnerGlyph size={22} color={colors.accentText} />} title={`${km(run.distanceMeters)} km`} onPress={onPress}
     label={detailed ? `Course du ${date}, ${km(run.distanceMeters)} kilomètres, ${duration(run.activeSeconds)} de temps actif, ${average === '—' ? 'allure moyenne indisponible' : `allure moyenne ${average} par kilomètre`}`
       : `Course du ${runDate(run.startedAt)}, ${km(run.distanceMeters)} kilomètres, ${duration(run.activeSeconds)}, allure ${average} par kilomètre`}
     subtitle={<View style={{ gap: spacing.xs }}><Copy variant="caption" muted>{detailed ? date : `${runDate(run.startedAt)} · ${duration(run.activeSeconds)}`}</Copy>

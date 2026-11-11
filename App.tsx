@@ -13,6 +13,7 @@ import { BottomBarInsetContext } from './src/ui/layout';
 import { radii, spacing } from './src/ui/tokens';
 import { confirm } from './src/ui/confirm';
 import { design, useDesign, AppBackground, PageTransition, BodyText, ActionIcon } from './src/ui/design';
+import { haptic } from './src/ui/haptics';
 import { RunCountdown } from './src/ui/RunCountdown';
 import { startPreparedRun } from './src/services/runPreparation';
 import Home from './src/screens/Home';
@@ -94,7 +95,11 @@ function AppContent() {
   const applePage = () => setPage({ name: 'apple' });
   const openTools = () => setToolsVisible(true);
   const finish = () => confirm('Terminer la course ?', 'Votre sortie sera enregistrée.', 'Enregistrer', () => {
-    void session.finish().then(run => { if (run) detail(run, true); });
+    void session.finish().then(run => {
+      if (!run) return;
+      haptic.success();
+      detail(run, true);
+    });
   });
   const modalVisible = musicVisible || workoutsVisible || toolsVisible || settingsVisible || countdown;
   let content: React.ReactNode;
