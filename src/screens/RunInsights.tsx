@@ -8,7 +8,11 @@ import { BodyText, useDesign, Kicker } from '../ui/design';
 import { Icon } from '../ui/components';
 import { MiniPlayer } from '../spotify/components';
 
-export function RunInsights({ state, onMusic }: { state: SessionState; onMusic: () => void }) {
+export function RunInsights({ active, state, onMusic }: {
+  active: boolean;
+  state: SessionState;
+  onMusic: () => void;
+}) {
   const design = useDesign();
   const [expanded, setExpanded] = useState(false), tools = useTools(), run = state.run;
   if (!run) return null;
@@ -24,6 +28,7 @@ export function RunInsights({ state, onMusic }: { state: SessionState; onMusic: 
       <PaceHistory run={run} live />
       <RhythmTools compact />
       <MiniPlayer
+        active={active}
         onExpand={onMusic}
         foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
       />

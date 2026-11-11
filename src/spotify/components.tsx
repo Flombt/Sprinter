@@ -58,9 +58,13 @@ export function MusicSelection({ onChoose }: { onChoose: () => void }) {
       : 'Ouvrez la playlist dans Spotify avant de partir, puis revenez démarrer votre course.'}</Copy><SpotifyBrand onPress={() => void music.openPlaylist(selected)} /></>}
   </View>;
 }
-export function MiniPlayer({ onExpand, foregroundOnlyRun = false }: { onExpand: () => void; foregroundOnlyRun?: boolean }) {
+export function MiniPlayer({ onExpand, foregroundOnlyRun = false, active = true }: {
+  onExpand: () => void;
+  foregroundOnlyRun?: boolean;
+  active?: boolean;
+}) {
   const state = useMusic(); const selected = selectedPlaylist(state); const { colors } = useTheme(); const { largeText } = useAdaptiveLayout();
-  useEffect(() => music.watchPlayback(), []);
+  useEffect(() => active ? music.watchPlayback() : undefined, [active]);
   if (!selected && state.status !== 'connected') return <Pressable onPress={onExpand} accessibilityRole="button" style={[styles.row, { gap: 9, minHeight: 48, alignSelf: 'center' }]}><Icon name="musical-notes-outline" size={17} color={colors.secondary} /><Copy muted variant="caption">Choisir votre musique</Copy></Pressable>;
   const track = state.playback?.track; const view = playbackPresentation(state);
   const reason = state.status === 'connected' ? controlReason(state, state.playback?.playing ? 'pause' : 'play') : null;

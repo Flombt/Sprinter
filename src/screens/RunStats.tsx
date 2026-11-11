@@ -27,7 +27,8 @@ function Setting({ icon, title, detail, value, onChange, disabled = false }: {
   </View>;
 }
 
-export default function RunStats({ state, target, onTargetChange, onPrepare, onSettings, onMusic, onFinish }: {
+export default function RunStats({ active, state, target, onTargetChange, onPrepare, onSettings, onMusic, onFinish }: {
+  active: boolean;
   state: SessionState;
   target: PaceTarget;
   onTargetChange: (target: PaceTarget) => void;
@@ -126,7 +127,7 @@ export default function RunStats({ state, target, onTargetChange, onPrepare, onS
       <ActionButton title="Terminer la course" icon="stop-outline" secondary disabled={state.busy} onPress={onFinish} />
       {!state.backgroundActive && <BodyText style={{ fontSize: typography.small.fontSize, color: design.secondary, textAlign: 'center' }}>Gardez Sprinter ouvert pendant la course.</BodyText>}
     </View>}
-    {run && <RunInsights state={state} onMusic={onMusic} />}
+    {run && <RunInsights active={active} state={state} onMusic={onMusic} />}
   </AppScreen>;
 }
 

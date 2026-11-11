@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, BackHandler, Easing, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Animated, BackHandler, Easing, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { averagePace, duration, km, pace, targetLabel } from '../core/format';
 import { QUALITY_LABELS, STATE_LABELS, type PaceTarget } from '../core/types';
@@ -16,7 +18,7 @@ import { EMPTY_TRACK, type MapCommand } from '../ui/routeMapData';
 import { useTheme } from '../ui/theme';
 import { useMapPosition } from '../ui/useMapPosition';
 import { useRunSetup } from '../ui/useRunSetup';
-import { typography } from '../ui/tokens';
+import { spacing, typography } from '../ui/tokens';
 
 export { RunRow } from '../ui/RunRow';
 
@@ -27,14 +29,27 @@ function RunMetric({ value, label, unit }: { value: string; label: string; unit?
   </View>;
 }
 
-export default function Home({ state, target, starting, onStart, onPrepare, onRecovery, onHistory, onStats, onMusic, onSettings, onFinish }: {
-  state: SessionState; target: PaceTarget; starting: boolean; onStart: () => void; onHistory: () => void;
-  onPrepare: () => void; onRecovery: () => void; onStats: () => void; onMusic: () => void; onSettings: () => void; onFinish: () => void;
+export default function Home({
+  active, state, target, starting, onStart, onPrepare, onRecovery, onHistory, onStats, onMusic, onSettings, onFinish,
+}: {
+  active: boolean;
+  state: SessionState;
+  target: PaceTarget;
+  starting: boolean;
+  onStart: () => void;
+  onHistory: () => void;
+  onPrepare: () => void;
+  onRecovery: () => void;
+  onStats: () => void;
+  onMusic: () => void;
+  onSettings: () => void;
+  onFinish: () => void;
 }) {
   const design = useDesign();
   const { colors, reduceMotion } = useTheme();
   const { top, bottom } = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, height } = useWindowDimensions();
+  const scroll = fontScale > 1 || height < 640;
   const barHeight = useBottomBarInset();
   const setup = useRunSetup(target, state);
   const playlist = selectedPlaylist(useMusic());
@@ -46,7 +61,7 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
   const lastFix = points.at(-1)?.fix;
   const freshFix = lastFix && (state.quality === 'good' || state.quality === 'stationary') && Date.now() - lastFix.timestamp < 8000
     ? lastFix : undefined;
-  const preview = useMapPosition(!runId && !state.busy && !starting);
+  const preview = useMapPosition(active && !runId && !state.busy && !starting);
   const position = run ? freshFix : preview.position;
   const hasRoute = points.length > 0 || !!reference;
   const isWeb = Platform.OS === 'web';
@@ -55,25 +70,35 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
   const [follow, setFollow] = useState(true);
   const [command, setCommand] = useState<MapCommand>();
   const revision = useRef(0);
-  const expansion = useRef(new Animated.Value(0)).current;
+  const readoutOpacity = useRef(new Animated.Value(1)).current;
+  const previousExpansion = useRef(expanded);
 
   useEffect(() => {
-    if (reduceMotion) { expansion.setValue(expanded ? 1 : 0); return; }
-    const transition = Animated.timing(expansion, {
-      toValue: expanded ? 1 : 0,
-      duration: 320,
-      easing: Easing.inOut(Easing.cubic),
-      useNativeDriver: false,
+    const changed = previousExpansion.current !== expanded;
+    previousExpansion.current = expanded;
+    if (reduceMotion || !changed) {
+      readoutOpacity.setValue(1);
+      return;
+    }
+    readoutOpacity.setValue(.3);
+    const transition = Animated.timing(readoutOpacity, {
+      toValue: 1,
+      duration: 150,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
     });
     transition.start();
     return () => transition.stop();
-  }, [expanded, expansion, reduceMotion]);
+  }, [expanded, readoutOpacity, reduceMotion]);
 
   useEffect(() => {
-    if (!expanded || Platform.OS !== 'android') return;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => { setExpanded(false); return true; });
+    if (!active || !expanded || Platform.OS !== 'android') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setExpanded(false);
+      return true;
+    });
     return () => subscription.remove();
-  }, [expanded]);
+  }, [active, expanded]);
 
   useEffect(() => {
     if (runId) { setFollow(true); setCommand(undefined); }
@@ -103,7 +128,8 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
   const descent = !run ? '0' : run.elevationReliableSeconds ? Math.round(run.descentMeters ?? 0).toString() : '—';
   const gpsLabel = run ? QUALITY_LABELS[state.quality]
     : preview.status === 'locating' ? 'Localisation…'
-      : preview.position ? 'Position trouvée' : preview.status === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
+      : preview.status === 'unavailable' ? 'GPS indisponible'
+        : preview.position ? 'Position trouvée' : preview.status === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
   const mapHint = run ? 'En attente d’un point GPS fiable'
     : preview.status === 'denied' ? 'Autorisez la localisation dans les réglages.'
       : preview.status === 'unavailable' ? 'Position indisponible. Réessayez à l’extérieur.'
@@ -113,13 +139,13 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
     : run ? state.autoPaused ? 'Pause manuelle' : state.running ? 'Mettre en pause' : 'Reprendre'
       : setup.error ? 'Vérifier les options' : 'Démarrer une course';
   const heroHeight = Math.max(108, 84 * Math.min(fontScale, 1.6) + 24);
-  const compactHeight = expansion.interpolate({ inputRange: [0, 1], outputRange: [heroHeight, 0] });
-  const heroOpacity = expansion.interpolate({ inputRange: [0, .75], outputRange: [1, 0], extrapolate: 'clamp' });
   const paceHint = run ? STATE_LABELS[state.paceState] : setup.definition?.name ?? ('Cible ' + targetLabel(setup.target) + ' /km');
 
-  return <ScrollView style={styles.screen} contentContainerStyle={[styles.content, {
-    paddingTop: top + 6, paddingBottom: Math.max(barHeight + 4, bottom + 85),
-  }]} showsVerticalScrollIndicator={false}>
+  const insets = {
+    paddingTop: top + spacing.xs,
+    paddingBottom: Math.max(barHeight + spacing.xs, bottom + spacing.sm),
+  };
+  const content = <>
     <View style={styles.header}>
       <ActionIcon icon={expanded ? 'arrow-back' : 'time-outline'} label={expanded ? 'Revenir aux statistiques de course' : 'Historique des courses'}
         onPress={expanded ? () => setExpanded(false) : onHistory} />
@@ -127,14 +153,13 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
       <ActionIcon icon={expanded ? 'contract-outline' : 'expand-outline'} label={expanded ? 'Réduire la carte' : 'Agrandir la carte'}
         onPress={() => setExpanded(value => !value)} />
     </View>
-    <View style={[styles.readouts, { borderBottomColor: design.line }]}>
-      <Animated.View style={[styles.heroClip, { height: compactHeight, opacity: heroOpacity }]} pointerEvents="none"
-        accessibilityElementsHidden={expanded} importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'} aria-hidden={expanded}>
-        <View style={[styles.hero, { height: heroHeight }]}>
-          <DisplayText numeric maxFontSizeMultiplier={1.6} numberOfLines={1} adjustsFontSizeToFit style={styles.heroValue}>{distance}</DisplayText>
-          <Kicker>Distance · km</Kicker>
-        </View>
-      </Animated.View>
+    <Animated.View style={[styles.readouts, { borderBottomColor: design.line, opacity: readoutOpacity }]}>
+      {!expanded && <View style={[styles.hero, { minHeight: heroHeight }]}>
+        <DisplayText numeric maxFontSizeMultiplier={1.6} numberOfLines={1} adjustsFontSizeToFit style={styles.heroValue}>
+          {distance}
+        </DisplayText>
+        <Kicker style={{ fontSize: typography.caption.fontSize }}>Distance · km</Kicker>
+      </View>}
       <View style={styles.metricRow}>
         {expanded ? <RunMetric label="Distance" unit="km" value={distance} /> : <RunMetric label="Temps actif" value={activeTime} />}
         <View style={[styles.divider, { backgroundColor: design.line }]} />
@@ -142,11 +167,12 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
         <View style={[styles.divider, { backgroundColor: design.line }]} />
         <RunMetric label="Allure moy." unit="/km" value={average} />
       </View>
-    </View>
+    </Animated.View>
 
-    <View style={[styles.map, { backgroundColor: colors.field }]}>
+    <View style={[styles.map, scroll && styles.scrollMap, { backgroundColor: colors.field }]}>
       <RouteMap points={points} reference={reference?.segments} current={position} initialPosition={preview.position}
-        height="fill" live interactive={expanded} follow={follow} satellite={satellite} command={command} onPan={() => setFollow(false)} />
+        height="fill" live interactive={expanded} follow={active && follow} satellite={satellite}
+        command={command} onPan={() => setFollow(false)} />
       {!expanded && <Pressable accessibilityRole="button" accessibilityLabel="Agrandir la carte du parcours"
         accessibilityHint="Ouvre les commandes de la carte sur cet écran" onPress={() => setExpanded(true)} style={StyleSheet.absoluteFill} />}
       <View pointerEvents="none" style={[styles.mapStatus, { backgroundColor: colors.surface, borderColor: design.line }]}>
@@ -205,7 +231,17 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
           disabled={!!run && state.busy} onPress={run ? onFinish : onSettings} />
       </View>
     </View>
-  </ScrollView>;
+  </>;
+  if (scroll) {
+    return <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content, insets]}
+      showsVerticalScrollIndicator={false}
+    >
+      {content}
+    </ScrollView>;
+  }
+  return <View style={[styles.screen, insets]}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -213,7 +249,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingBottom: 6 },
   readouts: { borderBottomWidth: StyleSheet.hairlineWidth },
-  heroClip: { overflow: 'hidden' },
   hero: { alignItems: 'center', justifyContent: 'center' },
   heroValue: { fontSize: 78, lineHeight: 82, letterSpacing: -2.4, textAlign: 'center' },
   metricRow: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 8, paddingVertical: 12 },
@@ -221,7 +256,8 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 35, lineHeight: 39, textAlign: 'center' },
   metricLabel: { fontSize: typography.caption.fontSize, letterSpacing: .8, textAlign: 'center' },
   divider: { width: StyleSheet.hairlineWidth, marginVertical: 6 },
-  map: { flex: 1, minHeight: 220, overflow: 'hidden' },
+  map: { flex: 1, minHeight: 0, overflow: 'hidden' },
+  scrollMap: { minHeight: 220 },
   mapStatus: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 9, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 5, maxWidth: '75%' },
   mapStatusText: { fontSize: typography.caption.fontSize, fontWeight: '600', flexShrink: 1 },
   mapTools: { position: 'absolute', top: 12, right: 12, gap: 8 },

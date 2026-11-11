@@ -6,6 +6,9 @@ import type { RouteCoordinate } from '../routes/types';
 
 type Preview = { position?: RouteCoordinate; status: 'idle' | 'locating' | 'ready' | 'denied' | 'unavailable' };
 
+let cachedPosition: RouteCoordinate | undefined;
+let attemptedAutomaticFix = false;
+
 function suitablePosition(value: Location.LocationObject | null, maximumAge: number): RouteCoordinate | undefined {
   if (!value || !validCoordinate(value.coords)) return;
   const age = Date.now() - value.timestamp;
@@ -15,7 +18,10 @@ function suitablePosition(value: Location.LocationObject | null, maximumAge: num
 
 /** One foreground preview fix. The session exclusively records the route. */
 export function useMapPosition(enabled: boolean) {
-  const [preview, setPreview] = useState<Preview>({ status: 'idle' });
+  const [preview, setPreview] = useState<Preview>(() => ({
+    position: cachedPosition,
+    status: cachedPosition ? 'ready' : 'idle',
+  }));
   const pending = useRef<AbortController | null>(null);
 
   const locate = useCallback(async (ask: boolean) => {
@@ -24,18 +30,20 @@ export function useMapPosition(enabled: boolean) {
     const { signal } = controller;
     pending.current = controller;
     try {
-      // On web, asking for the position must be an explicit user action.
+      // Automatic checks are passive after the first foreground preview.
       if (!ask && Platform.OS === 'web') return;
       const current = await Location.getForegroundPermissionsAsync();
       if (signal.aborted) return;
       const permission = !current.granted && ask && current.canAskAgain ? await Location.requestForegroundPermissionsAsync() : current;
       if (signal.aborted) return;
       if (!permission.granted) {
+        cachedPosition = undefined;
+        attemptedAutomaticFix = false;
         setPreview({ status: permission.status === 'denied' ? 'denied' : 'idle' });
         return;
       }
       if (permission.ios?.accuracy === 'reduced' || !await Location.hasServicesEnabledAsync()) {
-        if (!signal.aborted) setPreview({ status: 'unavailable' });
+        if (!signal.aborted) setPreview({ position: cachedPosition, status: 'unavailable' });
         return;
       }
       if (signal.aborted) return;
@@ -44,7 +52,13 @@ export function useMapPosition(enabled: boolean) {
         ? suitablePosition(await Location.getLastKnownPositionAsync({ maxAge: 15000, requiredAccuracy: 150 }).catch(() => null), 15000)
         : undefined;
       if (signal.aborted) return;
-      if (last) setPreview({ position: last, status: 'locating' });
+      if (last) cachedPosition = last;
+      if (!ask && (last || attemptedAutomaticFix)) {
+        setPreview({ position: cachedPosition, status: cachedPosition ? 'ready' : 'idle' });
+        return;
+      }
+      attemptedAutomaticFix = true;
+      if (cachedPosition) setPreview({ position: cachedPosition, status: 'locating' });
       await new Promise<void>(resolve => {
         let subscription: Location.LocationSubscription | undefined;
         let settled = false;
@@ -54,7 +68,10 @@ export function useMapPosition(enabled: boolean) {
           clearTimeout(timeout);
           signal.removeEventListener('abort', cancel);
           subscription?.remove();
-          if (!signal.aborted) setPreview({ position: position ?? last, status: position || last ? 'ready' : 'unavailable' });
+          if (!signal.aborted) {
+            if (position) cachedPosition = position;
+            setPreview({ position: cachedPosition, status: position || last ? 'ready' : 'unavailable' });
+          }
           resolve();
         };
         const cancel = () => finish();

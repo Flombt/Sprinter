@@ -10,6 +10,19 @@ import { radii } from './tokens';
 const edgePadding = { top: 60, right: 48, bottom: 52, left: 48 };
 const localRegion = { latitudeDelta: .007, longitudeDelta: .007 };
 
+function PositionMarker({ position }: { position: NonNullable<RouteMapProps['current']> }) {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  return <Marker
+    coordinate={position}
+    title="Position GPS"
+    tracksViewChanges={tracksViewChanges}
+    anchor={{ x: .5, y: .5 }}
+    centerOffset={{ x: 0, y: 0 }}
+  >
+    <View style={styles.position} onLayout={() => setTracksViewChanges(false)} />
+  </Marker>;
+}
+
 export default function RouteMap({
   points, reference = EMPTY_REFERENCE, current, initialPosition, height = 220, interactive = false, live = false,
   follow = false, satellite = false, command, onPan,
@@ -72,9 +85,7 @@ export default function RouteMap({
       {groups.map((group, index) => group.length > 1 && <Polyline key={index} coordinates={group} strokeWidth={5} strokeColor={colors.accent} lineCap="round" lineJoin="round" />)}
       {(!live || recorded.length > 1) && route[0] && <Marker coordinate={route[0]} title="Départ" pinColor={colors.routeStart} />}
       {!live && route.length > 1 && <Marker coordinate={route.at(-1)!} title="Arrivée" pinColor={colors.routeFinish} />}
-      {current && <Marker coordinate={current} title="Position GPS" anchor={{ x: .5, y: .5 }} centerOffset={{ x: 0, y: 0 }}>
-        <View style={styles.position} />
-      </Marker>}
+      {current && <PositionMarker position={current} />}
     </MapView> : <>
       <MapPlaceholder />
       {!live && <Copy muted style={styles.caption}>Aucun tracé GPS disponible.</Copy>}

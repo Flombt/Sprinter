@@ -14,7 +14,11 @@ import { ActionButton, ActionIcon, AppScreen, BodyText, useDesign, DisplayText, 
 import { useTheme } from '../ui/theme';
 import { interaction, typography } from '../ui/tokens';
 
-export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?: () => void; foregroundOnlyRun?: boolean }) {
+export default function Music({ onClose, foregroundOnlyRun = false, active = true }: {
+  onClose?: () => void;
+  foregroundOnlyRun?: boolean;
+  active?: boolean;
+}) {
   const design = useDesign();
   const state = useMusic(), { colors, reduceMotion } = useTheme(), insets = useSafeAreaInsets();
   const [input, setInput] = useState(''), [adding, setAdding] = useState(false), [connection, setConnection] = useState(false);
@@ -26,10 +30,14 @@ export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?
   const playback = playbackPresentation(state);
   const playlists = [...new Map([...state.preferences.playlists, ...state.library].map(p => [p.id, p])).values()];
   useEffect(() => {
-    mounted.current = true; void music.initialize(); const unwatch = music.watchPlayback();
-    return () => { mounted.current = false; unwatch(); };
+    mounted.current = true;
+    void music.initialize();
+    return () => { mounted.current = false; };
   }, []);
-  useEffect(() => { if (connected) void music.loadLibrary(); }, [connected]);
+  useEffect(() => active ? music.watchPlayback() : undefined, [active]);
+  useEffect(() => { if (active && connected && !music.getSnapshot().library.length) void music.loadLibrary(); }, [
+    active, connected,
+  ]);
   useEffect(() => { if (!connected) { setTrackPlaylist(null); setPlayerOptions(false); } }, [connected]);
   const openExternal = (action: () => void) => confirmSpotifySwitch(foregroundOnlyRun, action);
   const open = (playlist: PlaylistReference) => openExternal(() => void music.openPlaylist(playlist));
@@ -154,13 +162,13 @@ export default function Music({ onClose, foregroundOnlyRun = false }: { onClose?
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><BodyText style={{ color: design.secondary, fontSize: typography.small.fontSize }}>{connected ? state.profile?.name ?? 'Compte connecté' : 'Connecter mon compte'}</BodyText><Icon name="arrow-forward" color={design.secondary} size={14} /></View>
     </Pressable>
 
-    <Modal visible={connection} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setConnection(false)}>
+    <Modal visible={active && connection} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setConnection(false)}>
       <View style={{ flex: 1, backgroundColor: design.background }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 24, gap: 24 }}>
         <View style={s.row}><DisplayText style={{ fontSize: 32, lineHeight: 38 }}>VOTRE COMPTE</DisplayText><ActionIcon icon="close" label="Fermer les réglages Spotify" onPress={() => setConnection(false)} /></View>
         <ConnectionCard state={state} openExternal={openExternal} onMessage={setNotice} />
       </ScrollView></View>
     </Modal>
-    {trackPlaylist && connected && <TrackSheet key={trackPlaylist.id} playlist={trackPlaylist} onClose={() => setTrackPlaylist(null)}
+    {active && trackPlaylist && connected && <TrackSheet key={trackPlaylist.id} playlist={trackPlaylist} onClose={() => setTrackPlaylist(null)}
       onOpenPlaylist={() => open(trackPlaylist)} onOpenTrack={track => openTrack(track, trackPlaylist)} />}
   </AppScreen>;
 }

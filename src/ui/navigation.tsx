@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -10,6 +10,36 @@ import { haptic } from './haptics';
 import { interaction, typography } from './tokens';
 
 export interface TabItem<T extends string> { key: T; title: string; icon: IconName; selectedIcon?: IconName }
+
+export function TabPane({ visible, children }: { visible: boolean; children: ReactNode }) {
+  const { reduceMotion } = useTheme();
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!visible || reduceMotion) {
+      opacity.setValue(1);
+      return;
+    }
+    opacity.setValue(0);
+    const animation = Animated.timing(opacity, {
+      toValue: 1,
+      duration: 120,
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [visible, reduceMotion, opacity]);
+
+  return <Animated.View
+    style={[StyleSheet.absoluteFill, { opacity: visible ? opacity : 0, zIndex: visible ? 1 : 0 }]}
+    pointerEvents={visible ? 'auto' : 'none'}
+    accessibilityElementsHidden={!visible}
+    importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
+    aria-hidden={!visible}
+  >
+    {children}
+  </Animated.View>;
+}
 
 export function BottomTabs<T extends string>({ items, value, onChange, onHeightChange }: {
   items: readonly TabItem<T>[]; value: T; onChange: (value: T) => void; onHeightChange: (height: number) => void;
@@ -29,7 +59,8 @@ export function BottomTabs<T extends string>({ items, value, onChange, onHeightC
     animation.start(); return () => animation.stop();
   }, [index, itemWidth, reduceMotion, width, x]);
   return <View accessibilityRole="tablist" accessibilityLabel="Navigation principale" onLayout={event => onHeightChange(event.nativeEvent.layout.height)}
-    style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(12, insets.bottom) }}>
+    style={{ position: 'absolute', zIndex: 2, bottom: 0, left: 0, right: 0, paddingHorizontal: 20,
+      paddingTop: 10, paddingBottom: Math.max(12, insets.bottom) }}>
     <View style={{ borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: design.line, backgroundColor: colors.glass }}>
       <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
         {!reduceTransparency && (Platform.OS === 'ios' && isLiquidGlassAvailable()

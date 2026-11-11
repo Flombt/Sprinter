@@ -8,7 +8,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { session } from './src/services/session';
 import { ThemeProvider, useTheme } from './src/ui/theme';
 import { Button, Copy, IconButton, Label, Screen } from './src/ui/components';
-import { BottomTabs, type TabItem } from './src/ui/navigation';
+import { BottomTabs, TabPane, type TabItem } from './src/ui/navigation';
 import { BottomBarInsetContext } from './src/ui/layout';
 import { radii, spacing } from './src/ui/tokens';
 import { confirm } from './src/ui/confirm';
@@ -49,6 +49,7 @@ function AppContent() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const { colors, reduceMotion } = useTheme(); const inset = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('home'); const [page, setPage] = useState<Page>({ name: 'tabs' });
+  const [musicVisited, setMusicVisited] = useState(false);
   const [tabBarHeight, setTabBarHeight] = useState(0);
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [countdown, setCountdown] = useState(false);
@@ -102,6 +103,13 @@ function AppContent() {
     });
   });
   const modalVisible = musicVisible || workoutsVisible || toolsVisible || settingsVisible || countdown;
+  const tabsVisible = state.ready && page.name === 'tabs';
+  const tabsActive = tabsVisible && !modalVisible;
+  const foregroundOnlyRun = (state.running || state.autoPaused) && !state.backgroundActive;
+  const changeTab = (next: Tab) => {
+    if (next === 'music') setMusicVisited(true);
+    setTab(next);
+  };
   let content: React.ReactNode;
   if (!state.ready) content = <Screen><View style={{ paddingTop: 100, alignItems: 'center', gap: spacing.xxl }}><Label>SPRINTER</Label><Copy variant="title">Le rythme juste.</Copy>
     {state.error ? <><Copy style={{ color: colors.danger, textAlign: 'center' }}>{state.error}</Copy><Button title="Réessayer" onPress={() => void session.initialize()} /></> : <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />}</View></Screen>;
@@ -113,23 +121,56 @@ function AppContent() {
   else if (page.name === 'apple') content = <AppleIntegrations onBack={tabs} />;
   else if (page.name === 'recovery') content = <Recovery state={state} onBack={tabs} />;
   else if (page.name === 'history') content = <History state={state} onBack={tabs} onDetail={detail} onStart={start} onRecords={() => setPage({ name: 'records' })} onCompare={() => setPage({ name: 'compare' })} onProgression={progress} />;
-  else if (tab === 'music') content = <Music foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive} />;
-  else if (tab === 'stats') content = <RunStats
-    state={state}
-    target={target}
-    onTargetChange={setTarget}
-    onPrepare={() => setPage({ name: 'prepare' })}
-    onSettings={() => setSettingsVisible(true)}
-    onMusic={() => setMusicVisible(true)}
-    onFinish={finish}
-  />;
-  else content = <Home state={state} target={target} starting={countdown || startingRun} onStart={start} onRecovery={() => setPage({ name: 'recovery' })} onPrepare={() => setPage({ name: 'prepare' })} onHistory={history} onStats={() => setTab('stats')} onMusic={() => setTab('music')} onSettings={() => setSettingsVisible(true)} onFinish={finish} />;
   return <View style={{ flex: 1, backgroundColor: colors.background }}><View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center', backgroundColor: design.background }}><StatusBar style={colors.dark ? 'light' : 'dark'} />
     <AppBackground />
-    {(state.running || state.autoPaused) && !state.backgroundActive && <KeepScreenAwake />}
-    <BottomBarInsetContext.Provider value={state.ready && page.name === 'tabs' ? tabBarHeight : 0}>
-      <View style={{ flex: 1 }} aria-hidden={modalVisible} accessibilityElementsHidden={modalVisible} importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}><PageTransition key={page.name === 'tabs' ? tab : page.name}>{content}</PageTransition>
-        {state.ready && page.name === 'tabs' && <BottomTabs items={TAB_ITEMS} value={tab} onChange={setTab} onHeightChange={setTabBarHeight} />}
+    {foregroundOnlyRun && <KeepScreenAwake />}
+    <BottomBarInsetContext.Provider value={tabsVisible ? tabBarHeight : 0}>
+      <View
+        style={{ flex: 1 }}
+        aria-hidden={modalVisible}
+        accessibilityElementsHidden={modalVisible}
+        importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
+      >
+        {state.ready && <View
+          style={{ flex: 1, display: tabsVisible ? 'flex' : 'none' }}
+          accessibilityElementsHidden={!tabsVisible}
+          importantForAccessibility={tabsVisible ? 'auto' : 'no-hide-descendants'}
+          aria-hidden={!tabsVisible}
+        >
+          <TabPane visible={tab === 'home'}>
+            <Home
+              active={tabsActive && tab === 'home'}
+              state={state}
+              target={target}
+              starting={countdown || startingRun}
+              onStart={start}
+              onRecovery={() => setPage({ name: 'recovery' })}
+              onPrepare={() => setPage({ name: 'prepare' })}
+              onHistory={history}
+              onStats={() => changeTab('stats')}
+              onMusic={() => changeTab('music')}
+              onSettings={() => setSettingsVisible(true)}
+              onFinish={finish}
+            />
+          </TabPane>
+          <TabPane visible={tab === 'stats'}>
+            <RunStats
+              active={tabsActive && tab === 'stats'}
+              state={state}
+              target={target}
+              onTargetChange={setTarget}
+              onPrepare={() => setPage({ name: 'prepare' })}
+              onSettings={() => setSettingsVisible(true)}
+              onMusic={() => setMusicVisible(true)}
+              onFinish={finish}
+            />
+          </TabPane>
+          {musicVisited && <TabPane visible={tab === 'music'}>
+            <Music active={tabsActive && tab === 'music'} foregroundOnlyRun={foregroundOnlyRun} />
+          </TabPane>}
+          <BottomTabs items={TAB_ITEMS} value={tab} onChange={changeTab} onHeightChange={setTabBarHeight} />
+        </View>}
+        {!tabsVisible && <PageTransition key={page.name}>{content}</PageTransition>}
       </View>
     </BottomBarInsetContext.Provider>
     <Modal visible={musicVisible} animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet" onRequestClose={() => setMusicVisible(false)}>
