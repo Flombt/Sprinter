@@ -8,14 +8,15 @@ import { RunEngine } from '../src/core/engine';
 import { DEFAULT_TARGET } from '../src/core/types';
 
 const id = 'A'.repeat(22), other = 'B'.repeat(22), clientId = 'a'.repeat(32);
+const redirectUri = 'https://sprinter.example/spotify-callback/';
 const stores: SpotifyStore[] = [];
 function setup({ connected = false, canAuthenticate = true, prefs = {} as Partial<SpotifyPreferences> } = {}) {
-  let saved: SpotifyPreferences = { ...EMPTY_MUSIC, clientId: connected ? clientId : '', playlists: [], ...prefs };
+  let saved: SpotifyPreferences = { ...EMPTY_MUSIC, clientId: connected ? clientId : '', redirectUri, playlists: [], ...prefs };
   let token: SpotifyTokens | null = connected ? { clientId, accessToken: 'access', refreshToken: 'refresh', expiresAt: Date.now() + 3600000, scopes: SPOTIFY_SCOPES } : null;
   const persistence: MusicPersistence = { async load() { return structuredClone(saved); }, save: vi.fn(async value => { saved = structuredClone(value); }) };
   const vault: TokenVault = { async read() { return token; }, async write(value) { token = value; }, clear: vi.fn(async () => { token = null; }) };
   const platform: SpotifyPlatform = { canAuthenticate, redirectUri: 'app.sprinter.running://spotify-callback',
-    authorize: vi.fn().mockResolvedValue({ code: 'code', verifier: 'verifier', redirectUri: 'app.sprinter.running://spotify-callback' }),
+    authorize: vi.fn().mockResolvedValue({ code: 'code', verifier: 'verifier', redirectUri }),
     resolveShortLink: vi.fn(), openSpotify: vi.fn().mockResolvedValue(undefined) };
   let disallows: Record<string, boolean> = {};
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
@@ -46,7 +47,7 @@ describe('Spotify module, independent of sport recording', () => {
   });
   it('connects through the injected authorization adapter and loads permitted playlists', async () => {
     const { store, platform } = setup({ prefs: { clientId } }); await store.initialize(); await store.connect();
-    expect(platform.authorize).toHaveBeenCalledWith(clientId, SPOTIFY_SCOPES);
+    expect(platform.authorize).toHaveBeenCalledWith(clientId, SPOTIFY_SCOPES, redirectUri);
     expect(store.getSnapshot().status).toBe('connected'); expect(store.getSnapshot().library[0]?.name).toBe('Owned playlist');
   });
   it('does not pretend OAuth works inside Expo Go', async () => {
@@ -61,7 +62,7 @@ describe('Spotify module, independent of sport recording', () => {
   it('refreshes and sends actual control commands without inventing a player state', async () => {
     const { store, fetcher } = setup({ connected: true }); await store.initialize(); await store.refreshPlayback();
     expect(controlReason(store.getSnapshot(), 'next')).toBeNull(); await store.command('next');
-    expect(fetcher.mock.calls.some(([url, init]) => url.endsWith('/me/player/next') && init?.method === 'POST')).toBe(true);
+    expect(fetcher.mock.calls.some(([url, init]) => new URL(url).pathname === '/v1/me/player/next' && init?.method === 'POST' && new URL(url).searchParams.get('device_id') === 'iphone')).toBe(true);
     expect(store.getSnapshot().playback?.track?.title).toBe('Test track');
   });
   it('respects per-action restrictions, Free accounts, and stale player data', async () => {
@@ -73,7 +74,8 @@ describe('Spotify module, independent of sport recording', () => {
   it('starts the selected playlist remotely with the run and never switches applications automatically', async () => {
     const { store, fetcher, platform } = setup({ connected: true, prefs: { selectedId: id, playlists: [playlistReference(id)] } });
     await store.initialize(); await store.onRunStarted();
-    const call = fetcher.mock.calls.find(([url, init]) => url.endsWith('/me/player/play') && !!init?.body);
+    const call = fetcher.mock.calls.find(([url, init]) => new URL(url).pathname === '/v1/me/player/play' && !!init?.body);
+    expect(new URL(call![0]).searchParams.get('device_id')).toBe('iphone');
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ context_uri: `spotify:playlist:${id}` });
     expect(platform.openSpotify).not.toHaveBeenCalled();
   });
@@ -102,6 +104,33 @@ describe('Spotify module, independent of sport recording', () => {
     const { store, saved } = setup(); await store.initialize();
     await Promise.all([store.select(playlistReference(id)), store.select(playlistReference(other))]);
     expect(saved().selectedId).toBe(other); expect(store.getSnapshot().preferences.selectedId).toBe(other);
+  });
+  it('does not present a playlist choice as saved before the write completes', async () => {
+    const { store, persistence, saved } = setup(); await store.initialize();
+    let release!: () => void;
+    const waiting = new Promise<void>(resolve => { release = resolve; });
+    const write = vi.mocked(persistence.save).getMockImplementation()!;
+    vi.mocked(persistence.save).mockImplementationOnce(async preferences => { await waiting; await write(preferences); });
+    const selecting = store.select(playlistReference(id));
+    await vi.waitFor(() => expect(store.getSnapshot().preferencesSaving).toBe(true));
+    expect(selectedPlaylist(store.getSnapshot())).toBeNull(); expect(saved().selectedId).toBeNull();
+    release(); await selecting;
+    expect(selectedPlaylist(store.getSnapshot())?.id).toBe(id); expect(store.getSnapshot().preferencesSaving).toBe(false);
+  });
+  it('keeps the last durable selection when saving a new choice fails', async () => {
+    const { store, persistence, saved } = setup(); await store.initialize(); await store.select(playlistReference(id));
+    vi.mocked(persistence.save).mockRejectedValueOnce(new Error('Disk full'));
+    await store.select(playlistReference(other));
+    expect(store.getSnapshot().preferences.selectedId).toBe(id); expect(saved().selectedId).toBe(id);
+    expect(store.getSnapshot().message).toContain('pas été enregistrées');
+    expect(store.getSnapshot().preferencesSaving).toBe(false);
+  });
+  it('allows a newer choice to succeed after an earlier queued write fails', async () => {
+    const { store, persistence, saved } = setup(); await store.initialize();
+    vi.mocked(persistence.save).mockRejectedValueOnce(new Error('Temporary write failure'));
+    await Promise.all([store.select(playlistReference(id)), store.select(playlistReference(other))]);
+    expect(store.getSnapshot().preferences.selectedId).toBe(other); expect(saved().selectedId).toBe(other);
+    expect(store.getSnapshot().message).toBeNull();
   });
   it('clears expired artwork metadata and rejects restored external image hosts', () => {
     const reference = { ...playlistReference(id), name: 'Old metadata', image: 'https://evil.test/image', fetchedAt: 1 };

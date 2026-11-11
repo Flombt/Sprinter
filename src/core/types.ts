@@ -35,6 +35,7 @@ export interface TrackPoint {
 }
 export interface Split { kilometer: number; meters: number; seconds: number; complete: boolean }
 export interface RunRecord {
+  healthExportRequestedAt?: number;
   unreadableSections?: Partial<Record<'workout' | 'pacing', unknown>>;
   routeId?: string; routeName?: string;
   clockPauses?: { from: number; to: number | null }[];

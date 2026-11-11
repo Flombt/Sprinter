@@ -14,6 +14,8 @@ export interface SqlDatabase {
   getAllAsync<T>(sql: string, ...parameters: SqlValue[]): Promise<T[]>;
 }
 export interface Draft { version: 1; revision: number; savedAt: number; run: RunRecord }
+export interface DraftArchiveInfo { id: string; archivedAt: number; bytes: number }
+export interface DraftArchive { id: string; archivedAt: number; payload: string }
 function preserveSection(run: RunRecord, key: 'workout' | 'pacing', payload: unknown) {
   if (payload === undefined) return;
   const previous = run.unreadableSections?.[key];
@@ -45,6 +47,7 @@ export function parseRun(payload: string): RunRecord {
     (r.healthKit.originalRunId !== null && typeof r.healthKit.originalRunId !== 'string') || !r.targetUnavailable || r.points.length > 0 ||
     r.endedAt === null || r.distanceMeters <= 0 || r.activeSeconds <= 0)) throw new Error('Provenance Santé incohérente. Les données ont été conservées.');
   // Invalid optional route labels cannot make recorded sports data disappear.
+  if (r.healthExportRequestedAt !== undefined && (!Number.isFinite(r.healthExportRequestedAt) || r.healthExportRequestedAt <= 0)) delete r.healthExportRequestedAt;
   if (r.routeId !== undefined && (typeof r.routeId !== 'string' || !r.routeId || r.routeId.length > 200)) { delete r.routeId; delete r.routeName; }
   if (r.routeName !== undefined && (typeof r.routeName !== 'string' || r.routeName.length > 100)) delete r.routeName;
   if (r.clockPauses !== undefined) {
@@ -90,7 +93,7 @@ export class RunRepository {
   }
   async initialize() {
     const version = await this.db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    if ((version?.user_version ?? 0) > 2) throw new Error('Cette base de courses provient d’une version plus récente. Aucune migration ni écriture n’a été effectuée.');
+    if ((version?.user_version ?? 0) > 3) throw new Error('Cette base de courses provient d’une version plus récente. Aucune migration ni écriture n’a été effectuée.');
     await this.db.execAsync(`PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
       CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, started_at REAL NOT NULL, payload TEXT NOT NULL);
@@ -99,7 +102,8 @@ export class RunRepository {
       CREATE TABLE IF NOT EXISTS settings (slot INTEGER PRIMARY KEY CHECK(slot = 1), payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS draft_points (session_id TEXT NOT NULL, point_id INTEGER NOT NULL, payload TEXT NOT NULL,
         PRIMARY KEY (session_id, point_id));
-      PRAGMA user_version = 2;`);
+      CREATE TABLE IF NOT EXISTS draft_archives (id TEXT PRIMARY KEY, archived_at REAL NOT NULL, payload TEXT NOT NULL);
+      PRAGMA user_version = 3;`);
   }
   async history(): Promise<RunRecord[]> {
     const rows = await this.db.getAllAsync<{ payload: string }>('SELECT payload FROM runs ORDER BY started_at DESC');
@@ -145,6 +149,31 @@ export class RunRepository {
       } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
     });
   }
+  archiveDraft(): Promise<string | null> {
+    return this.write(async () => {
+      await this.db.execAsync('BEGIN IMMEDIATE');
+      try {
+        const draft = await this.db.getFirstAsync<{ session_id: string; revision: number; payload: string }>('SELECT session_id, revision, payload FROM draft WHERE slot = 1');
+        if (!draft) { await this.db.execAsync('COMMIT'); return null; }
+        const points = await this.db.getAllAsync<{ point_id: number; payload: string }>('SELECT point_id, payload FROM draft_points WHERE session_id = ? ORDER BY point_id', draft.session_id);
+        const archivedAt = Date.now(), id = archivedAt.toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+        // Preserve the original source, including invalid JSON and incomplete journals.
+        const payload = JSON.stringify({ format: 'sprinter-recovery-v1', archivedAt, draft, points });
+        await this.db.runAsync('INSERT INTO draft_archives (id, archived_at, payload) VALUES (?, ?, ?)', id, archivedAt, payload);
+        await this.db.runAsync('DELETE FROM draft_points WHERE session_id = ?', draft.session_id);
+        await this.db.runAsync('DELETE FROM draft WHERE slot = 1');
+        await this.db.execAsync('COMMIT');
+        this.closedSessions.add(draft.session_id); this.committedPoints.delete(draft.session_id);
+        return id;
+      } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
+    });
+  }
+  listDraftArchives(): Promise<DraftArchiveInfo[]> {
+    return this.db.getAllAsync('SELECT id, archived_at AS archivedAt, length(CAST(payload AS BLOB)) AS bytes FROM draft_archives ORDER BY archived_at DESC');
+  }
+  loadDraftArchive(id: string): Promise<DraftArchive | null> {
+    return this.db.getFirstAsync('SELECT id, archived_at AS archivedAt, payload FROM draft_archives WHERE id = ?', id);
+  }
   finish(run: RunRecord): Promise<void> {
     const payload = JSON.stringify(run);
     return this.write(async () => {
@@ -178,4 +207,4 @@ export class RunRepository {
   }
 }
 
-export type StorageRepository = Pick<RunRepository, 'initialize' | 'history' | 'loadDraft' | 'saveDraft' | 'finish' | 'deleteRun' | 'loadSettings' | 'saveSettings' | 'unreadableCount'>;
+export type StorageRepository = Pick<RunRepository, 'initialize' | 'history' | 'loadDraft' | 'archiveDraft' | 'listDraftArchives' | 'loadDraftArchive' | 'saveDraft' | 'finish' | 'deleteRun' | 'loadSettings' | 'saveSettings' | 'unreadableCount'>;

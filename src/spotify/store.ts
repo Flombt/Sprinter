@@ -4,6 +4,9 @@ import { playlistReference, resolvePlaylist, spotifyImage, validPlaylistId } fro
 import { EMPTY_MUSIC, MusicPersistence, MusicState, PlayerCommand, PlaylistReference, SpotifyPlatform, SpotifyPreferences } from './types';
 
 export const selectedPlaylist = (state: MusicState) => state.preferences.playlists.find(p => p.id === state.preferences.selectedId) ?? null;
+class PreferenceWriteError extends Error {
+  constructor(readonly revision: number) { super('Les modifications musicales n’ont pas été enregistrées. Le dernier choix sauvegardé est conservé ; réessayez.'); }
+}
 export function controlReason(state: MusicState, command: PlayerCommand, now = Date.now()): string | null {
   if (state.status !== 'connected') return 'Connectez Spotify pour contrôler la lecture.';
   if (state.busy) return 'Connexion ou configuration Spotify en cours.';
@@ -48,6 +51,9 @@ export class SpotifyStore {
   private poll: ReturnType<typeof setInterval> | null = null;
   private refreshing: Promise<void> | null = null;
   private preferenceWrites: Promise<void> = Promise.resolve();
+  private pendingPreferences: SpotifyPreferences | null = null;
+  private preferenceRevision = 0;
+  private get preferences() { return this.pendingPreferences ?? this.value.preferences; }
   private playbackRevision = 0;
   private networkFailures = 0;
   constructor(readonly auth: SpotifyAuth, readonly api: SpotifyApi, private persistence: MusicPersistence,
@@ -57,11 +63,12 @@ export class SpotifyStore {
   private emit(patch: Partial<MusicState>) { this.value = { ...this.value, ...patch }; this.listeners.forEach(l => l()); }
   clearMessage = () => this.emit({ message: null });
   private failure(error: unknown, controls = false) {
+    if (error instanceof PreferenceWriteError && error.revision !== this.preferenceRevision) return;
     if (error instanceof SpotifyError) {
       if (error.status === 401) { this.stopPoll(); this.emit({ status: 'expired', playback: null, stale: true }); }
       this.emit({ retryAt: error.retryAt || this.api.retryAt, ...(controls && error.status === 403 ? { controlBlocked: true } : {}) });
     }
-    this.emit({ message: error instanceof SpotifyError ? error.message : 'Connexion à Spotify indisponible. Votre course peut continuer.' });
+    this.emit({ message: error instanceof SpotifyError || error instanceof PreferenceWriteError ? error.message : 'Connexion à Spotify indisponible. Votre course peut continuer.' });
   }
   initialize = (): Promise<void> => {
     if (this.value.ready) return Promise.resolve();
@@ -80,12 +87,25 @@ export class SpotifyStore {
     } catch { this.emit({ ready: true, message: 'La configuration musicale n’a pas pu être chargée. Les courses restent disponibles.' }); }
   }
   private async save(preferences: SpotifyPreferences) {
-    // Reflect the latest selection immediately and serialize disk writes in intent order.
-    this.emit({ preferences });
-    const task = this.preferenceWrites.then(() => this.persistence.save(preferences));
-    this.preferenceWrites = task.catch(() => undefined); await task;
+    const revision = ++this.preferenceRevision;
+    this.pendingPreferences = preferences;
+    this.emit({ preferencesSaving: true });
+    // Compose rapid choices from the latest intent, but publish only durable data.
+    const task = this.preferenceWrites.then(async () => {
+      await this.persistence.save(preferences);
+      this.emit({ preferences });
+    });
+    this.preferenceWrites = task.catch(() => undefined);
+    try { await task; }
+    catch { throw new PreferenceWriteError(revision); }
+    finally {
+      if (revision === this.preferenceRevision) {
+        this.pendingPreferences = null;
+        this.emit({ preferencesSaving: false });
+      }
+    }
   }
-  async configure(clientId: string, redirectUri = this.value.preferences.redirectUri ?? '') {
+  async configure(clientId: string, redirectUri = this.preferences.redirectUri ?? '') {
     await this.initialize();
     const value = clientId.trim();
     const callback = redirectUri.trim();
@@ -94,8 +114,8 @@ export class SpotifyStore {
     if (this.value.busy) return false;
     this.emit({ busy: true });
     try {
-      if (value !== this.value.preferences.clientId || callback !== (this.value.preferences.redirectUri ?? '')) await this.disconnect();
-      await this.save({ ...this.value.preferences, clientId: value, redirectUri: callback });
+      if (value !== this.preferences.clientId || callback !== (this.preferences.redirectUri ?? '')) await this.disconnect();
+      await this.save({ ...this.preferences, clientId: value, redirectUri: callback });
       this.emit({ message: value ? callback ? 'Configuration enregistrée. Déclarez exactement cette adresse HTTPS dans Spotify Developer et hébergez la page de retour.' : 'Client ID enregistré. Renseignez aussi votre page de retour HTTPS.' : 'Configuration Spotify retirée.' });
       return true;
     } catch (error) { this.failure(error); return false; }
@@ -104,9 +124,9 @@ export class SpotifyStore {
   async connect() {
     if (this.value.busy) return;
     if (!this.platform.canAuthenticate) { this.emit({ message: 'La connexion Spotify nécessite une version de développement installée, avec son URI de retour. L’importation de liens reste disponible.' }); return; }
-    const { clientId } = this.value.preferences;
+    const { clientId } = this.preferences;
     if (!validClientId(clientId)) { this.emit({ message: 'Renseignez d’abord le Client ID public de votre application Spotify.' }); return; }
-    const redirectUri = this.value.preferences.redirectUri;
+    const redirectUri = this.preferences.redirectUri;
     if (!validSpotifyRedirect(redirectUri)) { this.emit({ message: 'Configurez une page de retour HTTPS déclarée dans Spotify Developer avant la connexion.' }); return; }
     const generation = ++this.generation;
     this.stopPoll(); this.playbackRevision++;
@@ -132,7 +152,7 @@ export class SpotifyStore {
     this.emit({ status: 'disconnected', profile: null, library: [], nextOffset: null, playback: null, stale: true, controlBlocked: false, retryAt: 0, grantedScopes: [] });
     await this.auth.disconnect();
     // Preserve explicit references, but remove account metadata on disconnect.
-    await this.save({ ...this.value.preferences, playlists: this.value.preferences.playlists.map(p => playlistReference(p.id, p.savedAt)) });
+    await this.save({ ...this.preferences, playlists: this.preferences.playlists.map(p => playlistReference(p.id, p.savedAt)) });
   }
   disconnectSafely = async () => {
     if (this.value.busy) return;
@@ -149,15 +169,15 @@ export class SpotifyStore {
     try {
       let playlist = await resolvePlaylist(input, url => this.platform.resolveShortLink(url));
       if (generation !== this.generation) return false;
-      const existing = this.value.preferences.playlists.find(p => p.id === playlist.id);
+      const existing = this.preferences.playlists.find(p => p.id === playlist.id);
       playlist = existing ?? playlist;
-      await this.save({ ...this.value.preferences, selectedId: playlist.id,
-        playlists: [...this.value.preferences.playlists.filter(p => p.id !== playlist.id), playlist] });
+      await this.save({ ...this.preferences, selectedId: playlist.id,
+        playlists: [...this.preferences.playlists.filter(p => p.id !== playlist.id), playlist] });
       if (this.auth.connected) {
         try {
           const metadata = await this.api.playlist(playlist.id);
-          if (generation === this.generation) await this.save({ ...this.value.preferences,
-            playlists: this.value.preferences.playlists.map(p => p.id === metadata.id ? { ...metadata, savedAt: p.savedAt, source: p.source } : p) });
+          if (generation === this.generation) await this.save({ ...this.preferences,
+            playlists: this.preferences.playlists.map(p => p.id === metadata.id ? { ...metadata, savedAt: p.savedAt, source: p.source } : p) });
         } catch (error) { if (generation === this.generation) this.failure(error); }
       } else this.emit({ message: 'Référence enregistrée et sélectionnée. Ouvrez-la dans Spotify pour écouter ; les détails nécessitent une connexion autorisée.' });
       return true;
@@ -167,16 +187,16 @@ export class SpotifyStore {
   async select(playlist: PlaylistReference | null) {
     await this.initialize();
     try {
-      const playlists = playlist && !this.value.preferences.playlists.some(p => p.id === playlist.id)
-        ? [...this.value.preferences.playlists, playlist] : this.value.preferences.playlists;
-      await this.save({ ...this.value.preferences, playlists, selectedId: playlist?.id ?? null });
+      const playlists = playlist && !this.preferences.playlists.some(p => p.id === playlist.id)
+        ? [...this.preferences.playlists, playlist] : this.preferences.playlists;
+      await this.save({ ...this.preferences, playlists, selectedId: playlist?.id ?? null });
     } catch (error) { this.failure(error); }
   }
   async remove(id: string) {
-    try { await this.save({ ...this.value.preferences, selectedId: this.value.preferences.selectedId === id ? null : this.value.preferences.selectedId,
-      playlists: this.value.preferences.playlists.filter(p => p.id !== id) }); } catch (error) { this.failure(error); }
+    try { await this.save({ ...this.preferences, selectedId: this.preferences.selectedId === id ? null : this.preferences.selectedId,
+      playlists: this.preferences.playlists.filter(p => p.id !== id) }); } catch (error) { this.failure(error); }
   }
-  async setAutoPlay(autoPlay: boolean) { try { await this.save({ ...this.value.preferences, autoPlay }); } catch (error) { this.failure(error); } }
+  async setAutoPlay(autoPlay: boolean) { try { await this.save({ ...this.preferences, autoPlay }); } catch (error) { this.failure(error); } }
   async loadLibrary(more = false) {
     if (!this.auth.connected) { this.emit({ message: 'Connectez Spotify pour consulter vos playlists.' }); return; }
     const generation = this.generation;
@@ -246,6 +266,7 @@ export class SpotifyStore {
     finally { this.emit({ playerBusy: false }); }
   }
   async onRunStarted() {
+    await this.preferenceWrites;
     // No app switch, no await by the running engine, and no dependency on a successful music command.
     if (this.value.preferences.autoPlay && selectedPlaylist(this.value) && this.auth.connected) {
       try {
