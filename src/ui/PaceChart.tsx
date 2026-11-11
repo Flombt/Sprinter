@@ -5,9 +5,13 @@ import { effectiveTarget } from '../workouts/definition';
 import { activityAnalysis } from '../analysis/cache';
 import { atDistance } from '../analysis/distanceTime';
 import { SeriesChart, ChartBand } from '../analysis/SeriesChart';
-import type { RunAnalysis } from '../analysis/types';
+import type { RunAnalysis, SeriesPoint } from '../analysis/types';
 
-export function PaceChart({ run, analysis: supplied }: { run: RunRecord; analysis?: RunAnalysis }) {
+export function PaceChart({ run, analysis: supplied, onSelect }: {
+  run: RunRecord;
+  analysis?: RunAnalysis;
+  onSelect?: (sample: SeriesPoint) => void;
+}) {
   const analysis = supplied ?? activityAnalysis(run);
   let minimum = Infinity, maximum = -Infinity;
   for (const group of analysis.paceSeries) for (const p of group) { minimum = Math.min(minimum, p.value); maximum = Math.max(maximum, p.value); }
@@ -22,6 +26,7 @@ export function PaceChart({ run, analysis: supplied }: { run: RunRecord; analysi
     const from = timeAt(index * 1000); if (from === null) return [];
     return [{ from, to: timeAt(Math.min((index + 1) * 1000, run.target.distanceMeters!)) ?? run.activeSeconds, low: target.fast, high: target.slow }];
   }) : [{ from: 0, to: run.activeSeconds, low: run.target.fast, high: run.target.slow }];
-  return <View style={{ gap: 8 }}><SeriesChart series={analysis.paceSeries} seconds={run.activeSeconds} kind="pace" bands={bands} />
+  return <View style={{ gap: 8 }}>
+    <SeriesChart series={analysis.paceSeries} seconds={run.activeSeconds} kind="pace" bands={bands} onSelect={onSelect} />
     <Copy muted variant="small">Les zones vertes représentent les plages prévues pour chaque portion ciblée.</Copy></View>;
 }

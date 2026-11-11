@@ -92,6 +92,7 @@ export function Button({
 }
 export function IconButton({
   icon, label, onPress, quiet = false, disabled = false, feedback = 'light', square = false, paper = false,
+  onPressIn, onPressOut, onLongPress, delayLongPress,
 }: {
   icon: IconName;
   label: string;
@@ -101,6 +102,10 @@ export function IconButton({
   feedback?: HapticFeedback;
   square?: boolean;
   paper?: boolean;
+  onPressIn?: React.ComponentProps<typeof Pressable>['onPressIn'];
+  onPressOut?: React.ComponentProps<typeof Pressable>['onPressOut'];
+  onLongPress?: React.ComponentProps<typeof Pressable>['onLongPress'];
+  delayLongPress?: number;
 }) {
   const { colors } = useTheme();
   const press = () => {
@@ -108,7 +113,8 @@ export function IconButton({
     onPress();
   };
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}
-    disabled={disabled} onPress={press}
+    disabled={disabled} onPress={press} onPressIn={onPressIn} onPressOut={onPressOut}
+    onLongPress={onLongPress} delayLongPress={delayLongPress}
     style={({ pressed }) => [
       styles.iconButton,
       square && { borderRadius: radii.control, borderWidth: 1, borderColor: paper ? paperColors.line : colors.line },

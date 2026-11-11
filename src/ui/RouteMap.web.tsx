@@ -8,7 +8,9 @@ import { EMPTY_REFERENCE, recordedSegments, referenceSegments, type RouteMapProp
 import { useTheme } from './theme';
 import { radii, typography } from './tokens';
 
-export default function RouteMap({ points, reference = EMPTY_REFERENCE, current, height = 220, live = false }: RouteMapProps) {
+export default function RouteMap({
+  points, reference = EMPTY_REFERENCE, current, selected, height = 220, live = false,
+}: RouteMapProps) {
   const { colors } = useTheme();
   const [size, setSize] = useState({ width: 320, height: typeof height === 'number' ? height : 240 });
   const recorded = useMemo(() => recordedSegments(points), [points, points.length]);
@@ -42,6 +44,7 @@ export default function RouteMap({ points, reference = EMPTY_REFERENCE, current,
         {start && <Circle cx={x(start)} cy={y(start)} r={5} fill={colors.routeStart} />}
         {!live && end && end !== start && <Circle cx={x(end)} cy={y(end)} r={5} fill={colors.routeFinish} />}
         {current && <Circle cx={x(current)} cy={y(current)} r={7} fill="#2F82F5" stroke="#FFFFFF" strokeWidth={2} />}
+        {selected && <Circle cx={x(selected)} cy={y(selected)} r={7} fill={colors.accent} stroke={colors.text} />}
       </Svg>
       {!live && <Copy muted style={styles.caption}>Aperçu du tracé · carte Apple sur iPhone</Copy>}
     </> : <>

@@ -12,6 +12,7 @@ import PersonalRecords from '../screens/PersonalRecords';
 import Preparation from '../screens/Preparation';
 import Progression from '../screens/Progression';
 import Recovery from '../screens/Recovery';
+import RunSummary from '../screens/RunSummary';
 import type { SessionState } from '../services/session';
 import { EmptyState, Header, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
@@ -39,10 +40,17 @@ function RunDetailRoute({ runId, history, navigation, justFinished, onTools }: {
       />
     </Screen>;
   }
+  if (justFinished) {
+    return <RunSummary
+      run={run}
+      history={history}
+      onBack={navigation.goBack}
+      onDetail={() => navigation.push('Detail', { runId })}
+    />;
+  }
   return <Detail
     run={run}
     history={history}
-    justFinished={justFinished}
     onBack={navigation.goBack}
     onCompare={() => navigation.push('Comparison', { runId })}
     onRecords={() => navigation.push('Records')}
@@ -54,7 +62,7 @@ function RunDetailRoute({ runId, history, navigation, justFinished, onTools }: {
 
 export function RootStack({
   navigationRef, onReady, state, tab, onTabChange, target, onTargetChange, starting, covered,
-  onStart, onHome, onFinish, onConfirmFinish, onOpenSheet,
+  onStart, onFinish, onConfirmFinish, onOpenSheet,
 }: {
   navigationRef: NavigationContainerRefWithCurrent<RootRoutes>;
   onReady: () => void;
@@ -65,8 +73,7 @@ export function RootStack({
   onTargetChange: (target: PaceTarget) => void;
   starting: boolean;
   covered: boolean;
-  onStart: () => void;
-  onHome: () => void;
+  onStart: (target: PaceTarget) => void;
   onFinish: () => void;
   onConfirmFinish: () => void;
   onOpenSheet: (sheet: Sheet) => void;
@@ -102,7 +109,7 @@ export function RootStack({
           onTargetChange={onTargetChange}
           starting={starting}
           covered={covered}
-          onStart={onStart}
+          onStart={() => onStart(target)}
           onRecover={() => navigation.push('Recovery')}
           onPrepare={() => navigation.push('Preparation')}
           onHistory={() => navigation.push('History')}
@@ -118,7 +125,9 @@ export function RootStack({
           initialTarget={target}
           onTargetChange={onTargetChange}
           onBack={navigation.goBack}
-          onStarted={onHome}
+          onStart={onStart}
+          starting={starting}
+          covered={covered}
           onMusic={() => onOpenSheet('music')}
           onWorkouts={() => onOpenSheet('workouts')}
           onTools={() => onOpenSheet('tools')}
@@ -146,7 +155,7 @@ export function RootStack({
           state={state}
           onBack={navigation.goBack}
           onDetail={run => navigation.push('Detail', { runId: run.id })}
-          onStart={onStart}
+          onStart={() => onStart(target)}
           onRecords={() => navigation.push('Records')}
           onCompare={() => navigation.push('Comparison')}
           onProgression={() => navigation.push('Progression')}

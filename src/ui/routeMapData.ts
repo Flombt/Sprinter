@@ -7,6 +7,7 @@ export interface RouteMapProps {
   points: readonly TrackPoint[];
   reference?: RouteCoordinate[][];
   current?: RouteCoordinate;
+  selected?: RouteCoordinate;
   initialPosition?: RouteCoordinate;
   height?: number | 'fill';
   interactive?: boolean;

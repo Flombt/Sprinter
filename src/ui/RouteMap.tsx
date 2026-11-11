@@ -24,7 +24,7 @@ function PositionMarker({ position }: { position: NonNullable<RouteMapProps['cur
 }
 
 export default function RouteMap({
-  points, reference = EMPTY_REFERENCE, current, initialPosition, height = 220, interactive = false, live = false,
+  points, reference = EMPTY_REFERENCE, current, selected, initialPosition, height = 220, interactive = false, live = false,
   follow = false, satellite = false, command, onPan,
 }: RouteMapProps) {
   const { colors, reduceMotion } = useTheme();
@@ -85,6 +85,7 @@ export default function RouteMap({
       {groups.map((group, index) => group.length > 1 && <Polyline key={index} coordinates={group} strokeWidth={5} strokeColor={colors.accent} lineCap="round" lineJoin="round" />)}
       {(!live || recorded.length > 1) && route[0] && <Marker coordinate={route[0]} title="Départ" pinColor={colors.routeStart} />}
       {!live && route.length > 1 && <Marker coordinate={route.at(-1)!} title="Arrivée" pinColor={colors.routeFinish} />}
+      {selected && <Marker coordinate={selected} title="Mesure sélectionnée" pinColor={colors.accent} />}
       {current && <PositionMarker position={current} />}
     </MapView> : <>
       <MapPlaceholder />

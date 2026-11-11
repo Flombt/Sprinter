@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Linking, Platform, View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StackActions, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -10,14 +10,16 @@ import { AppSheets, type Sheet } from './src/navigation/AppSheets';
 import { RootStack } from './src/navigation/RootStack';
 import type { Tab } from './src/navigation/RunTabs';
 import type { RootRoutes } from './src/navigation/routes';
+import { useRunStart } from './src/navigation/useRunStart';
 import { session } from './src/services/session';
-import { startPreparedRun } from './src/services/runPreparation';
 import { ThemeProvider, useTheme } from './src/ui/theme';
-import { Button, Copy, IconButton, Label, Screen } from './src/ui/components';
-import { palettes, radii, spacing } from './src/ui/tokens';
+import { Button, Copy, Label, Screen } from './src/ui/components';
+import { palettes, spacing } from './src/ui/tokens';
 import { confirm } from './src/ui/confirm';
 import { haptic } from './src/ui/haptics';
 import { RunCountdown } from './src/ui/RunCountdown';
+import { Toast } from './src/ui/Toast';
+import { sessionMessageSeverity } from './src/ui/sessionMessageSeverity';
 import { music } from './src/spotify/device';
 import { workouts } from './src/workouts/store';
 import { progression } from './src/progression/store';
@@ -32,14 +34,10 @@ function KeepScreenAwake() {
 function AppContent() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const navigation = useNavigationContainerRef<RootRoutes>();
   const pendingHome = useRef(false);
-  const startInFlight = useRef(false);
   const [tab, setTab] = useState<Tab>('home');
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
-  const [countdown, setCountdown] = useState(false);
-  const [startingRun, setStartingRun] = useState(false);
   const [sheet, setSheet] = useState<Sheet | null>(null);
 
   useEffect(() => {
@@ -66,32 +64,8 @@ function AppContent() {
     return () => subscription.remove();
   }, [openHome]);
 
-  const start = () => {
-    const current = session.getSnapshot();
-    if (current.recoveryBlocked) {
-      navigation.navigate('Recovery');
-      return;
-    }
-    openHome();
-    if (!current.run && !current.busy && !startInFlight.current) setCountdown(true);
-  };
-
-  const beginRun = () => {
-    setCountdown(false);
-    if (startInFlight.current) return;
-    startInFlight.current = true;
-    setStartingRun(true);
-    void startPreparedRun(target).then(started => {
-      if (!started) return;
-      openHome();
-      void music.onRunStarted();
-    }).catch(() => {
-      session.reportMessage('Le départ a échoué. Réessayez depuis Courir.');
-    }).finally(() => {
-      startInFlight.current = false;
-      setStartingRun(false);
-    });
-  };
+  const openRecovery = useCallback(() => navigation.navigate('Recovery'), [navigation]);
+  const runStart = useRunStart(openHome, openRecovery);
 
   const finish = () => {
     void session.finish().then(run => {
@@ -107,7 +81,7 @@ function AppContent() {
     'Enregistrer',
     finish,
   );
-  const modalVisible = sheet !== null || countdown;
+  const modalVisible = sheet !== null || runStart.countdown;
   const foregroundOnlyRun = (state.running || state.autoPaused) && !state.backgroundActive;
 
   return <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -131,10 +105,9 @@ function AppContent() {
           onTabChange={setTab}
           target={target}
           onTargetChange={setTarget}
-          starting={countdown || startingRun}
+          starting={runStart.starting}
           covered={modalVisible}
-          onStart={start}
-          onHome={openHome}
+          onStart={runStart.request}
           onFinish={finish}
           onConfirmFinish={confirmFinish}
           onOpenSheet={setSheet}
@@ -165,17 +138,13 @@ function AppContent() {
         }}
         onTools={() => setSheet('tools')}
       />
-      {countdown && <RunCountdown onCancel={() => setCountdown(false)} onComplete={beginRun} />}
-      {state.message && <View accessibilityRole="alert" style={{
-        position: 'absolute', top: insets.top + spacing.sm, left: spacing.md, right: spacing.md,
-        borderRadius: radii.card, backgroundColor: colors.raised, borderWidth: 1, borderColor: colors.line,
-        paddingLeft: spacing.lg, paddingVertical: spacing.sm, paddingRight: spacing.xs, flexDirection: 'row',
-        gap: spacing.sm, alignItems: 'center', shadowColor: colors.shadow, shadowOpacity: .15,
-        shadowRadius: radii.control, elevation: 5,
-      }}>
-        <Copy variant="caption" style={{ flex: 1 }}>{state.message}</Copy>
-        <IconButton icon="close" label="Fermer le message" onPress={session.clearMessage} quiet />
-      </View>}
+      {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
+      <Toast
+        message={state.message}
+        severity={state.message ? sessionMessageSeverity(state.message) : 'info'}
+        covered={modalVisible}
+        onClose={session.clearMessage}
+      />
     </View>
   </View>;
 }
