@@ -10,7 +10,8 @@ import { dayLabel } from '../progression/dates';
 import { useProgression } from '../progression/hooks';
 import { progression } from '../progression/store';
 import { CAN_BACKGROUND } from '../services/capabilities';
-import { session, type SessionState } from '../services/session';
+import { session } from '../services/session';
+import type { SessionStructure } from '../services/useSessionSelector';
 import { MusicSelection } from '../spotify/components';
 import { RhythmTools, SelectedRoute, WeatherPanel, useTools } from '../tools/components';
 import { Button, Copy, Header, Label, ListRow, NumericReadout, Panel, Screen, styles } from '../ui/components';
@@ -63,7 +64,7 @@ function PaceControl({ label, value, onChange, onEdit }: {
 export default function Preparation({
   state, initialTarget, onTargetChange, onBack, onStart, starting, covered, onMusic, onWorkouts, onTools,
 }: {
-  state: SessionState;
+  state: SessionStructure;
   initialTarget: PaceTarget;
   onTargetChange: (target: PaceTarget) => void;
   onBack: () => void;
@@ -107,7 +108,7 @@ export default function Preparation({
     ? 'La date sélectionnée est indisponible ou déjà associée. Retirez ce choix de calendrier.'
     : selected ? validateWorkout(selected)[0] ?? null : validateTarget(target, state.settings.config.maximumSpeed);
   const estimate = estimatedDuration(target);
-  const preview = useMapPosition(focused && !covered && !state.run && !state.busy && !starting);
+  const preview = useMapPosition(focused && !covered && !state.runId && !state.busy && !starting);
   const gpsLabel = preview.status === 'locating' ? 'Localisation en cours'
     : preview.status === 'denied' ? 'Localisation à autoriser'
       : preview.status === 'unavailable' ? 'Position GPS indisponible'
@@ -145,7 +146,7 @@ export default function Preparation({
     >
       <Screen bottom={Math.max(spacing.xxl, footerHeight - insets.bottom + spacing.lg)}>
         <Header title="Prêt à partir" onBack={onBack} />
-        {!state.run && <View style={{ gap: spacing.sm }}>
+        {!state.runId && <View style={{ gap: spacing.sm }}>
           <Copy variant="caption" muted accessibilityLiveRegion="polite">{gpsLabel}</Copy>
           {!preview.position && <Button
             title="Actualiser la position"
@@ -174,13 +175,13 @@ export default function Preparation({
             onPress={() => setPane('shoes')}
           />}
           {progress.message && <Copy muted variant="caption">{progress.message}</Copy>}
-          <SelectedRoute onChoose={onTools} running={!!state.run} />
+          <SelectedRoute onChoose={onTools} running={!!state.runId} />
           <RhythmTools compact />
           <WeatherPanel route={referenceRoute} />
           <Toggle title="Signaux audio" body="Deux sons pour reconnaître l’écart."
             value={state.settings.audioEnabled} onChange={audioEnabled => void session.updateSettings({ audioEnabled })} />
           <Toggle title="Pause automatique aux arrêts" body="Le GPS reste actif pour détecter la reprise."
-            value={state.settings.autoPauseEnabled === true} disabled={!!state.run}
+            value={state.settings.autoPauseEnabled === true} disabled={!!state.runId}
             onChange={autoPauseEnabled => void session.updateSettings({ autoPauseEnabled })} />
           <Copy muted variant="caption">
             {CAN_BACKGROUND && state.settings.backgroundEnabled
@@ -203,10 +204,10 @@ export default function Preparation({
       >
         <Button
           title={state.busy ? 'Préparation du GPS…'
-            : starting ? 'Départ en cours…' : state.run ? 'Retrouver ma course' : 'Démarrer ma course'}
+            : starting ? 'Départ en cours…' : state.runId ? 'Retrouver ma course' : 'Démarrer ma course'}
           icon="arrow-forward"
           onPress={() => onStart(target)}
-          disabled={(!state.run && !!error) || state.busy || starting}
+          disabled={(!state.runId && !!error) || state.busy || starting}
         />
       </View>
     </View>
@@ -283,7 +284,7 @@ export default function Preparation({
       {pane === 'shoes' && <>
         <ChoiceGroup label="Chaussures de cette sortie" value={shoe?.id ?? ''}
           choices={ [['', 'Non attribuées'], ...shoes.map(item => [item.id, item.name] as const)] }
-          disabled={progress.busy || !!state.run} onChange={id => void progression.selectShoe(id || null)} />
+          disabled={progress.busy || !!state.runId} onChange={id => void progression.selectShoe(id || null)} />
         <Copy muted variant="caption">
           Choix mémorisé pour les prochains départs. Modifiez une ancienne attribution dans son journal.
         </Copy>

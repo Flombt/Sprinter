@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StackActions, useNavigationContainerRef } from '@react-navigation/native';
@@ -11,7 +11,9 @@ import { RootStack } from './src/navigation/RootStack';
 import type { Tab } from './src/navigation/RunTabs';
 import type { RootRoutes } from './src/navigation/routes';
 import { useRunStart } from './src/navigation/useRunStart';
-import { session } from './src/services/session';
+import { session, type SessionState } from './src/services/session';
+import { sameFields } from './src/services/snapshotSelection';
+import { useSessionSelector } from './src/services/useSessionSelector';
 import { ThemeProvider, useTheme } from './src/ui/theme';
 import { Button, Copy, Label, Screen } from './src/ui/components';
 import { palettes, spacing } from './src/ui/tokens';
@@ -31,8 +33,28 @@ function KeepScreenAwake() {
   return null;
 }
 
+const selectAppearance = (state: SessionState) => state.settings.appearance;
+const selectStartup = (state: SessionState) => ({ ready: state.ready, error: state.error });
+const selectMessage = (state: SessionState) => state.message;
+const selectKeepAwake = (state: SessionState) => (state.running || state.autoPaused) && !state.backgroundActive;
+
+function ForegroundAwake() {
+  const enabled = useSessionSelector(selectKeepAwake);
+  return enabled ? <KeepScreenAwake /> : null;
+}
+
+function SessionToast({ covered }: { covered: boolean }) {
+  const message = useSessionSelector(selectMessage);
+  return <Toast
+    message={message}
+    severity={message ? sessionMessageSeverity(message) : 'info'}
+    covered={covered}
+    onClose={session.clearMessage}
+  />;
+}
+
 function AppContent() {
-  const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
+  const startup = useSessionSelector(selectStartup, sameFields);
   const { colors } = useTheme();
   const navigation = useNavigationContainerRef<RootRoutes>();
   const pendingHome = useRef(false);
@@ -82,7 +104,6 @@ function AppContent() {
     finish,
   );
   const modalVisible = sheet !== null || runStart.countdown;
-  const foregroundOnlyRun = (state.running || state.autoPaused) && !state.backgroundActive;
 
   return <View style={{ flex: 1, backgroundColor: colors.background }}>
     <View style={{
@@ -90,17 +111,16 @@ function AppContent() {
       backgroundColor: colors.background,
     }}>
       <StatusBar style={colors.dark ? 'light' : 'dark'} />
-      {foregroundOnlyRun && <KeepScreenAwake />}
+      <ForegroundAwake />
       <View
         style={{ flex: 1 }}
         aria-hidden={modalVisible}
         accessibilityElementsHidden={modalVisible}
         importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
       >
-        {state.ready ? <RootStack
+        {startup.ready ? <RootStack
           navigationRef={navigation}
           onReady={() => { if (pendingHome.current) openHome(); }}
-          state={state}
           tab={tab}
           onTabChange={setTab}
           target={target}
@@ -115,8 +135,8 @@ function AppContent() {
           <View style={{ paddingTop: 100, alignItems: 'center', gap: spacing.xxl }}>
             <Label>SPRINTER</Label>
             <Copy variant="title">Le rythme juste.</Copy>
-            {state.error ? <>
-              <Copy style={{ color: colors.danger, textAlign: 'center' }}>{state.error}</Copy>
+            {startup.error ? <>
+              <Copy style={{ color: colors.danger, textAlign: 'center' }}>{startup.error}</Copy>
               <Button title="Réessayer" onPress={() => void session.initialize()} />
             </> : <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />}
           </View>
@@ -124,7 +144,6 @@ function AppContent() {
       </View>
       <AppSheets
         sheet={sheet}
-        state={state}
         onClose={() => setSheet(null)}
         onDetail={run => {
           setSheet(null);
@@ -139,24 +158,19 @@ function AppContent() {
         onTools={() => setSheet('tools')}
       />
       {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
-      <Toast
-        message={state.message}
-        severity={state.message ? sessionMessageSeverity(state.message) : 'info'}
-        covered={modalVisible}
-        onClose={session.clearMessage}
-      />
+      <SessionToast covered={modalVisible} />
     </View>
   </View>;
 }
 
 export default function App() {
-  const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
+  const appearance = useSessionSelector(selectAppearance);
   const [fontsLoaded, fontError] = useFonts({
     SprinterDisplay: require('./assets/fonts/BarlowCondensed-ExtraBold.ttf'),
     SprinterMetric: require('./assets/fonts/BarlowCondensed-SemiBold.ttf'),
   });
   return <SafeAreaProvider>
-    <ThemeProvider appearance={state.settings.appearance}>
+    <ThemeProvider appearance={appearance}>
       {fontsLoaded || fontError ? <AppContent /> : <View style={{
         flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palettes.dark.background,
       }}>

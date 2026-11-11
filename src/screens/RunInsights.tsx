@@ -17,7 +17,6 @@ export function RunInsights({ active, state, onMusic }: {
   const [expanded, setExpanded] = useState(false), tools = useTools(), run = state.run;
   if (!run) return null;
   const reference = tools.routes.find(route => route.id === run.routeId);
-  const last = run.points.at(-1)?.fix;
   return <View style={{ gap: 14 }}>
     <Pressable accessibilityRole="button" accessibilityLabel="Carte, allure et rythme" accessibilityState={{ expanded }} aria-expanded={expanded}
       onPress={() => setExpanded(!expanded)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.line }}>
@@ -33,7 +32,7 @@ export function RunInsights({ active, state, onMusic }: {
         foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
       />
       <Label>VOTRE PARCOURS</Label>
-      <RouteMap points={run.points} reference={reference?.segments} current={last && ['good', 'stationary'].includes(state.quality) && Date.now() - last.timestamp < 8000 ? last : undefined} height={190} />
+      <RouteMap points={run.points} reference={reference?.segments} current={state.mapFix} height={190} />
     </>}
   </View>;
 }

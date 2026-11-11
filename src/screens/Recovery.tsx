@@ -2,12 +2,13 @@ import { useTheme } from '../ui/theme';
 import { Button, Card, Copy, IconButton, Label, Screen } from '../ui/components';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { session, type SessionState } from '../services/session';
+import { session } from '../services/session';
+import type { SessionStructure } from '../services/useSessionSelector';
 import type { DraftArchiveInfo } from '../storage/repository';
 import { shareDocument } from '../services/documentShare';
 import { confirm } from '../ui/confirm';
 
-export default function Recovery({ state, onBack }: { state: SessionState; onBack: () => void }) {
+export default function Recovery({ state, onBack }: { state: SessionStructure; onBack: () => void }) {
   const { colors } = useTheme();
   const [archives, setArchives] = useState<DraftArchiveInfo[]>([]), [message, setMessage] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const load = useCallback(() => {

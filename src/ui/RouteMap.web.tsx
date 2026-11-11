@@ -1,19 +1,20 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { RouteCoordinate } from '../routes/types';
 import { Copy } from './components';
 import { MapPlaceholder } from './MapPlaceholder';
-import { EMPTY_REFERENCE, recordedSegments, referenceSegments, type RouteMapProps } from './routeMapData';
+import { EMPTY_REFERENCE, RecordedTrack, referenceSegments, type RouteMapProps } from './routeMapData';
 import { useTheme } from './theme';
 import { radii, typography } from './tokens';
 
-export default function RouteMap({
-  points, reference = EMPTY_REFERENCE, current, selected, height = 220, live = false,
-}: RouteMapProps) {
+const MapSurface = memo(function MapSurface({
+  points, reference = EMPTY_REFERENCE, current, selected, height = 220, live = false, pointCount,
+}: RouteMapProps & { pointCount: number }) {
   const { colors } = useTheme();
   const [size, setSize] = useState({ width: 320, height: typeof height === 'number' ? height : 240 });
-  const recorded = useMemo(() => recordedSegments(points), [points, points.length]);
+  const [track] = useState(() => new RecordedTrack());
+  const recorded = useMemo(() => track.update(points, pointCount), [track, points, pointCount]);
   const guides = useMemo(() => referenceSegments(reference), [reference]);
   const all = [...recorded.flat(), ...guides.flat(), ...(current ? [current] : [])];
   const { width, height: mapHeight } = size;
@@ -52,6 +53,10 @@ export default function RouteMap({
       {!live && <Copy muted style={styles.caption}>Aucun tracé GPS disponible.</Copy>}
     </>}
   </View>;
+});
+
+export default function RouteMap(props: RouteMapProps) {
+  return <MapSurface {...props} pointCount={props.points.length} />;
 }
 
 const styles = StyleSheet.create({

@@ -1,7 +1,7 @@
 import { contrastAccent, interaction, typography } from './tokens';
 import { RunnerGlyph } from './brand';
 import { Copy, Icon, type IconName } from './components';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -41,7 +41,7 @@ export function TabPane({ visible, children }: { visible: boolean; children: Rea
   </Animated.View>;
 }
 
-export function BottomTabs<T extends string>({ items, value, onChange, onHeightChange, hidden = false }: {
+function BottomTabsView<T extends string>({ items, value, onChange, onHeightChange, hidden = false }: {
   items: readonly TabItem<T>[]; value: T; onChange: (value: T) => void; onHeightChange: (height: number) => void;
   hidden?: boolean;
 }) {
@@ -118,3 +118,5 @@ export function BottomTabs<T extends string>({ items, value, onChange, onHeightC
     </View>
   </Animated.View>;
 }
+
+export const BottomTabs = memo(BottomTabsView) as typeof BottomTabsView;

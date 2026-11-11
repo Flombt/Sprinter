@@ -1,17 +1,19 @@
+import { memo } from 'react';
 import { Modal, View } from 'react-native';
 import type { RunRecord } from '../core/types';
 import Music from '../screens/Music';
 import RunningTools from '../screens/RunningTools';
 import Settings from '../screens/Settings';
 import Workouts from '../screens/Workouts';
-import type { SessionState } from '../services/session';
+import { useSessionStructure } from '../services/useSessionSelector';
 import { useTheme } from '../ui/theme';
 
 export type Sheet = 'music' | 'settings' | 'workouts' | 'tools';
 
-export function AppSheets({ sheet, state, onClose, onDetail, onRecovery, onApple, onPrepare, onTools }: {
+export const AppSheets = memo(function AppSheets({
+  sheet, onClose, onDetail, onRecovery, onApple, onPrepare, onTools,
+}: {
   sheet: Sheet | null;
-  state: SessionState;
   onClose: () => void;
   onDetail: (run: RunRecord) => void;
   onRecovery: () => void;
@@ -20,6 +22,7 @@ export function AppSheets({ sheet, state, onClose, onDetail, onRecovery, onApple
   onTools: () => void;
 }) {
   const { colors, reduceMotion } = useTheme();
+  const state = useSessionStructure();
   return <Modal
     visible={sheet !== null}
     animationType={reduceMotion ? 'none' : 'slide'}
@@ -43,4 +46,4 @@ export function AppSheets({ sheet, state, onClose, onDetail, onRecovery, onApple
       {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
     </View>
   </Modal>;
-}
+});

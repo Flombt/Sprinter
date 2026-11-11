@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Platform, useColorScheme, useWindowDimensions } from 'react-native';
 import { Appearance } from '../core/types';
 import { palettes, type ThemeColors } from './tokens';
@@ -18,8 +18,11 @@ export function ThemeProvider({ appearance, children }: { appearance: Appearance
     const transparency = Platform.OS === 'ios' ? AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency) : null;
     return () => { mounted = false; motion.remove(); transparency?.remove(); };
   }, []);
-  return <ThemeContext.Provider value={{ colors: (appearance === 'system' ? system === 'dark' : appearance === 'dark') ? palettes.dark : palettes.light,
-    reduceMotion, reduceTransparency }}>{children}</ThemeContext.Provider>;
+  const colors = (appearance === 'system' ? system === 'dark' : appearance === 'dark') ? palettes.dark : palettes.light;
+  const value = useMemo(() => ({ colors, reduceMotion, reduceTransparency }), [
+    colors, reduceMotion, reduceTransparency,
+  ]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 export const useTheme = () => useContext(ThemeContext);
 export function useAdaptiveLayout() {

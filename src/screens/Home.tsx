@@ -1,7 +1,7 @@
 import { contrastAccent, spacing, typography } from '../ui/tokens';
 import { Brand } from '../ui/brand';
 import { Button, Copy, Icon, IconButton, Label } from '../ui/components';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated, BackHandler, Easing, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions,
 } from 'react-native';
@@ -64,15 +64,14 @@ export default function Home({
   const points = run?.points ?? EMPTY_TRACK;
   const reference = run ? tools.routes.find(route => route.id === run.routeId) : setup.route;
   const lastFix = points.at(-1)?.fix;
-  const freshFix = lastFix && (state.quality === 'good' || state.quality === 'stationary') && Date.now() - lastFix.timestamp < 8000
-    ? lastFix : undefined;
   const preview = useMapPosition(active && !runId && !state.busy && !starting);
-  const position = run ? freshFix : preview.position;
+  const position = run ? state.mapFix : preview.position;
   const hasRoute = points.length > 0 || !!reference;
   const isWeb = Platform.OS === 'web';
   const [expanded, setExpanded] = useState(false);
   const [satellite, setSatellite] = useState(false);
   const [follow, setFollow] = useState(true);
+  const stopFollowing = useCallback(() => setFollow(false), []);
   const [command, setCommand] = useState<MapCommand>();
   const revision = useRef(0);
   const readoutOpacity = useRef(new Animated.Value(1)).current;
@@ -176,7 +175,7 @@ export default function Home({
     <View style={[styles.map, scroll && styles.scrollMap, { backgroundColor: colors.field }]}>
       <RouteMap points={points} reference={reference?.segments} current={position} initialPosition={preview.position}
         height="fill" live interactive={expanded} follow={active && follow} satellite={satellite}
-        command={command} onPan={() => setFollow(false)} />
+        command={command} onPan={stopFollowing} />
       {!expanded && <Pressable accessibilityRole="button" accessibilityLabel="Agrandir la carte du parcours"
         accessibilityHint="Ouvre les commandes de la carte sur cet écran" onPress={() => setExpanded(true)} style={StyleSheet.absoluteFill} />}
       <View pointerEvents="none" style={[styles.mapStatus, { backgroundColor: colors.surface, borderColor: colors.line }]}>

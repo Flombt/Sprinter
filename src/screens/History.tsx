@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import type { SessionState } from '../services/session';
+import type { SessionStructure } from '../services/useSessionSelector';
 import type { RunRecord } from '../core/types';
 import { duration, km } from '../core/format';
 import { aggregate } from '../progression/aggregates';
@@ -72,7 +72,7 @@ function HistoryEmpty({ hasRun, unreadable, onStart }: { hasRun: boolean; unread
   </Panel>;
 }
 
-export default function History({ state, onBack, onDetail, onStart, onRecords, onCompare, onProgression }: { state: SessionState; onBack?: () => void; onDetail: (run: RunRecord) => void; onStart: () => void; onRecords: () => void; onCompare: () => void; onProgression?: () => void }) {
+export default function History({ state, onBack, onDetail, onStart, onRecords, onCompare, onProgression }: { state: SessionStructure; onBack?: () => void; onDetail: (run: RunRecord) => void; onStart: () => void; onRecords: () => void; onCompare: () => void; onProgression?: () => void }) {
   const { colors } = useTheme(); const clock = useLocalNow(); const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sorted = useMemo(() => [...state.history].sort((a, b) => b.startedAt - a.startedAt), [state.history]);
   const stats = useMemo(() => { const now = Date.now(); return aggregate(state.history, -Infinity, now + 1, now); }, [state.history, clock]);
@@ -89,7 +89,7 @@ export default function History({ state, onBack, onDetail, onStart, onRecords, o
   }, [sorted, visibleCount]);
   const displayed = Math.min(visibleCount, sorted.length), remaining = Math.max(0, sorted.length - displayed);
   return <Screen><Header title="Vos sorties" subtitle="Historique & analyse" onBack={onBack} right={sorted.length > 0
-    ? <IconButton icon={state.run ? 'arrow-forward' : 'add'} label={state.run ? 'Retrouver ma course' : 'Préparer une nouvelle course'} onPress={onStart} /> : undefined} />
+    ? <IconButton icon={state.runId ? 'arrow-forward' : 'add'} label={state.runId ? 'Retrouver ma course' : 'Préparer une nouvelle course'} onPress={onStart} /> : undefined} />
     {state.unreadableCount > 0 && <Panel variant="list" style={{ gap: spacing.sm }}>
       <View style={[styles.row, { gap: spacing.sm }]}><Icon name="alert-circle-outline" size={20} color={colors.orange} />
         <Copy variant="emphasis" style={{ flex: 1 }}>{state.unreadableCount} {state.unreadableCount === 1 ? 'activité indisponible' : 'activités indisponibles'}</Copy></View>
@@ -99,7 +99,7 @@ export default function History({ state, onBack, onDetail, onStart, onRecords, o
       <View style={{ gap: spacing.md }}><SectionHeading title={recent.length === 1 ? 'Dernière sortie' : 'Dernières sorties'} />
         {recent.map(run => <RunRow key={run.id} run={run} onPress={() => onDetail(run)} detailed />)}
       </View>
-    </> : <HistoryEmpty hasRun={state.run !== null} unreadable={state.unreadableCount > 0} onStart={onStart} />}
+    </> : <HistoryEmpty hasRun={state.runId !== null} unreadable={state.unreadableCount > 0} onStart={onStart} />}
     <HistoryAnalysis count={sorted.length} onRecords={onRecords} onCompare={onCompare} onProgression={onProgression} />
     {months.length > 0 && <View style={{ gap: spacing.lg }}><SectionHeading title="Sorties précédentes" />
       {months.map(([key, group]) => <View key={key} style={{ gap: spacing.md }}><Label>{group.title}</Label>

@@ -1,7 +1,7 @@
 import { AppState } from 'react-native';
 import type * as Location from 'expo-location';
 import { RunEngine } from '../core/engine';
-import { DEFAULT_SETTINGS, PaceState, PaceTarget, RunRecord, Settings, SignalQuality } from '../core/types';
+import { DEFAULT_SETTINGS, PaceState, PaceTarget, RunRecord, Settings, SignalQuality, type GPSFix } from '../core/types';
 import { StorageRepository, parseRun } from '../storage/repository';
 import { healthDuplicate } from '../apple/mapping';
 import { openRepository } from '../storage/open';
@@ -16,6 +16,7 @@ import { sanitizeCoaching } from '../coaching/config';
 import { ProgressAnnouncements } from '../coaching/progress';
 import { progression } from '../progression/store';
 import { forgetActivityAnalysis } from '../analysis/cache';
+import { recentMapFix } from './sessionView';
 
 export interface SessionState {
   ready: boolean; loading: boolean; busy: boolean; error: string | null; message: string | null;
@@ -23,6 +24,7 @@ export interface SessionState {
   history: RunRecord[]; settings: Settings; restored: boolean; backgroundActive: boolean; unreadableCount: number;
   autoPaused: boolean; altitude: number | null;
   recoveryBlocked?: boolean;
+  readonly mapFix?: GPSFix;
 }
 const mono = () => performance.now() / 1000;
 const textError = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -49,9 +51,12 @@ export class RunningStore {
   getSnapshot = () => this.value;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private emit(patch: Partial<SessionState> = {}) {
+    const quality = this.engine?.quality ?? 'warmingUp';
+    const lastFix = this.engine?.record.points.at(-1)?.fix;
     this.value = { ...this.value, ...patch, run: this.engine ? { ...this.engine.record } : null,
       running: this.engine?.running ?? false, pace: this.engine?.currentPace ?? null,
-      paceState: this.engine?.state ?? 'acquiring', quality: this.engine?.quality ?? 'warmingUp',
+      paceState: this.engine?.state ?? 'acquiring', quality,
+      mapFix: lastFix ? recentMapFix(lastFix, quality, Date.now()) : undefined,
       autoPaused: this.engine?.autoPaused ?? false, altitude: this.engine?.altitude ?? null, recoveryBlocked: this.recoveryBlocked };
     // A failed optional observer cannot stop the GPS callback before its checkpoint.
     for (const listener of [...this.listeners]) {

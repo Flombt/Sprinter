@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState, type ComponentProps } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import type { PaceTarget } from '../core/types';
 import Home from '../screens/Home';
 import Music from '../screens/Music';
 import RunStats from '../screens/RunStats';
-import type { SessionState } from '../services/session';
+import { useLiveSession, type SessionStructure } from '../services/useSessionSelector';
 import { BottomBarInsetContext } from '../ui/layout';
 import { BottomTabs, TabPane, type TabItem } from '../ui/navigation';
 
@@ -15,11 +15,21 @@ const tabs: readonly TabItem<Tab>[] = [
   { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
 ];
 
+function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
+  const state = useLiveSession(props.active);
+  return <Home {...props} state={state} />;
+}
+
+function LiveStats(props: Omit<ComponentProps<typeof RunStats>, 'state'>) {
+  const state = useLiveSession(props.active);
+  return <RunStats {...props} state={state} />;
+}
+
 export function RunTabs({
   state, tab, onTabChange, target, onTargetChange, starting, covered, onStart, onRecover, onPrepare, onHistory,
   onSettings, onMusic, onFinish, onConfirmFinish,
 }: {
-  state: SessionState;
+  state: SessionStructure;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
   target: PaceTarget;
@@ -41,16 +51,15 @@ export function RunTabs({
   const active = focused && !covered;
   const running = state.running || state.autoPaused;
   const hideTabBar = tab === 'home' && running;
-  const changeTab = (next: Tab) => {
+  const changeTab = useCallback((next: Tab) => {
     if (next === 'music') setMusicVisited(true);
     onTabChange(next);
-  };
+  }, [onTabChange]);
 
   return <BottomBarInsetContext.Provider value={hideTabBar ? 0 : tabBarHeight}>
     <TabPane visible={tab === 'home'}>
-      <Home
+      <LiveHome
         active={active && tab === 'home'}
-        state={state}
         target={target}
         starting={starting}
         onStart={onStart}
@@ -65,9 +74,8 @@ export function RunTabs({
       />
     </TabPane>
     <TabPane visible={tab === 'stats'}>
-      <RunStats
+      <LiveStats
         active={active && tab === 'stats'}
-        state={state}
         target={target}
         onTargetChange={onTargetChange}
         onPrepare={onPrepare}

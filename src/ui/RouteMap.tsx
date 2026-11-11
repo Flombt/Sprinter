@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Copy } from './components';
 import { MapPlaceholder } from './MapPlaceholder';
-import { EMPTY_REFERENCE, recordedSegments, referenceSegments, type RouteMapProps } from './routeMapData';
+import { EMPTY_REFERENCE, RecordedTrack, referenceSegments, type RouteMapProps } from './routeMapData';
 import { useTheme } from './theme';
 import { radii } from './tokens';
 
@@ -23,10 +23,10 @@ function PositionMarker({ position }: { position: NonNullable<RouteMapProps['cur
   </Marker>;
 }
 
-export default function RouteMap({
+const MapSurface = memo(function MapSurface({
   points, reference = EMPTY_REFERENCE, current, selected, initialPosition, height = 220, interactive = false, live = false,
-  follow = false, satellite = false, command, onPan,
-}: RouteMapProps) {
+  follow = false, satellite = false, command, onPan, pointCount,
+}: RouteMapProps & { pointCount: number }) {
   const { colors, reduceMotion } = useTheme();
   const map = useRef<MapView>(null);
   const [ready, setReady] = useState(false);
@@ -34,7 +34,8 @@ export default function RouteMap({
   const followedPosition = useRef<RouteMapProps['current']>(undefined);
   const handledCommand = useRef(0);
   const lastFitBucket = useRef(-1);
-  const groups = useMemo(() => recordedSegments(points), [points, points.length]);
+  const [track] = useState(() => new RecordedTrack());
+  const groups = useMemo(() => track.update(points, pointCount), [track, points, pointCount]);
   const guides = useMemo(() => referenceSegments(reference), [reference]);
   const recorded = useMemo(() => groups.flat(), [groups]);
   const guidance = useMemo(() => guides.flat(), [guides]);
@@ -43,7 +44,7 @@ export default function RouteMap({
   const anchor = (live ? current : undefined) ?? route[0] ?? current ?? initialPosition;
   const latest = current ?? recorded.at(-1);
   const readyForCamera = ready && laidOut;
-  const fitBucket = live || interactive ? 0 : Math.floor(points.length / 10);
+  const fitBucket = live || interactive ? 0 : Math.floor(pointCount / 10);
 
   useEffect(() => {
     if (!readyForCamera || lastFitBucket.current === fitBucket) return;
@@ -61,7 +62,7 @@ export default function RouteMap({
     } else {
       const center = command.kind === 'route' ? route[0] : latest;
       if (!center) return;
-      map.current?.animateToRegion({ ...center, ...localRegion }, reduceMotion ? 0 : 260);
+      map.current?.animateToRegion({ ...center, ...localRegion }, reduceMotion ? 0 : 240);
     }
     handledCommand.current = command.revision;
     followedPosition.current = current;
@@ -71,7 +72,7 @@ export default function RouteMap({
     if (!readyForCamera || !follow || !current || followedPosition.current === current) return;
     followedPosition.current = current;
     // Updating the center preserves the zoom selected by the runner.
-    map.current?.animateCamera({ center: current }, { duration: reduceMotion ? 0 : 350 });
+    map.current?.animateCamera({ center: current }, { duration: reduceMotion ? 0 : 240 });
   }, [readyForCamera, follow, current, reduceMotion]);
 
   return <View accessibilityLabel={live ? undefined : 'Tracé GPS du parcours'} onLayout={event => setLaidOut(event.nativeEvent.layout.height > 0)}
@@ -92,6 +93,11 @@ export default function RouteMap({
       {!live && <Copy muted style={styles.caption}>Aucun tracé GPS disponible.</Copy>}
     </>}
   </View>;
+});
+
+export default function RouteMap(props: RouteMapProps) {
+  // The engine mutates the array in place, so capture the length as a separate render prop.
+  return <MapSurface {...props} pointCount={props.points.length} />;
 }
 
 const styles = StyleSheet.create({

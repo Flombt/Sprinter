@@ -1,7 +1,8 @@
 import { useState, useSyncExternalStore } from 'react';
 import { Platform, View } from 'react-native';
 import type { Appearance } from '../core/types';
-import { session, type SessionState } from '../services/session';
+import { session } from '../services/session';
+import type { SessionStructure } from '../services/useSessionSelector';
 import { CAN_BACKGROUND, IS_EXPO_GO } from '../services/capabilities';
 import { Button, Copy, Divider, Header, IconButton, Label, ListRow, Panel, Screen, SectionHeading } from '../ui/components';
 import { SegmentedControl, Toggle } from '../ui/controls';
@@ -35,7 +36,7 @@ function PrivacyPanel({ onApple }: { onApple?: () => void }) {
 }
 
 export default function Settings({ state, onApple, onTools, onRecovery, onClose }: {
-  state: SessionState;
+  state: SessionStructure;
   onApple?: () => void;
   onTools?: () => void;
   onRecovery?: () => void;
@@ -46,9 +47,9 @@ export default function Settings({ state, onApple, onTools, onRecovery, onClose 
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
   const coach = coachingSummary(state.settings.coaching);
   const audio = state.settings.audioEnabled, haptics = state.settings.hapticsEnabled;
-  const background = state.run ? state.backgroundActive : CAN_BACKGROUND && state.settings.backgroundEnabled;
-  const trackingLabel = state.run && !state.running && !state.autoPaused ? 'Course en pause'
-    : background ? state.run ? 'Suivi verrouillé démarré' : 'Suivi verrouillé configuré' : 'Premier plan uniquement';
+  const background = state.runId ? state.backgroundActive : CAN_BACKGROUND && state.settings.backgroundEnabled;
+  const trackingLabel = state.runId && !state.running && !state.autoPaused ? 'Course en pause'
+    : background ? state.runId ? 'Suivi verrouillé démarré' : 'Suivi verrouillé configuré' : 'Premier plan uniquement';
   const coachSummary = `${coach.label}${coach.customized ? ' personnalisé' : ''} · ${coach.enabled} type${coach.enabled > 1 ? 's' : ''} d’annonce`;
   const voiceMessage = library.message && <Copy accessibilityRole="alert" variant="caption" style={{ color: colors.danger }}>{library.message}</Copy>;
   const main = () => setPage('main');

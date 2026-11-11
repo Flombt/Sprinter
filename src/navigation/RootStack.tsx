@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   DarkTheme, DefaultTheme, NavigationContainer, type NavigationContainerRefWithCurrent,
 } from '@react-navigation/native';
@@ -13,7 +14,7 @@ import Preparation from '../screens/Preparation';
 import Progression from '../screens/Progression';
 import Recovery from '../screens/Recovery';
 import RunSummary from '../screens/RunSummary';
-import type { SessionState } from '../services/session';
+import { useSessionStructure } from '../services/useSessionSelector';
 import { EmptyState, Header, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import type { Sheet } from './AppSheets';
@@ -61,12 +62,11 @@ function RunDetailRoute({ runId, history, navigation, justFinished, onTools }: {
 }
 
 export function RootStack({
-  navigationRef, onReady, state, tab, onTabChange, target, onTargetChange, starting, covered,
+  navigationRef, onReady, tab, onTabChange, target, onTargetChange, starting, covered,
   onStart, onFinish, onConfirmFinish, onOpenSheet,
 }: {
   navigationRef: NavigationContainerRefWithCurrent<RootRoutes>;
   onReady: () => void;
-  state: SessionState;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
   target: PaceTarget;
@@ -79,8 +79,9 @@ export function RootStack({
   onOpenSheet: (sheet: Sheet) => void;
 }) {
   const { colors, reduceMotion } = useTheme();
+  const state = useSessionStructure();
   const base = colors.dark ? DarkTheme : DefaultTheme;
-  const theme = {
+  const theme = useMemo(() => ({
     ...base,
     colors: {
       background: colors.background,
@@ -90,7 +91,7 @@ export function RootStack({
       primary: colors.accent,
       notification: colors.danger,
     },
-  };
+  }), [base, colors]);
   return <NavigationContainer ref={navigationRef} onReady={onReady} theme={theme}>
     <Stack.Navigator initialRouteName="Tabs" screenOptions={{
       headerShown: false,
@@ -178,7 +179,7 @@ export function RootStack({
       <Stack.Screen name="Progression">
         {({ navigation }) => <Progression
           history={state.history}
-          canStart={!state.run}
+          canStart={!state.runId}
           onBack={navigation.goBack}
           onDetail={run => navigation.push('Detail', { runId: run.id })}
           onStart={() => navigation.push('Preparation')}
