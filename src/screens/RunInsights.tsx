@@ -6,8 +6,9 @@ import { RhythmTools, useTools } from '../tools/components';
 import RouteMap from '../ui/RouteMap';
 import { BodyText, useDesign, Kicker } from '../ui/design';
 import { Icon } from '../ui/components';
+import { MiniPlayer } from '../spotify/components';
 
-export function RunInsights({ state }: { state: SessionState }) {
+export function RunInsights({ state, onMusic }: { state: SessionState; onMusic: () => void }) {
   const design = useDesign();
   const [expanded, setExpanded] = useState(false), tools = useTools(), run = state.run;
   if (!run) return null;
@@ -22,6 +23,10 @@ export function RunInsights({ state }: { state: SessionState }) {
       <PacingProgressPanel run={run} running={state.running} quality={state.quality} />
       <PaceHistory run={run} live />
       <RhythmTools compact />
+      <MiniPlayer
+        onExpand={onMusic}
+        foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
+      />
       <Kicker>VOTRE PARCOURS</Kicker>
       <RouteMap points={run.points} reference={reference?.segments} current={last && ['good', 'stationary'].includes(state.quality) && Date.now() - last.timestamp < 8000 ? last : undefined} height={190} />
     </>}

@@ -109,7 +109,7 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
         : 'Centrez la carte sur votre position.';
   const mapEmpty = !hasRoute && !position;
   const actionTitle = state.busy || starting ? 'Préparation GPS…' : state.recoveryBlocked ? 'Récupérer la course'
-    : run ? state.running || state.autoPaused ? 'Mettre en pause' : 'Reprendre'
+    : run ? state.autoPaused ? 'Pause manuelle' : state.running ? 'Mettre en pause' : 'Reprendre'
       : setup.error ? 'Vérifier les options' : 'Démarrer une course';
   const heroHeight = Math.max(108, 84 * Math.min(fontScale, 1.6) + 24);
   const compactHeight = expansion.interpolate({ inputRange: [0, 1], outputRange: [heroHeight, 0] });
@@ -168,6 +168,20 @@ export default function Home({ state, target, starting, onStart, onPrepare, onRe
     </View>
 
     <View style={[styles.controls, { borderTopColor: design.line }]}>
+      {state.autoPaused && <View style={styles.autoPause}>
+        <BodyText accessibilityRole="header" style={styles.autoPauseTitle}>Pause automatique</BodyText>
+        <BodyText>
+          Le temps actif est suspendu. Le GPS attend un mouvement confirmé pour reprendre automatiquement.
+          {' '}« Pause manuelle » arrête cette détection.
+        </BodyText>
+        <ActionButton
+          title="Reprendre maintenant"
+          icon="play"
+          secondary
+          disabled={state.busy}
+          onPress={() => void session.resume()}
+        />
+      </View>}
       {state.recoveryBlocked && <BodyText accessibilityRole="alert" style={[styles.note, { color: design.danger }]}>Une sauvegarde interrompue doit être récupérée avant le départ.</BodyText>}
       {!run && !state.recoveryBlocked && setup.error && <BodyText accessibilityRole="alert" style={[styles.note, { color: design.danger }]}>{setup.error}</BodyText>}
       <View style={styles.context}>
@@ -214,6 +228,8 @@ const styles = StyleSheet.create({
   routeLegend: { position: 'absolute', bottom: 20, right: 12, maxWidth: '60%', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   legendStroke: { width: 14, height: 3, borderRadius: 2 },
   controls: { paddingHorizontal: 16, paddingBottom: 7, borderTopWidth: StyleSheet.hairlineWidth },
+  autoPause: { paddingVertical: 12, gap: 8 },
+  autoPauseTitle: { fontWeight: '700' },
   context: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   contextLink: { minHeight: 44, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
   contextText: { flexShrink: 1, fontSize: 12, fontWeight: '500' },

@@ -109,7 +109,15 @@ function AppContent() {
   else if (page.name === 'recovery') content = <Recovery state={state} onBack={tabs} />;
   else if (page.name === 'history') content = <History state={state} onBack={tabs} onDetail={detail} onStart={start} onRecords={() => setPage({ name: 'records' })} onCompare={() => setPage({ name: 'compare' })} onProgression={progress} />;
   else if (tab === 'music') content = <Music foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive} />;
-  else if (tab === 'stats') content = <RunStats state={state} target={target} onTargetChange={setTarget} onPrepare={() => setPage({ name: 'prepare' })} onSettings={() => setSettingsVisible(true)} onFinish={finish} />;
+  else if (tab === 'stats') content = <RunStats
+    state={state}
+    target={target}
+    onTargetChange={setTarget}
+    onPrepare={() => setPage({ name: 'prepare' })}
+    onSettings={() => setSettingsVisible(true)}
+    onMusic={() => setMusicVisible(true)}
+    onFinish={finish}
+  />;
   else content = <Home state={state} target={target} starting={countdown || startingRun} onStart={start} onRecovery={() => setPage({ name: 'recovery' })} onPrepare={() => setPage({ name: 'prepare' })} onHistory={history} onStats={() => setTab('stats')} onMusic={() => setTab('music')} onSettings={() => setSettingsVisible(true)} onFinish={finish} />;
   return <View style={{ flex: 1, backgroundColor: colors.background }}><View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 480 : undefined, alignSelf: 'center', backgroundColor: design.background }}><StatusBar style={colors.dark ? 'light' : 'dark'} />
     <AppBackground />
