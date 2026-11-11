@@ -1,0 +1,16 @@
+const assert = require('node:assert/strict');
+const config = require('../app.json').expo;
+const configure = require('../app.config');
+const before = JSON.stringify(config);
+process.env.SPRINTER_SIDELOAD = '';
+assert.equal(configure({ config }), config, 'Normal build configuration must remain intact');
+process.env.SPRINTER_SIDELOAD = '1';
+const variant = configure({ config });
+assert.equal(JSON.stringify(config), before, 'Variant must not mutate the original configuration');
+assert.equal(variant.extra.sprinterSideload, true);
+const plugins = variant.plugins.map(plugin => Array.isArray(plugin) ? plugin[0] : plugin);
+assert(!plugins.includes('expo-widgets'));
+assert(!plugins.includes('./plugins/with-sprinter-apple'));
+assert(plugins.includes('./plugins/with-sprinter-sideload'));
+assert.equal(variant.ios.bundleIdentifier, config.ios.bundleIdentifier);
+console.log('Normal build preserved; sideload variant configured without HealthKit/widgets.');
