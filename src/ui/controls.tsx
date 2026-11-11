@@ -54,7 +54,7 @@ export function ChoiceGroup<T extends string | number>({ value, choices, onChang
     ...(segmented ? { borderRadius: radii.control + spacing.xs, backgroundColor: colors.raised, padding: spacing.xs } : {}) }}>
     {choices.map(([key, title]) => {
       const selected = key === value;
-      return <Pressable key={key} accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{ checked: selected, disabled }}
+      return <Pressable key={key} accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{ checked: selected, disabled }} aria-checked={selected}
         disabled={disabled} onPress={() => onChange(key)} style={({ pressed }) => ({
           minHeight: layout.touch, minWidth: layout.touch, borderRadius: radii.control, borderWidth: 1,
           paddingHorizontal: spacing.md, paddingVertical: spacing.sm, justifyContent: 'center',

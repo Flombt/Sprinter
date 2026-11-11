@@ -1,51 +1,49 @@
-import { useEffect, useRef, type ComponentRef } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { Copy, Icon, type IconName } from './components';
-import { useAdaptiveLayout, useTheme } from './theme';
-import { interaction, layout, radii, spacing } from './tokens';
+import { Icon, type IconName } from './components';
+import { BodyText, useDesign, RunnerGlyph } from './design';
+import { useTheme } from './theme';
 
 export interface TabItem<T extends string> { key: T; title: string; icon: IconName; selectedIcon?: IconName }
-/** Presentation only: the existing page/tab state remains in App. */
+
 export function BottomTabs<T extends string>({ items, value, onChange, onHeightChange }: {
   items: readonly TabItem<T>[]; value: T; onChange: (value: T) => void; onHeightChange: (height: number) => void;
 }) {
-  const { colors, reduceMotion, reduceTransparency } = useTheme(), { largeText, fontScale } = useAdaptiveLayout();
-  const insets = useSafeAreaInsets();
-  const scroll = useRef<ComponentRef<typeof ScrollView>>(null), positions = useRef(new Map<T, number>());
+  const design = useDesign();
+  const insets = useSafeAreaInsets(), { colors, reduceMotion, reduceTransparency } = useTheme();
+  const [width, setWidth] = useState(0), x = useRef(new Animated.Value(0)).current, positioned = useRef(false);
+  const index = Math.max(0, items.findIndex(item => item.key === value)), itemWidth = width / items.length;
   useEffect(() => {
-    const x = positions.current.get(value);
-    if (largeText && x !== undefined) scroll.current?.scrollTo({ x: Math.max(0, x - spacing.sm), animated: !reduceMotion });
-  }, [value, largeText, fontScale, reduceMotion]);
-  const tabs = items.map(item => {
-    const selected = value === item.key;
-    return <Pressable key={item.key} accessibilityRole="tab" accessibilityLabel={item.title}
-      accessibilityState={{ selected }} onPress={() => onChange(item.key)} onLayout={event => {
-        const x = event.nativeEvent.layout.x; positions.current.set(item.key, x);
-        if (largeText && selected) scroll.current?.scrollTo({ x: Math.max(0, x - spacing.sm), animated: false });
-      }}
-      style={({ pressed }) => ({ minHeight: layout.touch, ...(largeText ? { minWidth: 88 * fontScale, paddingHorizontal: spacing.md } : { flex: 1, minWidth: 0 }),
-        paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
-        borderRadius: radii.control, opacity: pressed ? interaction.pressedOpacity : 1 })}>
-      <View style={{ borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: 2, backgroundColor: selected ? colors.accentSoft : 'transparent' }}>
-        <Icon name={selected ? item.selectedIcon ?? item.icon : item.icon} size={layout.tabIcon} color={selected ? colors.accentText : colors.secondary} />
+    if (!width) return;
+    if (!positioned.current || reduceMotion) { x.setValue(index * itemWidth); positioned.current = true; return; }
+    const animation = Animated.spring(x, { toValue: index * itemWidth, useNativeDriver: Platform.OS !== 'web', damping: 24, stiffness: 240, mass: .8 });
+    animation.start(); return () => animation.stop();
+  }, [index, itemWidth, reduceMotion, width, x]);
+  return <View accessibilityRole="tablist" accessibilityLabel="Navigation principale" onLayout={event => onHeightChange(event.nativeEvent.layout.height)}
+    style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(12, insets.bottom) }}>
+    <View style={{ borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: design.line, backgroundColor: colors.glass }}>
+      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+        {!reduceTransparency && (Platform.OS === 'ios' && isLiquidGlassAvailable()
+          ? <GlassView colorScheme={colors.dark ? 'dark' : 'light'} glassEffectStyle="regular" style={StyleSheet.absoluteFill} />
+          : Platform.OS !== 'android' && <BlurView tint={colors.dark ? 'dark' : 'light'} intensity={70} style={StyleSheet.absoluteFill} />)}
       </View>
-      <Copy variant="tab" style={{ textAlign: 'center', color: selected ? colors.accentText : colors.secondary }}>{item.title}</Copy>
-    </Pressable>;
-  });
-  const content = largeText
-    ? <ScrollView ref={scroll} horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexDirection: 'row', alignItems: 'center' }}>{tabs}</ScrollView>
-    : <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>{tabs}</View>;
-  const surface = { width: '100%' as const, maxWidth: layout.contentWidth, alignSelf: 'center' as const,
-    borderRadius: radii.card, overflow: 'hidden' as const, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line };
-  return <View accessible={false} accessibilityRole="tablist" accessibilityLabel="Navigation principale" onLayout={event => onHeightChange(event.nativeEvent.layout.height)} style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: Math.max(spacing.md, insets.left, insets.right), paddingTop: spacing.sm, paddingBottom: Math.max(spacing.sm, insets.bottom) }}>
-    {reduceTransparency || Platform.OS !== 'ios'
-      ? <View style={[surface, { backgroundColor: colors.surface }]}>{content}</View>
-      : isLiquidGlassAvailable()
-        ? <GlassView glassEffectStyle="regular" colorScheme={colors.dark ? 'dark' : 'light'} style={surface}>{content}</GlassView>
-        : <BlurView intensity={75} tint={colors.dark ? 'dark' : 'light'} style={[surface, { backgroundColor: colors.glass }]}>{content}</BlurView>}
+      <View onLayout={event => setWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row' }}>
+        {width > 0 && <Animated.View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: itemWidth, alignItems: 'center', transform: [{ translateX: x }] }}>
+          <View style={{ width: 25, height: 3, borderBottomLeftRadius: 2, borderBottomRightRadius: 2, backgroundColor: design.accent }} />
+        </Animated.View>}
+        {items.map(item => {
+          const selected = value === item.key, color = selected ? design.accent : design.secondary;
+          return <Pressable key={item.key} accessibilityRole="tab" accessibilityLabel={item.title} accessibilityState={{ selected }} aria-selected={selected}
+            onPress={() => onChange(item.key)} style={({ pressed }) => ({ flex: 1, minWidth: 0, minHeight: 64, paddingVertical: 11, paddingHorizontal: 4,
+              alignItems: 'center', justifyContent: 'center', gap: 4, opacity: pressed ? .6 : 1 })}>
+            {item.key === 'home' ? <RunnerGlyph size={23} color={color} /> : <Icon name={item.icon} size={21} color={color} />}
+            <BodyText style={{ fontSize: 10, lineHeight: 14, fontWeight: selected ? '600' : '400', color: selected ? design.text : design.secondary }}>{item.title}</BodyText>
+          </Pressable>;
+        })}
+      </View>
+    </View>
   </View>;
 }

@@ -11,17 +11,26 @@ ROOT.mkdir(exist_ok=True)
 def png(path, size, splash=False):
     def chunk(kind, content):
         return struct.pack('>I', len(content)) + kind + content + struct.pack('>I', zlib.crc32(kind + content) & 0xffffffff)
+    # The same three forward strokes as the interface's SpeedMark.
+    # Render a code-native mark; no source photograph or third-party artwork.
+    polygons = [[(2, 25), (14, 3), (20, 3), (8, 25)],
+                [(12, 25), (24, 3), (30, 3), (18, 25)],
+                [(22, 25), (34, 3), (36, 3), (24, 25)]]
+    scale = size * .70 / 36
+    offset_x, offset_y = size * .15, size * .5 - 14 * scale
+    def inside(px, py, polygon):
+        positive = negative = False
+        for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+            cross = (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0])
+            positive |= cross > 0; negative |= cross < 0
+        return not (positive and negative)
     rows = []
     for y in range(size):
         row = bytearray([0])
         for x in range(size):
-            u, v = (x / size - .5), (y / size - .5)
-            # Three speed strokes and an oval running track, in the app's lime accent.
-            angle = math.atan2(v / .30, u / .30)
-            radius = math.sqrt((u / .30) ** 2 + (v / .30) ** 2)
-            ring = abs(radius - 1) < .075 and not (-.7 < angle < .25)
-            strokes = any(abs(v - (k * .115 - .115)) < .026 and -.18 < u - v * .55 < .20 for k in range(3))
-            color = (209, 241, 125) if ring or strokes else (16, 18, 16)
+            coverage = sum(any(inside((x + dx - offset_x) / scale, (y + dy - offset_y) / scale, p) for p in polygons)
+                           for dx, dy in ((.25, .25), (.75, .25), (.25, .75), (.75, .75))) / 4
+            color = tuple(round(base + (accent - base) * coverage) for base, accent in zip((16, 16, 17), (255, 92, 53)))
             row.extend(color)
         rows.append(bytes(row))
     data = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0))

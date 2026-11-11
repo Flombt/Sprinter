@@ -72,7 +72,7 @@ function HistoryEmpty({ hasRun, unreadable, onStart }: { hasRun: boolean; unread
   </Panel>;
 }
 
-export default function History({ state, onDetail, onStart, onRecords, onCompare, onProgression }: { state: SessionState; onDetail: (run: RunRecord) => void; onStart: () => void; onRecords: () => void; onCompare: () => void; onProgression?: () => void }) {
+export default function History({ state, onBack, onDetail, onStart, onRecords, onCompare, onProgression }: { state: SessionState; onBack?: () => void; onDetail: (run: RunRecord) => void; onStart: () => void; onRecords: () => void; onCompare: () => void; onProgression?: () => void }) {
   const { colors } = useTheme(); const clock = useLocalNow(); const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sorted = useMemo(() => [...state.history].sort((a, b) => b.startedAt - a.startedAt), [state.history]);
   const stats = useMemo(() => { const now = Date.now(); return aggregate(state.history, -Infinity, now + 1, now); }, [state.history, clock]);
@@ -88,7 +88,7 @@ export default function History({ state, onDetail, onStart, onRecords, onCompare
     return [...groups.entries()];
   }, [sorted, visibleCount]);
   const displayed = Math.min(visibleCount, sorted.length), remaining = Math.max(0, sorted.length - displayed);
-  return <Screen><Header title="Vos sorties" subtitle="Historique & analyse" right={sorted.length > 0
+  return <Screen><Header title="Vos sorties" subtitle="Historique & analyse" onBack={onBack} right={sorted.length > 0
     ? <IconButton icon={state.run ? 'arrow-forward' : 'add'} label={state.run ? 'Retrouver ma course' : 'Préparer une nouvelle course'} onPress={onStart} /> : undefined} />
     {state.unreadableCount > 0 && <Panel variant="list" style={{ gap: spacing.sm }}>
       <View style={[styles.row, { gap: spacing.sm }]}><Icon name="alert-circle-outline" size={20} color={colors.orange} />

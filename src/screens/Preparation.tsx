@@ -13,7 +13,8 @@ import { interaction, radii, spacing } from '../ui/tokens';
 import { MusicSelection } from '../spotify/components';
 import { music } from '../spotify/device';
 import { workouts } from '../workouts/store';
-import { effectiveTarget, expandWorkout, validateWorkout } from '../workouts/definition';
+import { validateWorkout } from '../workouts/definition';
+import { startPreparedRun } from '../services/runPreparation';
 import { WorkoutSummary } from './Workouts';
 import { PacingGoalEditor } from '../pacing/GoalEditor';
 import { useProgression } from '../progression/hooks';
@@ -36,10 +37,13 @@ function PaceControl({ label, value, onChange, onEdit }: { label: string; value:
     <Copy muted variant="caption" style={{ textAlign: 'center' }}>min/km · touchez l’allure pour affiner</Copy>
   </View>;
 }
-export default function Preparation({ state, onBack, onStarted, onMusic, onWorkouts, onTools }: { state: SessionState; onBack: () => void; onStarted: () => void; onMusic: () => void; onWorkouts: () => void; onTools: () => void }) {
+export default function Preparation({ state, initialTarget, onTargetChange, onBack, onStarted, onMusic, onWorkouts, onTools }: { state: SessionState; initialTarget?: PaceTarget; onTargetChange?: (target: PaceTarget) => void; onBack: () => void; onStarted: () => void; onMusic: () => void; onWorkouts: () => void; onTools: () => void }) {
   const { colors, reduceMotion } = useTheme(); const insets = useSafeAreaInsets();
   const [footerHeight, setFooterHeight] = useState(115);
-  const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_TARGET }); const [custom, setCustom] = useState(false); const [distance, setDistance] = useState('');
+  const [target, setLocalTarget] = useState<PaceTarget>({ ...(initialTarget ?? DEFAULT_TARGET) });
+  const setTarget = (value: PaceTarget) => { setLocalTarget(value); onTargetChange?.(value); };
+  const standard = [null, 5000, 10000, 21097.5].includes(target.distanceMeters);
+  const [custom, setCustom] = useState(!standard); const [distance, setDistance] = useState(target.distanceMeters ? String(target.distanceMeters / 1000) : '');
   const [editing, setEditing] = useState<'fast' | 'slow' | null>(null); const [editValue, setEditValue] = useState(310);
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
   const tools = useTools(), referenceRoute = tools.routes.find(r => r.id === tools.preferences.selectedRouteId);
@@ -51,8 +55,7 @@ export default function Preparation({ state, onBack, onStarted, onMusic, onWorko
   const error = entryId && !plannedEntry ? 'La date sélectionnée est indisponible ou déjà associée. Retirez ce choix de calendrier pour démarrer librement.' : selected ? validateWorkout(selected)[0] ?? null : validateTarget(target, state.settings.config.maximumSpeed), estimate = estimatedDuration(target);
   const open = (key: 'fast' | 'slow') => { setEditValue(target[key]); setEditing(key); };
   const start = async () => {
-    const firstTarget = selected ? expandWorkout(selected).map(effectiveTarget).find(t => t !== null) : null;
-    if (await session.start(selected ? { ...(firstTarget ?? DEFAULT_TARGET), distanceMeters: null } : target, selected, { plannedEntryId: plannedEntry?.id, shoeId: shoe?.id, routeId: referenceRoute?.id, routeName: referenceRoute?.name })) { onStarted(); void music.onRunStarted(); }
+    if (await startPreparedRun(target)) { onStarted(); void music.onRunStarted(); }
   };
   return <View style={{ flex: 1, backgroundColor: colors.background }}><Screen bottom={Math.max(spacing.xxl, footerHeight - insets.bottom + spacing.lg)}>
     <Header title="Votre prochaine sortie" onBack={onBack} />
