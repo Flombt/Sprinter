@@ -28,7 +28,7 @@
       "package": "app.sprinter.running",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#101210"
+        "backgroundColor": "#101011"
       }
     },
     "plugins": [
@@ -37,7 +37,9 @@
         {
           "locationWhenInUsePermission": "Sprinter utilise votre position précise pour enregistrer vos courses et mesurer votre allure.",
           "locationAlwaysAndWhenInUsePermission": "Pendant une course démarrée par vous, Sprinter enregistre le trajet même écran verrouillé. Le suivi s’arrête en pause manuelle et en fin de course. En pause automatique, la position permet de détecter la reprise.",
-          "isIosBackgroundLocationEnabled": true
+          "isIosBackgroundLocationEnabled": true,
+          "locationAlwaysPermission": "Sprinter utilise votre position pendant les courses que vous démarrez, y compris écran verrouillé si vous activez ce suivi.",
+          "locationFullAccuracyPermission": "La position précise permet à Sprinter de mesurer votre allure et la distance de votre course."
         }
       ],
       [
@@ -51,18 +53,32 @@
       "expo-font",
       "expo-asset",
       "expo-web-browser",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
           "imageWidth": 160,
-          "backgroundColor": "#101210"
+          "backgroundColor": "#101011"
         }
       ],
       "expo-sharing",
       "./plugins/with-sprinter-apple",
-      ["expo-widgets", { "bundleIdentifier": "app.sprinter.running.ExpoWidgetsTarget", "groupIdentifier": "group.app.sprinter.running", "enablePushNotifications": false, "frequentUpdates": false }]
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "app.sprinter.running.ExpoWidgetsTarget",
+          "groupIdentifier": "group.app.sprinter.running",
+          "enablePushNotifications": false,
+          "frequentUpdates": false
+        }
+      ],
+      "expo-status-bar"
     ]
   }
 }

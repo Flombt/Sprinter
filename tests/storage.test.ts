@@ -17,6 +17,39 @@ function database(): SqlDatabase {
 const record = () => new RunEngine(DEFAULT_TARGET, DEFAULT_CONFIG, 0, 1800000000000, 'storage-test').record;
 afterEach(() => { handles.splice(0).forEach(db => db.close()); });
 describe('SQLite persistence using actual SQL', () => {
+  it('archives raw corrupt drafts and their journal before unblocking a new run', async () => {
+    const db = database(), repo = new RunRepository(db); await repo.initialize();
+    await db.runAsync('INSERT INTO draft VALUES (1, ?, ?, ?)', 'corrupt', 4, '{invalid original checkpoint');
+    await db.runAsync('INSERT INTO draft_points VALUES (?, ?, ?)', 'corrupt', 0, '{invalid original point');
+    await expect(repo.loadDraft()).rejects.toThrow();
+    const id = await repo.archiveDraft();
+    expect(id).toBeTruthy(); expect(await repo.loadDraft()).toBeNull();
+    const archive = await repo.loadDraftArchive(id!); const backup = JSON.parse(archive!.payload);
+    expect(backup.draft.payload).toBe('{invalid original checkpoint');
+    expect(backup.points[0].payload).toBe('{invalid original point');
+    const reopened = new RunRepository(db); await reopened.initialize();
+    expect(await reopened.listDraftArchives()).toHaveLength(1); expect(await reopened.history()).toEqual([]);
+    await reopened.saveDraft({ version: 1, revision: 1, savedAt: Date.now(), run: record() });
+    expect((await reopened.loadDraft())?.run.id).toBe('storage-test');
+  });
+  it('retains the original draft when archiving cannot complete atomically', async () => {
+    const db = database(), repo = new RunRepository(db); await repo.initialize();
+    await db.runAsync('INSERT INTO draft VALUES (1, ?, ?, ?)', 'corrupt', 1, '{original');
+    const write = db.runAsync;
+    db.runAsync = async (sql, ...params) => { if (sql === 'DELETE FROM draft WHERE slot = 1') throw new Error('Disk full'); return write(sql, ...params); };
+    await expect(repo.archiveDraft()).rejects.toThrow('Disk full');
+    expect(await repo.listDraftArchives()).toEqual([]);
+    expect((await db.getFirstAsync<{ payload: string }>('SELECT payload FROM draft'))?.payload).toBe('{original');
+  });
+  it('adds recovery archives to version 2 without losing an existing checkpoint', async () => {
+    const db = database(), repo = new RunRepository(db); await repo.initialize();
+    await repo.saveDraft({ version: 1, revision: 1, savedAt: Date.now(), run: record() });
+    await db.execAsync('DROP TABLE draft_archives; PRAGMA user_version = 2;');
+    const migrated = new RunRepository(db); await migrated.initialize();
+    expect((await migrated.loadDraft())?.run.id).toBe('storage-test');
+    expect(await migrated.listDraftArchives()).toEqual([]);
+    expect((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version).toBe(3);
+  });
   it('persists settings and restores a checkpoint in a new repository instance', async () => {
     const db = database(); const repo = new RunRepository(db); await repo.initialize();
     const run = record(); run.activeSeconds = 50; run.totalSeconds = 50;

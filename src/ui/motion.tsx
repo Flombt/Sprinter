@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated } from 'react-native';
+import { Animated, Platform } from 'react-native';
 import { useTheme } from './theme';
 import { interaction } from './tokens';
 
@@ -11,7 +11,7 @@ export function ScreenEntrance({ children }: { children: ReactNode }) {
     opacity.stopAnimation();
     if (!animate) { opacity.setValue(1); return; }
     opacity.setValue(.94);
-    const animation = Animated.timing(opacity, { toValue: 1, duration: interaction.screenDuration, useNativeDriver: true });
+    const animation = Animated.timing(opacity, { toValue: 1, duration: interaction.screenDuration, useNativeDriver: Platform.OS !== 'web' });
     animation.start();
     return () => animation.stop();
   }, [opacity, reduceMotion]);

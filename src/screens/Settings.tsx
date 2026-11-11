@@ -34,7 +34,7 @@ function PrivacyPanel({ onApple }: { onApple?: () => void }) {
   </>;
 }
 
-export default function Settings({ state, onApple, onTools }: { state: SessionState; onApple?: () => void; onTools?: () => void }) {
+export default function Settings({ state, onApple, onTools, onRecovery }: { state: SessionState; onApple?: () => void; onTools?: () => void; onRecovery?: () => void }) {
   const { colors } = useTheme(); const { largeText } = useAdaptiveLayout();
   const [page, setPage] = useState<SettingsPage>('main');
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
@@ -108,13 +108,14 @@ export default function Settings({ state, onApple, onTools }: { state: SessionSt
 
     <View style={{ gap: spacing.md }}><SectionHeading title="Apparence" />
       <Panel variant="setting" style={{ gap: spacing.md }}>
-        <Copy muted variant="caption">Suivre l’iPhone ou choisir un thème.</Copy>
         <SegmentedControl<Appearance> label="Apparence de Sprinter" value={state.settings.appearance}
           choices={[["system", "Système"], ["light", "Clair"], ["dark", "Sombre"]]} onChange={appearance => void session.updateSettings({ appearance })} />
       </Panel>
     </View>
 
     <View style={{ gap: spacing.md }}><SectionHeading title="Avancé" />
+      {onRecovery && <ListRow title="Sauvegardes de récupération" icon="archive-outline" onPress={onRecovery}
+        subtitle={<Copy muted variant="caption">{state.recoveryBlocked ? 'Conserver la sauvegarde interrompue et débloquer le départ.' : 'Retrouver et exporter les sauvegardes conservées.'}</Copy>} />}
       <ListRow title="Précision et alertes" icon="options-outline" onPress={() => setPage('precision')}
         label={`Précision et alertes. Lissage ${state.settings.config.smoothingSeconds} secondes. Confirmation ${state.settings.config.confirmationSeconds} secondes.`}
         subtitle={<Copy muted variant="caption">Lissage {state.settings.config.smoothingSeconds} s · confirmation {state.settings.config.confirmationSeconds} s. Tolérances et seuil chronométrique.</Copy>} />

@@ -1,5 +1,9 @@
 # Validation
 
+## État de référence — 11 novembre 2026
+
+**164 tests réussis dans 12 fichiers, TypeScript et exports JavaScript iOS/web réussis.** Le bilan détaillé des corrections, de la revue iOS, des dépendances et des limites est dans [STABILISATION_2026-11-11.md](STABILISATION_2026-11-11.md). Les comptes rendus ci-dessous sont historiques ; les mentions « aucun test exécuté » concernent uniquement leurs interventions respectives. La recette physique et le build signé restent à réaliser.
+
 ## Finition visuelle globale — 2 novembre 2026
 
 États d’appui/désactivation partagés, transition d’entrée légère sans modification du routage, marges sûres, matières limitées à la navigation et adaptations de grands caractères en préparation/course/détail. Les réglages d’accessibilité sont lus avec un état initial conservateur. [Compte rendu](POLISH.md).

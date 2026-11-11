@@ -15,6 +15,16 @@ function feed(run: RunEngine, from: number, to: number, value = 315) {
   return cues;
 }
 describe('GPS run engine', () => {
+  it.each([[298, 'slowDown'], [302, 'speedUp']] as const)('guides a strict 5:00 target from reliable GPS at %i s/km', (value, expected) => {
+    const run = new RunEngine({ fast: 300, slow: 300, distanceMeters: null },
+      { ...DEFAULT_CONFIG, toleranceSeconds: 5, hysteresisSeconds: 3 }, 0, start, 'exact');
+    expect(feed(run, 0, 60, value)).toContain(expected);
+    expect(run.record.pacing![value < 300 ? 'tooFastSeconds' : 'tooSlowSeconds']).toBeGreaterThan(0);
+  });
+  it('counts reliable 5:00 GPS measurements as on target despite floating-point noise', () => {
+    const run = new RunEngine({ fast: 300, slow: 300, distanceMeters: null }, DEFAULT_CONFIG, 0, start, 'exact-on-target');
+    expect(feed(run, 0, 60, 300)).toEqual([]); expect(targetPercentage(run.record)).toBe(100);
+  });
   it('records an exact two-kilometre run, splits, weighted compliance and speed', () => {
     const run = engine(); expect(feed(run, 0, 630)).toEqual([]);
     expect(run.record.distanceMeters).toBeCloseTo(2000, 5); expect(run.record.activeSeconds).toBe(630);

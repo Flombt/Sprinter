@@ -6,7 +6,7 @@ import type { LocationService } from '../src/services/location';
 const mocks = vi.hoisted(() => ({
   foreground: vi.fn(), permission: vi.fn(), services: vi.fn(), watch: vi.fn(), remove: vi.fn(),
   stopAlert: vi.fn(), sendAlert: vi.fn(), finish: vi.fn(), saveDraft: vi.fn(),
-  history: vi.fn(), loadDraft: vi.fn(), settings: vi.fn(), saveSettings: vi.fn(),
+  history: vi.fn(), loadDraft: vi.fn(), settings: vi.fn(), saveSettings: vi.fn(), archiveDraft: vi.fn(),
 }));
 vi.mock('react-native', () => ({ AppState: { currentState: 'active', addEventListener: vi.fn() } }));
 vi.mock('expo-location', () => ({
@@ -18,9 +18,10 @@ vi.mock('../src/services/capabilities', () => ({ CAN_BACKGROUND: false, IS_EXPO_
 vi.mock('../src/services/alerts', () => ({ alerts: { stop: mocks.stopAlert, send: mocks.sendAlert } }));
 vi.mock('../src/workouts/coaching', () => ({ coaching: { reset: vi.fn(), stop: mocks.stopAlert, cancelPace: vi.fn(), pump: vi.fn() } }));
 vi.mock('../src/workouts/store', () => ({ workouts: { getSnapshot: () => ({ preferences: { voiceEnabled: false } }) } }));
+vi.mock('../src/progression/store', () => ({ progression: { initialize: vi.fn(async () => {}), reconcile: vi.fn(async () => {}) } }));
 vi.mock('../src/storage/open', () => ({ openRepository: async () => ({
   initialize: async () => {}, history: mocks.history, loadDraft: mocks.loadDraft, loadSettings: mocks.settings,
-  saveDraft: mocks.saveDraft, finish: mocks.finish, saveSettings: mocks.saveSettings, unreadableCount: 0,
+  saveDraft: mocks.saveDraft, finish: mocks.finish, saveSettings: mocks.saveSettings, archiveDraft: mocks.archiveDraft, unreadableCount: 0,
 }) }));
 import { RunningStore } from '../src/services/session';
 import { RunEngine } from '../src/core/engine';
@@ -41,6 +42,25 @@ function nativeFix(epoch: number, t: number, meters: number, speed = 3): Locatio
     accuracy: 4, speed, heading: 0, altitude: 100, altitudeAccuracy: 3 } };
 }
 describe('session lifecycle (simulated platform services)', () => {
+  it('unblocks a corrupt recovery only after its archive has been committed', async () => {
+    mocks.loadDraft.mockRejectedValueOnce(new Error('Invalid JSON'));
+    await store.initialize(); expect(store.getSnapshot().recoveryBlocked).toBe(true);
+    expect(await store.start(DEFAULT_TARGET)).toBe(false);
+    mocks.archiveDraft.mockRejectedValueOnce(new Error('Disk full'));
+    expect(await store.archiveRecoveryDraft()).toBe(false); expect(store.getSnapshot().recoveryBlocked).toBe(true);
+    mocks.archiveDraft.mockResolvedValueOnce('archive');
+    expect(await store.archiveRecoveryDraft()).toBe(true); expect(store.getSnapshot().recoveryBlocked).toBe(false);
+    expect(await store.start(DEFAULT_TARGET)).toBe(true);
+  });
+  it('commits the Health export intent in the same record as the finished activity', async () => {
+    await store.initialize(); store.setHealthAutoWrite(true); await store.start(DEFAULT_TARGET);
+    const epoch = Date.now(); store.receive([nativeFix(epoch, 0, 0)]);
+    for (let t = 1; t <= 5; t++) { await vi.advanceTimersByTimeAsync(1000); store.receive([nativeFix(epoch, t, t * 3)]); }
+    const result = await store.finish();
+    expect(result!.distanceMeters).toBeGreaterThan(0);
+    expect(result!.healthExportRequestedAt).toBeGreaterThan(0);
+    expect(mocks.finish.mock.calls[0]![0].healthExportRequestedAt).toBe(result!.healthExportRequestedAt);
+  });
   it('starts recording only after permissions and saves an initial checkpoint', async () => {
     await store.initialize(); expect(await store.start(DEFAULT_TARGET)).toBe(true);
     expect(mocks.watch).toHaveBeenCalledOnce(); expect(mocks.saveDraft).toHaveBeenCalled();

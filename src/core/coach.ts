@@ -19,6 +19,12 @@ export function sanitizeConfig(config: CoachConfig): CoachConfig {
   return c;
 }
 export function classifyPace(value: number, target: Pick<PaceTarget, 'fast' | 'slow'>, tolerance = 0): 'tooFast' | 'tooSlow' | 'onTarget' {
+  // A single target follows the same whole-second precision as the displayed pace.
+  // Range margins must not silently widen an explicitly exact target.
+  if (target.fast === target.slow) {
+    const measured = Math.round(value), goal = Math.round(target.fast);
+    return measured < goal ? 'tooFast' : measured > goal ? 'tooSlow' : 'onTarget';
+  }
   return value < target.fast - tolerance ? 'tooFast' : value > target.slow + tolerance ? 'tooSlow' : 'onTarget';
 }
 
@@ -57,8 +63,8 @@ export class PaceCoach {
     const tolerance = this.config.toleranceSeconds ?? 0, next = classifyPace(value, this.target, tolerance);
     this.classification = next;
     if (next === 'onTarget') { this.state = next; this.candidate = null; this.candidateSince = null; return null; }
-    const crossed = next === 'tooFast' ? value < this.target.fast - tolerance - this.config.hysteresisSeconds
-      : value > this.target.slow + tolerance + this.config.hysteresisSeconds;
+    const crossed = this.target.fast === this.target.slow || (next === 'tooFast' ? value < this.target.fast - tolerance - this.config.hysteresisSeconds
+      : value > this.target.slow + tolerance + this.config.hysteresisSeconds);
     if (this.candidate !== next) { this.candidate = null; this.candidateSince = null; if (!crossed) { this.state = 'onTarget'; return null; } this.candidate = next; }
     this.state = next;
     this.candidateSince ??= time;

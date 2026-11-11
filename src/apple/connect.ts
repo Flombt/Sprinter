@@ -4,6 +4,12 @@ import { apple } from './store';
 
 /** Receives committed activities only. Native failures never escape into the GPS writer. */
 export function connectAppleIntegrations() {
+  const syncPreference = () => {
+    const state = apple.getSnapshot();
+    session.setHealthAutoWrite(state.ready && state.preferences.autoWrite);
+  };
+  const unsubscribePreferences = apple.subscribe(syncPreference);
+  syncPreference();
   let previousId = session.getSnapshot().run?.id ?? null;
   const pending = new Set<string>();
   const sent = new Set<string>();
@@ -22,7 +28,7 @@ export function connectAppleIntegrations() {
     }
   };
   const unsubscribe = session.subscribe(observe);
-  void apple.initialize().then(observe);
+  void apple.initialize().then(() => { syncPreference(); observe(); });
   const stateSubscription = AppState.addEventListener('change', state => { if (state === 'active') { apple.refreshCapabilities(); observe(); if (session.getSnapshot().ready) void apple.retryPending(session.getSnapshot().history); } });
-  return () => { unsubscribe(); stateSubscription.remove(); };
+  return () => { unsubscribe(); unsubscribePreferences(); session.setHealthAutoWrite(false); stateSubscription.remove(); };
 }

@@ -24,6 +24,7 @@ export interface Playback {
 }
 export type PlayerCommand = 'play' | 'pause' | 'next' | 'previous' | 'shuffle' | 'seek';
 export interface MusicState {
+  preferencesSaving?: boolean;
   ready: boolean; busy: boolean; playerBusy: boolean; status: 'disconnected' | 'connected' | 'expired';
   preferences: SpotifyPreferences; profile: SpotifyProfile | null;
   library: PlaylistReference[]; nextOffset: number | null; playback: Playback | null;

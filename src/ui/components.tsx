@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewProps, ViewStyle } from 'react-native';
+import { Animated, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextStyle, View, ViewProps, ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
@@ -32,7 +32,7 @@ export function Button({ title, onPress, icon, secondary = false, variant, dange
   const color = onHero ? colors.heroActionText : danger ? kind === 'primary' ? colors.background : colors.danger : kind === 'primary' ? colors.accentInk : colors.text;
   const backgroundColor = onHero ? colors.heroAction : danger ? kind === 'primary' ? colors.danger : colors.dangerSurface : kind === 'primary' ? colors.accent : kind === 'secondary' ? colors.raised : 'transparent';
   useEffect(() => { if (reduceMotion || disabled) { scale.stopAnimation(); scale.setValue(1); } return () => scale.stopAnimation(); }, [disabled, reduceMotion, scale]);
-  const animate = (toValue: number) => { if (!reduceMotion) Animated.spring(scale, { toValue, useNativeDriver: true, speed: 32, bounciness: 1 }).start(); };
+  const animate = (toValue: number) => { if (!reduceMotion) Animated.spring(scale, { toValue, useNativeDriver: Platform.OS !== 'web', speed: 32, bounciness: 1 }).start(); };
   return <Animated.View style={[{ minWidth: 0, transform: [{ scale }] }, style]}><Pressable accessibilityRole="button" accessibilityLabel={title}
     accessibilityHint={hint} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} onPressIn={() => animate(interaction.buttonScale)} onPressOut={() => animate(1)}
     style={({ pressed }) => [styles.button, kind === 'quiet' && { minHeight: layout.touch, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm }, { backgroundColor, opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1 }]}>

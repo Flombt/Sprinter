@@ -9,7 +9,7 @@ export function ThemeProvider({ appearance, children }: { appearance: Appearance
   const system = useColorScheme();
   // Start conservatively while iOS accessibility preferences are being read.
   const [reduceMotion, setReduceMotion] = useState(true);
-  const [reduceTransparency, setReduceTransparency] = useState(true);
+  const [reduceTransparency, setReduceTransparency] = useState(Platform.OS === 'ios');
   useEffect(() => {
     let mounted = true;
     void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (mounted) setReduceMotion(value); }).catch(() => undefined);

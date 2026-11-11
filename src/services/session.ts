@@ -22,6 +22,7 @@ export interface SessionState {
   run: RunRecord | null; running: boolean; pace: number | null; paceState: PaceState; quality: SignalQuality;
   history: RunRecord[]; settings: Settings; restored: boolean; backgroundActive: boolean; unreadableCount: number;
   autoPaused: boolean; altitude: number | null;
+  recoveryBlocked?: boolean;
 }
 const mono = () => performance.now() / 1000;
 const textError = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -40,6 +41,7 @@ export class RunningStore {
   private operation = false;
   private importingHealth = false;
   private recoveryBlocked = false;
+  private healthAutoWrite = false;
   private failedObservers = new WeakSet<() => void>();
   private deferredPause = false;
   private progressAnnouncements = new ProgressAnnouncements();
@@ -50,7 +52,7 @@ export class RunningStore {
     this.value = { ...this.value, ...patch, run: this.engine ? { ...this.engine.record } : null,
       running: this.engine?.running ?? false, pace: this.engine?.currentPace ?? null,
       paceState: this.engine?.state ?? 'acquiring', quality: this.engine?.quality ?? 'warmingUp',
-      autoPaused: this.engine?.autoPaused ?? false, altitude: this.engine?.altitude ?? null };
+      autoPaused: this.engine?.autoPaused ?? false, altitude: this.engine?.altitude ?? null, recoveryBlocked: this.recoveryBlocked };
     // A failed optional observer cannot stop the GPS callback before its checkpoint.
     for (const listener of [...this.listeners]) {
       try { listener(); }
@@ -82,7 +84,7 @@ export class RunningStore {
         }
       } catch (error) {
         this.recoveryBlocked = true;
-        message = `Récupération impossible : ${textError(error)} Aucun nouveau départ ne remplacera cette sauvegarde. Fermez puis relancez Sprinter pour réessayer.`;
+        message = `Récupération impossible : ${textError(error)} Aucun nouveau départ ne remplacera cette sauvegarde. Consultez les options de récupération pour conserver une archive et débloquer le départ.`;
       }
       // A recovered process never silently restarts location services.
       try { await this.location.stop(); } catch (error) { message = `Arrêt du service de localisation résiduel impossible : ${textError(error)}`; }
@@ -92,6 +94,21 @@ export class RunningStore {
     } catch (error) { this.emit({ error: `Le stockage local est indisponible. ${textError(error)}`, loading: false }); }
   }
   clearMessage = () => this.emit({ message: null });
+  reportMessage = (message: string) => this.emit({ message });
+  setHealthAutoWrite = (enabled: boolean) => { this.healthAutoWrite = enabled; };
+  listDraftArchives = async () => { await this.initialize(); return this.repository?.listDraftArchives() ?? []; };
+  loadDraftArchive = async (id: string) => { await this.initialize(); return this.repository?.loadDraftArchive(id) ?? null; };
+  archiveRecoveryDraft = async (): Promise<boolean> => {
+    if (!this.repository || !this.recoveryBlocked || this.engine || this.operation) return false;
+    this.operation = true; this.emit({ busy: true });
+    try {
+      const id = await this.repository.archiveDraft();
+      this.recoveryBlocked = false;
+      this.emit({ message: id ? 'Sauvegarde archivée sans suppression. Vous pouvez démarrer une nouvelle course.' : 'Aucun brouillon restant. Vous pouvez démarrer une nouvelle course.' });
+      return true;
+    } catch (error) { this.emit({ message: 'Archivage impossible. La sauvegarde reste conservée et le départ reste bloqué. ' + textError(error) }); return false; }
+    finally { this.operation = false; this.emit({ busy: false }); }
+  };
   cancelNavigation = () => coaching.cancelNavigation();
   announceNavigation = (kind: 'routeOff' | 'routeBack', message: string) => {
     if (!this.engine?.running) return;
@@ -149,7 +166,7 @@ export class RunningStore {
   };
   async start(target: PaceTarget, definition?: WorkoutDefinition | null, metadata: { plannedEntryId?: string; shoeId?: string; routeId?: string; routeName?: string } = {}): Promise<boolean> {
     if (!this.value.ready || this.engine || this.operation) return false;
-    if (this.recoveryBlocked) { this.emit({ message: 'Le départ est bloqué pour conserver une sauvegarde interrompue illisible. Fermez puis relancez Sprinter ; si le problème persiste, conservez les bases locales pour récupération.' }); return false; }
+    if (this.recoveryBlocked) { this.emit({ message: 'Le départ est bloqué pour conserver une sauvegarde interrompue illisible. Ouvrez les options de récupération pour conserver une archive et débloquer le départ.' }); return false; }
     const invalid = validateTarget(target, this.value.settings.config.maximumSpeed) ?? (definition ? validateWorkout(definition)[0] : null);
     if (invalid) { this.emit({ message: invalid }); return false; }
     this.operation = true; this.emit({ busy: true, message: null });
@@ -247,6 +264,10 @@ export class RunningStore {
     this.engine.pause(mono()); this.engine.drainEvents(); this.stopTimer(); coaching.stop(); this.emit({ busy: true });
     try {
       const result = this.engine.finish(Date.now());
+      // Commit the user's Health-export intent with the run itself, before any
+      // observer can enqueue a separate Apple database write.
+      if (this.healthAutoWrite && !result.healthKit && result.activeSeconds > 0 && result.distanceMeters > 0) result.healthExportRequestedAt = Date.now();
+      else delete result.healthExportRequestedAt;
       let shutdownMessage: string | null = null;
       try { await this.stopTracking(); } catch (error) { shutdownMessage = `Course enregistrée. Arrêt du service GPS à vérifier : ${textError(error)}`; }
       await this.checkpoint(true);

@@ -6,6 +6,7 @@ import { appleDatabaseDirectory, openApplePersistence, type ApplePersistence } f
 import { defaultApplePreferences, type ApplePreferences, type HealthCapabilities, type HealthWorkout } from './types';
 import { healthExport, validHealthUUID } from './mapping';
 import { RunLiveController } from './live';
+import { healthRetryCandidates } from './recovery';
 
 interface AppleState {
   ready: boolean; busy: boolean; message: string | null; capabilities: HealthCapabilities; preferences: ApplePreferences;
@@ -125,10 +126,9 @@ class AppleStore {
     if (this.replaying || !this.value.ready || !this.value.preferences.autoWrite) return;
     this.replaying = true;
     try {
-      for (const id of this.value.preferences.pendingRunIds ?? []) {
+      for (const run of healthRetryCandidates(history, this.value.preferences)) {
         if (!this.value.preferences.autoWrite) break;
-        const run = history.find(r => r.id === id);
-        if (run && !await this.exportRun(run, true)) break; // No polling or permission prompt after a failure.
+        if (!await this.exportRun(run, true)) break; // No polling or permission prompt after a failure.
       }
     } finally { this.replaying = false; }
   }

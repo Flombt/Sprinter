@@ -6,7 +6,7 @@ import { spacing } from '../ui/tokens';
 
 export function PrecisionPanel({ value, onChange }: { value: CoachConfig; onChange: (key: keyof CoachConfig, value: number) => void }) {
   return <>
-    <SettingsNotice title="Pour la prochaine course" body="Ces réglages sont pris en compte au départ. Ils affinent les mesures et le déclenchement des alertes ; ils ne changent pas les objectifs propres aux défis." />
+    <SettingsNotice title="Pour la prochaine course" body="Ces réglages sont pris en compte au départ. Une allure précise ignore la tolérance et la marge d’entrée ; le lissage et la durée de confirmation restent actifs. Les objectifs propres aux défis restent définis dans la séance." />
     <View style={{ gap: spacing.md }}><SectionHeading title="Stabilité de l’allure" />
       <Panel variant="setting" style={{ gap: spacing.xl }}>
         <SettingRange title="Fenêtre de lissage" description="Lisser davantage stabilise l’allure affichée, avec une réaction moins immédiate aux changements de rythme."
