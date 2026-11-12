@@ -5,12 +5,12 @@ import { Copy } from './components';
 import { MapPlaceholder } from './MapPlaceholder';
 import { EMPTY_REFERENCE, RecordedTrack, referenceSegments, type RouteMapProps } from './routeMapData';
 import { useTheme } from './theme';
-import { mapColors, radii } from './tokens';
+import { mapPositionHalo, radii } from './tokens';
 
 const edgePadding = { top: 60, right: 48, bottom: 52, left: 48 };
 const localRegion = { latitudeDelta: 0.007, longitudeDelta: 0.007 };
 
-function PositionMarker({ position }: { position: NonNullable<RouteMapProps['current']> }) {
+function PositionMarker({ position, color }: { position: NonNullable<RouteMapProps['current']>; color: string }) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
   return (
     <Marker
@@ -20,7 +20,7 @@ function PositionMarker({ position }: { position: NonNullable<RouteMapProps['cur
       anchor={{ x: 0.5, y: 0.5 }}
       centerOffset={{ x: 0, y: 0 }}
     >
-      <View style={styles.position} onLayout={() => setTracksViewChanges(false)} />
+      <View style={[styles.position, { backgroundColor: color }]} onLayout={() => setTracksViewChanges(false)} />
     </Marker>
   );
 }
@@ -131,7 +131,7 @@ const MapSurface = memo(function MapSurface({
                   key={index}
                   coordinates={group}
                   strokeWidth={5}
-                  strokeColor={colors.accent}
+                  strokeColor={colors.text}
                   lineCap="round"
                   lineJoin="round"
                 />
@@ -144,7 +144,7 @@ const MapSurface = memo(function MapSurface({
             <Marker coordinate={route.at(-1)!} title="Arrivée" pinColor={colors.routeFinish} />
           )}
           {selected && <Marker coordinate={selected} title="Mesure sélectionnée" pinColor={colors.accent} />}
-          {current && <PositionMarker position={current} />}
+          {current && <PositionMarker key={colors.routePosition} position={current} color={colors.routePosition} />}
         </MapView>
       ) : (
         <>
@@ -172,9 +172,8 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: mapColors.position,
     borderWidth: 3,
-    borderColor: mapColors.positionHalo,
+    borderColor: mapPositionHalo,
   },
   caption: { position: 'absolute', bottom: 12, left: 14, right: 14, textAlign: 'center' },
 });

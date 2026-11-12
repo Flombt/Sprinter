@@ -6,7 +6,7 @@ import { Copy } from './components';
 import { MapPlaceholder } from './MapPlaceholder';
 import { EMPTY_REFERENCE, RecordedTrack, referenceSegments, type RouteMapProps } from './routeMapData';
 import { useTheme } from './theme';
-import { mapColors, radii, typography } from './tokens';
+import { mapPositionHalo, radii, typography } from './tokens';
 
 const MapSurface = memo(function MapSurface({
   points,
@@ -76,7 +76,7 @@ const MapSurface = memo(function MapSurface({
             <Path
               d={path(recorded)}
               fill="none"
-              stroke={colors.accent}
+              stroke={colors.text}
               strokeWidth={4}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -90,8 +90,8 @@ const MapSurface = memo(function MapSurface({
                 cx={x(current)}
                 cy={y(current)}
                 r={7}
-                fill={mapColors.position}
-                stroke={mapColors.positionHalo}
+                fill={colors.routePosition}
+                stroke={mapPositionHalo}
                 strokeWidth={2}
               />
             )}

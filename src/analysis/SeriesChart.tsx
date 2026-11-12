@@ -1,8 +1,8 @@
 import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { duration, km, pace } from '../core/format';
-import { Copy } from '../ui/components';
+import { Copy, Icon } from '../ui/components';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
 import { haptic } from '../ui/haptics';
 import { nearestTimeIndex } from '../ui/nearestTimeIndex';
@@ -13,6 +13,7 @@ export interface ChartBand {
   to: number;
   low: number;
   high: number;
+  openSide?: 'fast' | 'slow';
 }
 /** Display-only decimation keeps local extrema. Calculations always use the full series. */
 function displaySeries(series: Series): Series {
@@ -41,6 +42,17 @@ const accessibilityActions = [
   { name: 'decrement', label: 'Mesure précédente' },
 ];
 const sampleTime = (point: SeriesPoint) => point.seconds;
+const paceLabels = {
+  fast: { label: 'Trop rapide', icon: 'arrow-down' },
+  on: { label: 'Dans la cible', icon: 'checkmark-circle-outline' },
+  slow: { label: 'Trop lent', icon: 'arrow-up' },
+} as const;
+
+function pointZone(point: SeriesPoint, band: ChartBand) {
+  if (band.openSide !== 'fast' && point.value < band.low) return 'fast';
+  if (band.openSide !== 'slow' && point.value > band.high) return 'slow';
+  return 'on';
+}
 
 export const SeriesChart = memo(function SeriesChart({
   series,
@@ -116,10 +128,15 @@ export const SeriesChart = memo(function SeriesChart({
 
   if (samples.length < 2) return <Copy muted>Pas assez de mesures fiables pour tracer cette évolution.</Copy>;
   const point = selectedIndex === null ? undefined : samples[selectedIndex];
+  const band = point && bands.find(({ from, to }) =>
+    point.seconds >= from && (point.seconds < to || (point.seconds === to && to === seconds)),
+  );
+  const zone = point && band ? pointZone(point, band) : undefined;
   const name = kind === 'pace' ? 'Allure' : kind === 'speed' ? 'Vitesse' : 'Altitude';
   const unit = kind === 'pace' ? 'min/km' : kind === 'speed' ? 'km/h' : 'm';
   const readout = point
     ? label(point.value) + ' ' + unit + ' · ' + duration(point.seconds) + ' · ' + km(point.meters) + ' km'
+      + (zone ? ' · ' + paceLabels[zone].label : '')
     : null;
 
   return (
@@ -127,17 +144,42 @@ export const SeriesChart = memo(function SeriesChart({
       <View style={{ height: chartHeight }}>
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Svg width={width} height={chartHeight}>
-            {bands.map((band, index) => (
-              <Rect
-                key={index}
-                x={x(band.from)}
-                y={Math.min(y(band.low), y(band.high))}
-                width={Math.max(0, x(band.to) - x(band.from))}
-                height={Math.max(2, Math.abs(y(band.high) - y(band.low)))}
-                fill={colors.accentText}
-                opacity={0.14}
-              />
-            ))}
+            {bands.map((band, index) => {
+              const left = x(band.from);
+              const right = x(band.to);
+              if (right <= left) return null;
+              const top = y(low);
+              const bottom = y(high);
+              const fastLimit = band.openSide === 'fast' ? top : y(band.low);
+              const slowLimit = band.openSide === 'slow' ? bottom : y(band.high);
+              const limits = fastLimit === slowLimit
+                ? [{ at: fastLimit, dash: undefined }]
+                : [{ at: fastLimit, dash: '6 4' }, { at: slowLimit, dash: '1 4' }];
+              const zones = [
+                { from: top, to: fastLimit, fill: colors.zone.fast.soft },
+                { from: fastLimit, to: slowLimit, fill: colors.zone.on.soft },
+                { from: slowLimit, to: bottom, fill: colors.zone.slow.soft },
+              ];
+              return (
+                <G key={index}>
+                  {zones.map(({ from, to, fill }) => to > from && (
+                    <Rect key={fill} x={left} y={from} width={right - left} height={to - from} fill={fill} />
+                  ))}
+                  {limits.filter(({ at }) => at > top && at < bottom).map(({ at, dash }) => (
+                    <Line
+                      key={at}
+                      x1={left}
+                      x2={right}
+                      y1={at}
+                      y2={at}
+                      stroke={colors.zone.on.color}
+                      strokeWidth={1.5}
+                      strokeDasharray={dash}
+                    />
+                  ))}
+                </G>
+              );
+            })}
             {[low, (low + high) / 2, high].map((value) => (
               <React.Fragment key={value}>
                 <Line
@@ -160,7 +202,7 @@ export const SeriesChart = memo(function SeriesChart({
                   cx={x(group[0]!.seconds)}
                   cy={y(group[0]!.value)}
                   r={2}
-                  fill={colors.accentText}
+                  fill={colors.text}
                 />
               ) : (
                 <Path
@@ -172,7 +214,7 @@ export const SeriesChart = memo(function SeriesChart({
                     )
                     .join(' ')}
                   fill="none"
-                  stroke={colors.accentText}
+                  stroke={colors.text}
                   strokeWidth={2.5}
                   strokeLinejoin="round"
                 />
@@ -188,7 +230,14 @@ export const SeriesChart = memo(function SeriesChart({
                   stroke={colors.secondary}
                   strokeDasharray="3 5"
                 />
-                <Circle cx={x(point.seconds)} cy={y(point.value)} r={5} fill={colors.accentText} />
+                <Circle
+                  cx={x(point.seconds)}
+                  cy={y(point.value)}
+                  r={5}
+                  fill={zone ? colors.zone[zone].color : colors.secondary}
+                  stroke={colors.background}
+                  strokeWidth={1.5}
+                />
               </>
             )}
             <SvgText x={axis} y={chartHeight - spacing.sm} fill={colors.secondary} fontSize={textSize}>
@@ -220,9 +269,12 @@ export const SeriesChart = memo(function SeriesChart({
           style={StyleSheet.absoluteFill}
         />
       </View>
-      <Copy muted variant="small">
-        {readout ?? unit + ' · temps actif. Les données manquantes ne sont pas reliées.'}
-      </Copy>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+        {zone && <Icon name={paceLabels[zone].icon} size={16} color={colors.zone[zone].text} />}
+        <Copy variant="small" style={{ flexShrink: 1, color: zone ? colors.zone[zone].text : colors.secondary }}>
+          {readout ?? unit + ' · temps actif. Les données manquantes ne sont pas reliées.'}
+        </Copy>
+      </View>
     </View>
   );
 });

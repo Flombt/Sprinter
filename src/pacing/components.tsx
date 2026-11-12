@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import type { RunRecord, SignalQuality } from '../core/types';
 import { duration, km, pace, targetPercentage } from '../core/format';
-import { Button, Copy, Label, Metric, MetricGrid, Panel } from '../ui/components';
+import { Button, Copy, Icon, Label, Metric, MetricGrid, Panel } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import { pacingProgress } from './metrics';
 import type { DeviationEnd } from './types';
@@ -20,7 +20,7 @@ export function PacingProgressPanel({ run, quality = 'good', running = false }: 
     {!reference.explicitTime && <Copy muted variant="caption">Référence calculée à partir du milieu des plages prévues ; aucun temps final n’a été imposé.</Copy>}
     <MetricGrid><Metric label="Capital de temps" value={signed} unit={capital === null ? undefined : 's'} />
       <Metric label={status === 'completed' ? 'Temps à la distance cible' : 'Arrivée estimée'} value={progress.projectedFinishSeconds === null ? '—' : duration(progress.projectedFinishSeconds)} /></MetricGrid>
-    {capital !== null && <Copy style={{ fontWeight: '600', color: capital < 0 ? colors.warning.text : colors.text }}>{capital === 0 ? 'À l’heure sur la référence.' : `${Math.abs(capital)} secondes ${capital > 0 ? 'd’avance' : 'de retard'} à la distance mesurée.`}</Copy>}
+    {capital !== null && <Copy style={{ fontWeight: '600', color: capital < 0 ? colors.zone.slow.text : capital === 0 ? colors.zone.on.text : colors.text }}>{capital === 0 ? 'À l’heure sur la référence.' : `${Math.abs(capital)} secondes ${capital > 0 ? 'd’avance' : 'de retard'} à la distance mesurée.`}</Copy>}
     {progress.estimatedArrival !== null && <Copy muted>Heure estimée : {new Date(progress.estimatedArrival).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.</Copy>}
     {status === 'running' && <>{reference.explicitTime && <><Copy>Allure moyenne restante nécessaire : {progress.reachable && progress.requiredPace !== null && progress.requiredPace <= 1200 ? `${pace(progress.requiredPace)} /km` : '—'}.</Copy>
       {progress.requiredPace !== null && progress.requiredPace > 1200 && <Copy muted variant="caption">Marge importante : aucune accélération supplémentaire n’est nécessaire pour respecter ce temps.</Copy>}
@@ -47,12 +47,23 @@ export function PaceHistory({ run, live = false }: { run: RunRecord; live?: bool
     <Copy muted variant="caption">Pourcentage sur les mesures d’allure fiables dans les plages exactes. La marge et l’hystérésis des alertes ne modifient pas ce score. Chaque écart peut être enregistré avant d’être assez long pour déclencher une alerte.</Copy>
     {s.legacyReliableSeconds > 0 && <Copy muted variant="caption">Les statistiques antérieures à ce journal sont conservées ; leurs écarts détaillés ne sont pas disponibles.</Copy>}
     {!items.length && <Copy muted>{s.reliableSeconds > 0 ? 'Aucun écart mesuré dans les portions fiables.' : 'Les écarts apparaîtront avec des mesures d’allure fiables.'}</Copy>}
-    {items.map(item => <View key={item.id} style={{ gap: 5, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.line }}>
-      <Copy style={{ fontWeight: '600' }}>{item.direction === 'tooFast' ? 'Trop rapide' : 'Trop lent'} · {item.seconds.toFixed(1)} s{item.confirmed ? ' · durable' : ''}</Copy>
-      <Copy muted variant="caption">{item.context} · {pace(item.target.fast)} – {pace(item.target.slow)} /km</Copy>
-      <Copy muted variant="caption">Temps actif {duration(item.fromSeconds)} → {duration(item.toSeconds)} · {km(item.fromMeters)} → {km(item.toMeters)} km · extrême lissée {pace(item.extremePace)} /km</Copy>
-      <Copy muted variant="small">{item.endReason === null ? 'En cours de mesure' : endLabels[item.endReason]}</Copy>
-    </View>)}
+    {items.map(item => {
+      const fast = item.direction === 'tooFast';
+      const zone = fast ? colors.zone.fast : colors.zone.slow;
+      return (
+        <View key={item.id} style={{ gap: 5, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.line }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name={fast ? 'arrow-down' : 'arrow-up'} size={16} color={zone.text} />
+            <Copy style={{ fontWeight: '600', color: zone.text, flexShrink: 1 }}>
+              {fast ? 'Trop rapide' : 'Trop lent'} · {item.seconds.toFixed(1)} s{item.confirmed ? ' · durable' : ''}
+            </Copy>
+          </View>
+          <Copy muted variant="caption">{item.context} · {pace(item.target.fast)} – {pace(item.target.slow)} /km</Copy>
+          <Copy muted variant="caption">Temps actif {duration(item.fromSeconds)} → {duration(item.toSeconds)} · {km(item.fromMeters)} → {km(item.toMeters)} km · extrême lissée {pace(item.extremePace)} /km</Copy>
+          <Copy muted variant="small">{item.endReason === null ? 'En cours de mesure' : endLabels[item.endReason]}</Copy>
+        </View>
+      );
+    })}
     {s.deviations.length > (live ? 3 : 12) && <Button title={expanded ? 'Réduire l’historique' : `Afficher les ${s.deviations.length} derniers écarts`} secondary onPress={() => setExpanded(!expanded)} />}
     {s.omittedDeviations > 0 && <Copy muted variant="caption">{s.omittedDeviations} écart(s) plus ancien(s) inclus dans les totaux. Le détail est limité aux 500 derniers.</Copy>}
     {run.target.kilometerTargets && !live && <View style={{ gap: 8 }}><Label>Plages prévues par kilomètre</Label>{run.target.kilometerTargets.map(p => <Copy key={p.kilometer} muted variant="caption">Km {p.kilometer} : {pace(p.fast)} – {pace(p.slow)} /km</Copy>)}</View>}

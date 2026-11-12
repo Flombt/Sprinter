@@ -38,7 +38,7 @@ export function SettingsDisclosure({
           opacity: pressed ? interaction.pressedOpacity : 1,
         })}
       >
-        {icon && !largeText && <Icon name={icon} size={21} color={colors.accentText} />}
+        {icon && !largeText && <Icon name={icon} size={21} color={colors.secondary} />}
         <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
           <Copy variant="emphasis">{title}</Copy>
           {summary && (

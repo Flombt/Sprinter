@@ -1,6 +1,7 @@
 import { useTheme } from '../ui/theme';
 import { Switch } from '../ui/controls';
-import { contrastAccent, controlColors, paperColors, spacing, typography, type ThemeColors } from '../ui/tokens';
+import { controlColors, paperColors, spacing, typography, type ThemeColors } from '../ui/tokens';
+import { PaceGauge } from '../ui/PaceGauge';
 import {
   Button,
   Card,
@@ -44,7 +45,6 @@ function Setting({
   disabled?: boolean;
 }) {
   const { colors } = useTheme();
-  const accent = contrastAccent(colors);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 53 }}>
       <Icon name={icon} size={19} color={colors.secondary} />
@@ -67,7 +67,7 @@ function Setting({
       </View>
       <Switch
         accessibilityRole="switch"
-        trackColor={{ false: controlColors.switchTrackOff, true: accent }}
+        trackColor={{ false: controlColors.switchTrackOff, true: colors.switchOn }}
         accessibilityLabel={title}
         accessibilityHint={disabled ? 'Modifiable entre deux courses' : detail}
         value={value}
@@ -159,6 +159,18 @@ export default function RunStats({
           </Copy>
         </View>
         <View style={{ height: 1, backgroundColor: paperColors.line }} />
+        {run && (
+          <PaceGauge
+            paper
+            value={state.pace}
+            target={liveTarget}
+            tolerance={run.config.toleranceSeconds ?? 0}
+            state={state.paceState}
+            quality={state.quality}
+            running={state.running}
+            autoPaused={state.autoPaused}
+          />
+        )}
         <View style={{ flexDirection: 'row', gap: 18, paddingTop: 3 }}>
           <View style={{ flex: 1 }}>
             <Label style={s.paperLabel}>TEMPS ACTIF</Label>

@@ -4,7 +4,7 @@ import { Copy } from './components';
 import { effectiveTarget } from '../workouts/definition';
 import { activityAnalysis } from '../analysis/cache';
 import { atDistance } from '../analysis/distanceTime';
-import { SeriesChart, ChartBand } from '../analysis/SeriesChart';
+import { SeriesChart, type ChartBand } from '../analysis/SeriesChart';
 import type { RunAnalysis, SeriesPoint } from '../analysis/types';
 
 export function PaceChart({
@@ -38,6 +38,7 @@ export function PaceChart({
             to: s.endedAt ?? run.workout!.lastSeconds,
             low: s.planned.paceRule === 'notSlower' ? minimum - 10 : target.fast,
             high: s.planned.paceRule === 'notFaster' ? maximum + 10 : target.slow,
+            openSide: s.planned.paceRule === 'notSlower' ? 'fast' : s.planned.paceRule === 'notFaster' ? 'slow' : undefined,
           },
         ];
       })
@@ -64,9 +65,11 @@ export function PaceChart({
         bands={bands}
         onSelect={onSelect}
       />
-      <Copy muted variant="small">
-        Les zones vertes représentent les plages prévues pour chaque portion ciblée.
-      </Copy>
+      {bands.length > 0 && (
+        <Copy muted variant="small">
+          Les tirets marquent la limite rapide, les points la limite lente et le trait plein une cible exacte.
+        </Copy>
+      )}
     </View>
   );
 }

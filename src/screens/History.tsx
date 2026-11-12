@@ -165,12 +165,12 @@ function HistoryEmpty({
           width: 48,
           height: 48,
           borderRadius: radii.control,
-          backgroundColor: colors.accentSoft,
+          backgroundColor: colors.raised,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon name="footsteps-outline" color={colors.accentText} size={25} />
+        <Icon name="footsteps-outline" color={colors.secondary} size={25} />
       </View>
       <View style={{ gap: spacing.sm }}>
         <Copy variant="heading" accessibilityRole="header">

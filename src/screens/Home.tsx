@@ -1,4 +1,4 @@
-import { contrastAccent, spacing, typography } from '../ui/tokens';
+import { spacing, typography } from '../ui/tokens';
 import { Brand } from '../ui/brand';
 import { Button, Copy, Icon, IconButton, Label } from '../ui/components';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -81,7 +81,6 @@ export default function Home({
   onConfirmFinish: () => void;
 }) {
   const { colors, reduceMotion } = useTheme();
-  const accent = contrastAccent(colors);
   const { top, bottom } = useSafeAreaInsets();
   const { fontScale, height } = useWindowDimensions();
   const scroll = fontScale > 1 || height < 700;
@@ -278,7 +277,7 @@ export default function Home({
           <Icon
             name="navigate-circle-outline"
             size={16}
-            color={state.quality === 'good' || (!run && preview.position) ? accent : colors.secondary}
+            color={colors.secondary}
           />
           <Copy variant="bodyCompact" style={styles.mapStatusText}>
             {gpsLabel}
@@ -421,7 +420,7 @@ export default function Home({
                 onPress={onPrepare}
                 style={styles.contextLink}
               >
-                <Icon name="speedometer-outline" size={15} color={accent} />
+                <Icon name="speedometer-outline" size={15} color={colors.accentText} />
                 <Copy
                   variant="bodyCompact"
                   numberOfLines={1}

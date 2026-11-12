@@ -1,5 +1,5 @@
 import { Switch } from '../ui/controls';
-import { contrastAccent, controlColors, interaction, paperColors, spacing, typography } from '../ui/tokens';
+import { controlColors, interaction, paperColors, spacing, typography } from '../ui/tokens';
 import {
   Button,
   Card,
@@ -51,7 +51,6 @@ export default function Music({
   const state = useMusic(),
     { colors, reduceMotion } = useTheme(),
     insets = useSafeAreaInsets();
-  const accent = contrastAccent(colors);
   const [input, setInput] = useState(''),
     [adding, setAdding] = useState(false),
     [connection, setConnection] = useState(false);
@@ -188,7 +187,7 @@ export default function Music({
             onSubmitEditing={() => void importPlaylist()}
             maxLength={2048}
             editable={!adding}
-            selectionColor={accent}
+            selectionColor={colors.heroAction}
             style={{
               flex: 1,
               minWidth: 0,
@@ -210,6 +209,7 @@ export default function Music({
         </View>
         <Button
           highContrast
+          onHero
           arrow
           size="compact"
           title={adding ? 'Import en cours…' : 'Importer la playlist'}
@@ -228,11 +228,11 @@ export default function Music({
           <Icon
             name={notice && !noticeError ? 'checkmark-circle-outline' : 'information-circle-outline'}
             size={17}
-            color={notice && !noticeError ? accent : colors.danger}
+            color={notice && !noticeError ? colors.text : colors.danger}
           />
           <Copy
             variant="bodyCompact"
-            style={{ flex: 1, fontSize: 12, color: notice && !noticeError ? accent : colors.danger }}
+            style={{ flex: 1, fontSize: 12, color: notice && !noticeError ? colors.text : colors.danger }}
           >
             {notice ?? state.message}
           </Copy>
@@ -258,7 +258,7 @@ export default function Music({
             />
           </View>
           <Card
-            style={{ borderLeftWidth: 3, borderLeftColor: accent }}
+            style={{ borderLeftWidth: 3, borderLeftColor: colors.line }}
             contentStyle={{ padding: 17, gap: 16 }}
           >
             <View style={{ flexDirection: 'row', gap: 17, alignItems: 'center' }}>
@@ -302,7 +302,7 @@ export default function Music({
                 </Copy>
                 <Switch
                   accessibilityRole="switch"
-                  trackColor={{ false: controlColors.switchTrackOff, true: accent }}
+                  trackColor={{ false: controlColors.switchTrackOff, true: colors.switchOn }}
                   accessibilityLabel="Lancer Spotify avec la course"
                   value={state.preferences.autoPlay}
                   disabled={state.busy || state.preferencesSaving}
@@ -317,7 +317,7 @@ export default function Music({
                   onPress={() => setTrackPlaylist(selected)}
                   style={{ minHeight: 44, justifyContent: 'center' }}
                 >
-                  <Copy variant="bodyCompact" style={{ fontSize: 12, color: accent }}>
+                  <Copy variant="bodyCompact" style={{ fontSize: 12, color: colors.accentText }}>
                     Voir les morceaux
                   </Copy>
                 </Pressable>
@@ -369,7 +369,7 @@ export default function Music({
             variant="bodyCompact"
             style={{
               fontSize: typography.small.fontSize,
-              color: playback.fresh ? accent : colors.secondary,
+              color: playback.fresh ? colors.text : colors.secondary,
               textAlign: 'center',
             }}
           >
@@ -414,7 +414,7 @@ export default function Music({
           )}
         </View>
         {!state.ready ? (
-          <ActivityIndicator color={accent} accessibilityLabel="Chargement des playlists" />
+          <ActivityIndicator color={colors.secondary} accessibilityLabel="Chargement des playlists" />
         ) : playlists.length ? (
           playlists.map((playlist) => {
             const chosen = selected?.id === playlist.id,
@@ -425,7 +425,7 @@ export default function Music({
                 style={{
                   borderRadius: 12,
                   borderLeftWidth: 3,
-                  borderLeftColor: chosen ? accent : colors.line,
+                  borderLeftColor: chosen ? colors.accent : colors.line,
                 }}
                 contentStyle={{ padding: 11, flexDirection: 'row', gap: 8, alignItems: 'center' }}
               >
@@ -452,7 +452,7 @@ export default function Music({
                     <Copy
                       variant="bodyCompact"
                       style={{
-                        color: chosen ? accent : colors.secondary,
+                        color: chosen ? colors.accentText : colors.secondary,
                         fontSize: typography.small.fontSize,
                       }}
                     >
@@ -461,7 +461,7 @@ export default function Music({
                   </View>
                   <Icon
                     name={chosen ? 'checkmark-circle' : 'radio-button-off-outline'}
-                    color={chosen ? accent : colors.muted}
+                    color={chosen ? colors.accentText : colors.muted}
                     size={21}
                   />
                 </Pressable>

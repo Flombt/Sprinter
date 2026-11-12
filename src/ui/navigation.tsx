@@ -1,4 +1,4 @@
-import { contrastAccent, interaction, typography } from './tokens';
+import { interaction, typography } from './tokens';
 import { RunnerGlyph } from './brand';
 import { Copy, Icon, type IconName } from './components';
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -63,7 +63,7 @@ function BottomTabsView<T extends string>({
 }) {
   const insets = useSafeAreaInsets(),
     { colors, reduceMotion, reduceTransparency } = useTheme();
-  const accent = contrastAccent(colors);
+  const accent = colors.accent;
   const [width, setWidth] = useState(0),
     x = useRef(new Animated.Value(0)).current,
     positioned = useRef(false);

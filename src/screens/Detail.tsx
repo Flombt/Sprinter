@@ -204,7 +204,7 @@ export default function Detail({
                 <TargetRing percentage={percentage} />
               )}
               <View style={{ flex: largeText ? undefined : 1, minWidth: 0, gap: spacing.sm }}>
-                <Label style={{ color: colors.accentText }}>Le rythme juste</Label>
+                <Label style={{ color: colors.zone.on.text }}>Le rythme juste</Label>
                 <Copy variant="section">Du temps dans votre cible</Copy>
                 <Copy muted variant="caption">
                   {run.targetUnavailable

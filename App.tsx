@@ -154,7 +154,7 @@ function AppContent() {
                     <Button title="Réessayer" onPress={() => void session.initialize()} />
                   </>
                 ) : (
-                  <ActivityIndicator color={colors.dark ? colors.accent : colors.accentInk} size="large" />
+                  <ActivityIndicator color={colors.secondary} size="large" />
                 )}
               </View>
             </Screen>
@@ -208,7 +208,7 @@ export default function App() {
               backgroundColor: defaultPalettes.dark.background,
             }}
           >
-            <ActivityIndicator color={defaultPalettes.dark.accent} />
+            <ActivityIndicator color={defaultPalettes.dark.secondary} />
           </View>
         )}
       </ThemeProvider>

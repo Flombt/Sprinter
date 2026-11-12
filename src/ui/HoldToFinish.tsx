@@ -112,7 +112,7 @@ export function HoldToFinish({
         style={[
           StyleSheet.absoluteFill,
           {
-            backgroundColor: colors.accentSoft,
+            backgroundColor: colors.line,
             transformOrigin: 'left',
             transform: [{ scaleX: fill }],
           },

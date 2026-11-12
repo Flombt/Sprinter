@@ -7,6 +7,7 @@ export type Theme = ThemeColors;
 export const defaultPalettes = buildPalettes(ACTIVE_PALETTE);
 const ThemeContext = createContext({
   colors: defaultPalettes.dark,
+  lightColors: defaultPalettes.light,
   reduceMotion: false,
   reduceTransparency: false,
 });
@@ -49,7 +50,7 @@ export function ThemeProvider({
     ? defaultPalettes.dark
     : defaultPalettes.light;
   const value = useMemo(
-    () => ({ colors, reduceMotion, reduceTransparency }),
+    () => ({ colors, lightColors: defaultPalettes.light, reduceMotion, reduceTransparency }),
     [colors, reduceMotion, reduceTransparency],
   );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

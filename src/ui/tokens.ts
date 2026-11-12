@@ -1,5 +1,4 @@
 import type { TextStyle } from 'react-native';
-import type { ThemeColors } from './palettes';
 
 /** The paper surface uses the same neutrals in both modes. */
 // prettier-ignore
@@ -22,7 +21,7 @@ export const neutralPalettes = {
     glass: 'rgba(25,25,28,0.94)', scrim: 'rgba(0,0,0,0.64)', shadow: '#000000',
   },
 };
-export type { ThemeColors };
+export type { ThemeColors } from './palettes';
 export const paperColors = {
   line: '#D7D4CC',
   pressed: '#DDDAD2',
@@ -36,11 +35,7 @@ export const controlColors = {
   switchTrackOff: '#424248',
   choicePressed: '#36363A',
 } as const;
-export const mapColors = {
-  position: '#2F82F5',
-  positionHalo: '#FFFFFF',
-} as const;
-export const contrastAccent = (colors: ThemeColors) => (colors.dark ? colors.accent : colors.accentText);
+export const mapPositionHalo = '#FFFFFF';
 export const spacing = {
   none: 0,
   xs: 4,
