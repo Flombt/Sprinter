@@ -67,6 +67,13 @@ describe('Core Location adapter through the Expo public API (simulated native se
     await new DeviceLocationService().ensureForeground(true);
     expect(mocks.requestBackground).toHaveBeenCalledOnce(); expect(mocks.start).not.toHaveBeenCalled();
   });
+  it('keeps foreground tracking available if the build cannot query background permission', async () => {
+    mocks.background.mockRejectedValue(new Error('Background location is unavailable'));
+    const service = new DeviceLocationService();
+    await service.ensureForeground(true);
+    expect(await service.start(true, false, vi.fn(), vi.fn())).toBe(false);
+    expect(mocks.watch).toHaveBeenCalledOnce();
+  });
   it('discards callbacks from a subscription that has been stopped', async () => {
     const service = new DeviceLocationService(), receive = vi.fn(), error = vi.fn();
     await service.start(false, false, receive, error);

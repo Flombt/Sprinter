@@ -34,8 +34,8 @@ export class DeviceLocationService implements LocationService {
     if (!permission.granted) throw new Error('Autorisez la localisation dans les réglages de l’iPhone pour enregistrer votre course.');
     if (permission.ios?.accuracy === 'reduced') throw new Error('Activez « Position exacte » dans les réglages de localisation pour mesurer votre allure.');
     if (background && this.canBackground) {
-      const current = await Location.getBackgroundPermissionsAsync();
-      if (!current.granted && current.canAskAgain) await Location.requestBackgroundPermissionsAsync();
+      const current = await Location.getBackgroundPermissionsAsync().catch(() => null);
+      if (current?.canAskAgain && !current.granted) await Location.requestBackgroundPermissionsAsync().catch(() => undefined);
     }
   }
   async start(background: boolean, autoPause: boolean, receive: (locations: Location.LocationObject[]) => void, error: (message: string) => void) {
@@ -43,7 +43,8 @@ export class DeviceLocationService implements LocationService {
     const generation = ++this.generation;
     // Highest avoids navigation-specific extra sensors. iOS controls delivery cadence.
     const options = { accuracy: Location.Accuracy.Highest, distanceInterval: autoPause ? 0 : 2, timeInterval: 1000 };
-    const backgroundAllowed = background && this.canBackground && (await Location.getBackgroundPermissionsAsync()).granted;
+    const backgroundAllowed = background && this.canBackground &&
+      (await Location.getBackgroundPermissionsAsync().catch(() => null))?.granted;
     if (generation !== this.generation) throw new Error('Démarrage de la localisation annulé.');
     if (backgroundAllowed) {
       if (AppState.currentState === 'background') throw new Error('Revenez dans Sprinter pour démarrer le suivi de votre course.');
