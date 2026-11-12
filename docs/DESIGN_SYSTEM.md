@@ -1,12 +1,14 @@
 # Kit d’interface Sprinter
 
 Le thème sombre est proposé par défaut. Les préférences Clair, Sombre et Système se choisissent dans Réglages.
-Les palettes de la refonte reprennent les valeurs de `cb517f1`. Les titres et les chiffres utilisent les deux
-graisses de Barlow Condensed intégrées à l’application. Le texte courant utilise la police système.
+Tempo est la palette par défaut. Les deux autres directions se comparent dans Réglages avec un build de
+développement. Les titres et les chiffres utilisent les deux graisses de Barlow Condensed intégrées à
+l’application. Le texte courant utilise la police système.
 
 | Fichier | Composants et rôles |
 | --- | --- |
-| `src/ui/tokens.ts` | `typography`, `spacing`, `radii`, `layout`, palettes et état pressé |
+| `src/ui/tokens.ts` | `typography`, `spacing`, `radii`, `layout`, neutres et état pressé |
+| `src/ui/palettes.ts` | Accent par thème, états d’allure, carte et actions sur fond crème |
 | `src/ui/theme.tsx` | Préférences système, couleurs et adaptation à la taille du texte |
 | `src/ui/components.tsx` | `Copy`, `Label`, `Card`, `Button`, `IconButton`, `Header`, `Screen`, métriques et lignes |
 | `src/ui/controls.tsx` | Champs, choix, interrupteur natif et sélecteur |
@@ -27,4 +29,5 @@ Les animations de commande courtes utilisent le pilote natif sur iOS. Le compte 
 la jauge indique l’écart par un curseur, un pictogramme et un libellé, et la carte s’agrandit avec un fondu.
 « Réduire les animations » désactive ces transitions. Le dock suit la préférence de transparence.
 
-Voir [Interface](INTERFACE.md), [vérifications](REFONTE_UI.md) et [mesures sur iPhone](PERF.md).
+Voir [Palettes et contrastes](PALETTE.md), [Interface](INTERFACE.md), [vérifications](REFONTE_UI.md) et
+[mesures sur iPhone](PERF.md).
