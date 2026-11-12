@@ -2,7 +2,6 @@ export interface PlaylistReference {
   id: string; uri: string; url: string; savedAt: number;
   name: string | null; image: string | null; owner: string | null; count: number | null;
   fetchedAt: number | null; source: 'link' | 'account';
-  snapshotId?: string | null;
 }
 export interface SpotifyPreferences {
   version: 1; clientId: string; selectedId: string | null; autoPlay: boolean; playlists: PlaylistReference[];
@@ -17,36 +16,20 @@ export interface SpotifyTrack {
   id: string; title: string; artist: string; image: string | null; url: string | null;
   durationMs: number; explicit: boolean; type: 'track' | 'episode';
 }
-export interface PlaylistTrack extends SpotifyTrack {
-  position: number;
-  playable: boolean;
-}
-export interface PlaylistContents {
-  tracks: PlaylistTrack[] | null;
-  snapshotId: string | null;
-  total: number | null;
-  checkedAt: number;
-  loadedAt: number;
-  refreshing: boolean;
-  error: 'restricted' | 'network' | 'limited' | null;
-}
-export type RepeatMode = 'off' | 'context' | 'track';
 export interface Playback {
   track: SpotifyTrack | null; playing: boolean; progressMs: number | null; shuffle: boolean | null;
   deviceId: string | null; deviceName: string | null; restricted: boolean; advertisement: boolean;
   disallows: Record<string, boolean>; receivedAt: number;
   contextUri?: string | null;
-  repeat?: RepeatMode | null;
 }
-export type PlayerCommand = 'play' | 'pause' | 'next' | 'previous' | 'shuffle' | 'repeat' | 'seek';
+export type PlayerCommand = 'play' | 'pause' | 'next' | 'previous' | 'shuffle' | 'seek';
 export interface MusicState {
   preferencesSaving?: boolean;
   ready: boolean; busy: boolean; playerBusy: boolean; status: 'disconnected' | 'connected' | 'expired';
   preferences: SpotifyPreferences; profile: SpotifyProfile | null;
-  playback: Playback | null;
+  library: PlaylistReference[]; nextOffset: number | null; playback: Playback | null;
   stale: boolean; message: string | null; controlBlocked: boolean; retryAt: number;
   grantedScopes?: string[];
-  playlistContents?: Readonly<Partial<Record<string, PlaylistContents>>>;
 }
 export interface MusicPersistence { load(): Promise<SpotifyPreferences>; save(value: SpotifyPreferences): Promise<void> }
 export interface TokenVault { read(): Promise<SpotifyTokens | null>; write(value: SpotifyTokens): Promise<void>; clear(): Promise<void> }

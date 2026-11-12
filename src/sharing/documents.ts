@@ -2,6 +2,7 @@ import type { RunRecord } from '../core/types';
 import type { ExportDocument } from '../analysis/export/types';
 import { cleanTrack } from '../analysis/track';
 import { exportActivity } from '../analysis/export';
+import { gpxDecimal, gpxLongitude } from '../analysis/export/gpx';
 import { duration, km, pace, averagePace } from '../core/format';
 import { activityAnalysis } from '../analysis/cache';
 import { csvField } from '../analysis/export/csv';
@@ -14,7 +15,7 @@ export function geometryGPX(segments: RouteCoordinate[][], name: string, filenam
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<gpx version="1.1" creator="Sprinter" xmlns="http://www.topografix.com/GPX/1/1">', `<trk><name>${escapeXML(name)}</name><type>running</type>`];
   for (const segment of segments) {
     lines.push('<trkseg>');
-    for (const point of segment) lines.push(`<trkpt lat="${point.latitude.toFixed(8)}" lon="${point.longitude.toFixed(8)}"/>`);
+    for (const point of segment) lines.push(`<trkpt lat="${gpxDecimal(point.latitude)}" lon="${gpxDecimal(gpxLongitude(point.longitude))}"/>`);
     lines.push('</trkseg>');
   }
   lines.push('</trk></gpx>');

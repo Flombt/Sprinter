@@ -58,3 +58,9 @@ class DeviceAlerts implements AlertOutput {
   }
 }
 export const alerts: AlertOutput = new DeviceAlerts();
+
+export function confirmFinishHaptic(enabled: boolean) {
+  if (enabled && AppState.currentState === 'active') {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
+  }
+}

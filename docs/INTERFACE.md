@@ -1,24 +1,25 @@
-# Interface Sprinter
+# Identité Sprinter — Performance
 
-**Courir** ouvre la carte et les commandes de départ. **Stats** présente les objectifs, le suivi et les réglages.
-**Spotify** permet d’importer un lien, choisir une playlist ou utiliser le lecteur. Les onglets conservent leur
-position de défilement et leurs contrôles lorsque l’on change d’écran.
+La navigation principale comporte trois onglets, dans cet ordre :
 
-La préparation ouvre les feuilles Allure, Distance, Séance et Musique. Les chaussures, les parcours, la météo,
-le métronome et les réglages de suivi se trouvent dans **Plus d’options**. Le départ rapide et celui depuis la
-préparation utilisent le même compte à rebours annulable. La disponibilité du GPS s’affiche avant le départ.
+- **Stats** : temps actif, distance, allures actuelle et moyenne, objectif, vibrations et signaux audio.
+- **Courir** : départ avec compte à rebours annulable, puis distance, chronomètre, pause, reprise et enregistrement.
+- **Spotify** : import d’un lien, sélection des playlists enregistrées et lecteur lorsque le compte connecté le permet.
 
-Pendant la course, l’allure actuelle et la jauge précèdent la distance et le temps actif. Le bouton principal
-met en pause ou reprend. En pause automatique, **Pause manuelle** arrête la détection et **Reprendre maintenant**
-relance la course. La barre d’onglets se masque pendant la course sur Courir et revient en pause manuelle.
-**Détails** ouvre Stats et donne accès aux graphiques, au guidage de parcours, au mini-lecteur et aux outils.
+Les réglages avancés et l’historique restent accessibles par leurs boutons secondaires. La nouvelle identité associe le carbone `#101011`, le blanc craie `#F2F0E9` et l’orange `#FF5C35`. Les chiffres et les titres utilisent Barlow Condensed, embarquée localement avec sa licence OFL dans `assets/fonts/` ; les informations et les commandes utilisent la police système.
 
-Maintenir la commande de fin une seconde enregistre la sortie. VoiceOver peut ouvrir la confirmation classique
-avec l’action d’activation. Le bilan montre les chiffres, le tracé et l’accès au détail et au partage.
-Le détail regroupe les données en **Résumé**, **Allures**, **Kilomètres** et **Carte**. Le repère sélectionné
-dans un graphique se retrouve sur la carte.
+Les surfaces claires mettent les données principales au premier plan. Les cartes secondaires sont compactes ; les actions et la sélection de navigation utilisent l’orange. Les grandes orbites et les dégradés ont été retirés. Les transitions durent 200 ms ; la navigation conserve un verre discret sur iOS compatible. Les préférences de réduction des animations et de la transparence sont respectées.
 
-Les pages secondaires utilisent la pile native et le bouton Retour. Le lien `sprinter://run` ouvre Courir.
-Le thème sombre reste la valeur par défaut et les couleurs de référence sont conservées.
+L’allure cible et la distance se choisissent avant le départ. Les vibrations et les signaux audio restent modifiables pendant la course. Les données affichées viennent des services existants ; aucune activité ni playlist fictive n’est ajoutée.
 
-Voir [kit d’interface](DESIGN_SYSTEM.md), [vérifications](REFONTE_UI.md) et [mesures sur iPhone](PERF.md).
+Le départ simple propose une [allure précise](ALLURE_PRECISE.md), sans marge, par défaut 5′00″/km. Les plages d’allure restent disponibles dans la préparation.
+
+## Fonctions préservées et vérification
+
+La préparation avancée et le départ rapide partagent la séance, le calendrier, la chaussure et le parcours. Les panneaux de séance, navigation, carte, progression et rythme restent disponibles dans Stats. Spotify propose les morceaux et les options du lecteur à la demande. Le thème peut suivre le système ou être choisi dans les réglages. L’icône et le lancement reprennent le signe de vitesse orange.
+
+Les contrôles actuels, la stabilisation des données et les limites iPhone sont consignés dans [le bilan du 11 novembre](STABILISATION_2026-11-11.md).
+
+Aperçus vérifiés : [Courir](../artifacts/stabilisation-home.jpg), [Stats](../artifacts/stabilisation-stats.jpg), [Spotify](../artifacts/stabilisation-spotify.jpg).
+
+La version web compilée est servie localement sur le port 8082. La compilation JavaScript iOS ne constitue pas une validation du binaire natif.

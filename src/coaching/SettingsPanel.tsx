@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { FeedbackPressable } from '../ui/FeedbackPressable';
+import { useAnimateLayoutChange } from '../ui/layoutAnimation';
 import { ChoiceGroup, SegmentedControl, Toggle } from '../ui/controls';
 import { Copy, Divider, Icon, Label, Panel, SectionHeading, styles, type IconName } from '../ui/components';
 import { SettingRange, SettingsDisclosure, SettingsNotice } from '../ui/settings';
 import { useTheme } from '../ui/theme';
-import { layout, spacing } from '../ui/tokens';
+import { layout, spacing, iconSizes } from '../ui/tokens';
 import { AnnouncementCategory, AnnouncementPriority, CATEGORY_INFO, CoachLevel, CoachingPreferences, coachingPreset } from './config';
 import { COACH_LEVEL_DESCRIPTION, coachingSummary } from './presentation';
 
@@ -19,6 +21,7 @@ const PRIORITY_LABEL: Record<AnnouncementPriority, string> = { low: 'Basse', nor
 export function CoachingSettings({ value, onChange }: { value?: CoachingPreferences; onChange: (v: CoachingPreferences) => void }) {
   const { colors } = useTheme(); const { config, customized, enabled } = coachingSummary(value);
   const [expanded, setExpanded] = useState<AnnouncementCategory | null>(null);
+  const animateLayout = useAnimateLayoutChange();
   const rule = (key: AnnouncementCategory, patch: Partial<CoachingPreferences['categories'][AnnouncementCategory]>) =>
     onChange({ ...config, categories: { ...config.categories, [key]: { ...config.categories[key], ...patch } } });
   const distance = config.distanceStepMeters < 1000 ? `${config.distanceStepMeters} m` : `${config.distanceStepMeters / 1000} km`;
@@ -30,7 +33,7 @@ export function CoachingSettings({ value, onChange }: { value?: CoachingPreferen
           onChange={level => onChange(coachingPreset(level))} />
         <Copy variant="caption">{COACH_LEVEL_DESCRIPTION[config.level]}</Copy>
         <View style={[styles.row, { flexWrap: 'wrap', gap: spacing.sm }]}>
-          <Copy variant="caption" muted>{customized ? 'Personnalisé' : 'Préréglage'}</Copy>
+          <Copy variant="caption" style={{ color: colors.accentText }}>{customized ? 'Personnalisé' : 'Préréglage'}</Copy>
           <Copy muted variant="caption">{enabled} type{enabled > 1 ? 's' : ''} d’annonce activé{enabled > 1 ? 's' : ''}</Copy>
         </View>
         <Copy muted variant="small">Choisir un niveau réapplique son préréglage : types, intervalles, priorités et palier de distance. Vos ajustements ci-dessous remplacent ensuite cette base.</Copy>
@@ -60,15 +63,15 @@ export function CoachingSettings({ value, onChange }: { value?: CoachingPreferen
             return <View key={key} style={{ gap: spacing.md }}>
               {index > 0 && <Divider />}
               <Toggle title={info.title} body={info.description} value={current.enabled} onChange={enabled => rule(key, { enabled })} />
-              <Pressable accessibilityRole="button" accessibilityLabel={`Fréquence et priorité : ${info.title}`}
+              <FeedbackPressable accessibilityRole="button" accessibilityLabel={`Fréquence et priorité : ${info.title}`}
                 accessibilityHint={`${current.intervalSeconds} secondes minimum. Priorité ${PRIORITY_LABEL[current.priority].toLowerCase()}.`}
-                accessibilityState={{ expanded: open }} onPress={() => setExpanded(open ? null : key)}
+                accessibilityState={{ expanded: open }} onPress={() => { animateLayout(); setExpanded(value => value === key ? null : key); }}
                 style={[styles.row, { minHeight: layout.touch, gap: spacing.sm }]}>
                 <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
                   <Copy muted variant="caption">Fréquence et priorité</Copy>
                   <Copy variant="small" style={{ color: colors.secondary }}>{current.intervalSeconds} s minimum · {PRIORITY_LABEL[current.priority]}</Copy>
-                </View><Icon name={open ? 'chevron-up' : 'chevron-down'} size={16} color={colors.secondary} />
-              </Pressable>
+                </View><Icon name={open ? 'chevron-up' : 'chevron-down'} size={iconSizes.small} color={colors.secondary} />
+              </FeedbackPressable>
               {open && <View style={{ gap: spacing.lg }}>
                 {!current.enabled && <Copy muted variant="caption">Ce type est désactivé. Vous pouvez préparer ses réglages sans l’activer.</Copy>}
                 <SettingRange title={`Intervalle · ${info.title}`} value={current.intervalSeconds} min={info.minimum} max={600} step={5}

@@ -1,5 +1,5 @@
 import { HttpFetch, SpotifyAuth, SpotifyError, timedFetch } from './auth';
-import { Playback, PlaylistReference, PlaylistTrack, RepeatMode, SpotifyProfile, SpotifyTrack } from './types';
+import { Playback, PlaylistReference, SpotifyProfile, SpotifyTrack } from './types';
 import { playlistReference, spotifyContentUrl, spotifyImage, validPlaylistId } from './links';
 
 type Json = Record<string, any>;
@@ -9,8 +9,7 @@ export function parsePlaylist(value: Json, now = Date.now()): PlaylistReference 
   const reference = playlistReference(value.id, now);
   const total = value.items?.total ?? value.tracks?.total;
   return { ...reference, source: 'account', name: safeText(value.name), owner: safeText(value.owner?.display_name),
-    image: spotifyImage(value.images?.[0]?.url), count: Number.isInteger(total) && total >= 0 ? total : null,
-    fetchedAt: now, snapshotId: safeText(value.snapshot_id) };
+    image: spotifyImage(value.images?.[0]?.url), count: Number.isInteger(total) && total >= 0 ? total : null, fetchedAt: now };
 }
 export function parseTrack(value: Json | null | undefined): SpotifyTrack | null {
   if (!value || (value.type !== 'track' && value.type !== 'episode') || !safeText(value.name)) return null;
@@ -23,7 +22,6 @@ export function parseTrack(value: Json | null | undefined): SpotifyTrack | null 
 }
 export class SpotifyApi {
   retryAt = 0;
-  publicRetryAt = 0;
   constructor(readonly auth: SpotifyAuth, private fetcher: HttpFetch = fetch, private now = Date.now) {}
   async request(path: string, method = 'GET', body?: unknown, retry401 = true): Promise<Json | null> {
     if (!path.startsWith('/') || path.startsWith('//')) throw new SpotifyError('Chemin API Spotify invalide.');
@@ -75,49 +73,26 @@ export class SpotifyApi {
   }
   async playlist(id: string) {
     if (!validPlaylistId(id)) throw new SpotifyError('Identifiant de playlist invalide.');
-    const result = await this.request(`/playlists/${id}?fields=id,name,owner(display_name),images,snapshot_id,items(total)`);
+    const result = await this.request(`/playlists/${id}`);
     if (!result) throw new SpotifyError('Playlist inaccessible.');
     return parsePlaylist(result, this.now());
   }
-  async publicPlaylist(id: string): Promise<Pick<PlaylistReference, 'name' | 'image' | 'fetchedAt'>> {
-    const reference = playlistReference(id);
-    if (this.now() < this.publicRetryAt) throw new SpotifyError('Lecteur temporairement limité.', 429, this.publicRetryAt);
-    const response = await timedFetch(this.fetcher, `https://open.spotify.com/oembed?url=${encodeURIComponent(reference.url)}`, {
-      credentials: 'omit',
-    });
-    if (response.status === 429) {
-      const seconds = Number(response.headers.get('Retry-After'));
-      this.publicRetryAt = this.now() + (seconds > 0 ? Math.min(86400, seconds) : 60) * 1000;
-    }
-    if (!response.ok) throw new SpotifyError('Informations publiques indisponibles.', response.status, this.publicRetryAt);
-    const result = await response.json();
-    const name = safeText(result?.title);
-    if (!name) throw new SpotifyError('Titre de playlist indisponible.');
-    return { name, image: spotifyImage(result?.thumbnail_url), fetchedAt: this.now() };
-  }
-  async playlistItems(id: string, offset = 0): Promise<{ tracks: PlaylistTrack[]; nextOffset: number | null; total: number | null }> {
+  async playlistItems(id: string, offset = 0): Promise<{ tracks: SpotifyTrack[]; nextOffset: number | null }> {
     if (!validPlaylistId(id)) throw new SpotifyError('Identifiant de playlist invalide.');
     // 2026 endpoint. Never fall back to deprecated /tracks or scrape forbidden contents.
-    const result = await this.request(`/playlists/${id}/items?limit=50&offset=${offset}&additional_types=track,episode`);
-    if (!Array.isArray(result?.items)) throw new SpotifyError('Titres Spotify indisponibles.');
-    const tracks = Array.isArray(result?.items) ? result.items.flatMap((row: Json, index: number) => {
-      const raw = row?.item ?? row?.track;
-      const item = parseTrack(raw);
-      return item ? [{
-        ...item, position: offset + index,
-        playable: validPlaylistId(item.id) && row?.is_local !== true && raw.is_local !== true && raw.is_playable !== false,
-      }] : [];
+    const result = await this.request(`/playlists/${id}/items?limit=20&offset=${offset}`);
+    const tracks = Array.isArray(result?.items) ? result.items.flatMap((row: Json) => {
+      const item = parseTrack(row?.item ?? row?.track); return item ? [item] : [];
     }) : [];
     let nextOffset: number | null = null;
     if (typeof result?.next === 'string') {
       try {
         const next = new URL(result.next), value = Number(next.searchParams.get('offset'));
         if (next.origin === 'https://api.spotify.com' && next.pathname === `/v1/playlists/${id}/items` &&
-            Number.isSafeInteger(value) && value > offset) nextOffset = value;
+            Number.isInteger(value) && value > offset && value <= 100000) nextOffset = value;
       } catch {}
     }
-    if (result.next != null && nextOffset === null) throw new SpotifyError('Pagination Spotify invalide.');
-    return { tracks, nextOffset, total: Number.isSafeInteger(result.total) && result.total >= 0 ? result.total : null };
+    return { tracks, nextOffset };
   }
   async playback(): Promise<Playback | null> {
     const result = await this.request('/me/player'); if (!result) return null;
@@ -127,26 +102,13 @@ export class SpotifyApi {
       deviceId: typeof result.device?.id === 'string' ? result.device.id : null,
       deviceName: safeText(result.device?.name), restricted: result.device?.is_restricted === true,
       advertisement: result.currently_playing_type === 'ad', disallows: result.actions?.disallows ?? {}, receivedAt: this.now(),
-      contextUri: typeof result.context?.uri === 'string' ? result.context.uri : null,
-      repeat: ['off', 'track', 'context'].includes(result.repeat_state) ? result.repeat_state : null };
+      contextUri: typeof result.context?.uri === 'string' ? result.context.uri : null };
   }
-  async playPlaylist(id: string, deviceId?: string | null, trackUri?: string) {
-    if (!validPlaylistId(id)) throw new SpotifyError('Playlist invalide.');
-    if (trackUri !== undefined && !/^spotify:(track|episode):[A-Za-z0-9]{22}$/.test(trackUri)) {
-      throw new SpotifyError('Identifiant du morceau invalide.');
-    }
-    await this.request(`/me/player/play${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ''}`, 'PUT', {
-      context_uri: `spotify:playlist:${id}`,
-      ...(trackUri === undefined ? {} : { offset: { uri: trackUri } }),
-    });
-  }
+  async playPlaylist(id: string, deviceId?: string | null) { if (!validPlaylistId(id)) throw new SpotifyError('Playlist invalide.'); await this.request(`/me/player/play${deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ''}`, 'PUT', { context_uri: `spotify:playlist:${id}` }); }
   async command(command: 'play' | 'pause' | 'next' | 'previous' | 'shuffle', shuffle?: boolean, deviceId?: string | null) {
     let path = command === 'shuffle' ? `/me/player/shuffle?state=${shuffle ? 'true' : 'false'}` : `/me/player/${command}`;
     if (deviceId) path += `${path.includes('?') ? '&' : '?'}device_id=${encodeURIComponent(deviceId)}`;
     await this.request(path, command === 'next' || command === 'previous' ? 'POST' : 'PUT');
-  }
-  async setRepeat(mode: RepeatMode, deviceId?: string | null) {
-    await this.request(`/me/player/repeat?state=${mode}${deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : ''}`, 'PUT');
   }
   async seek(positionMs: number, deviceId?: string | null) { await this.request(`/me/player/seek?position_ms=${Math.max(0, Math.floor(positionMs))}${deviceId ? `&device_id=${encodeURIComponent(deviceId)}` : ''}`, 'PUT'); }
 }

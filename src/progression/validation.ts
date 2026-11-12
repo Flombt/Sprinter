@@ -34,8 +34,7 @@ export function readProgression(value: unknown): ProgressionData {
   const data = value as ProgressionData;
   if (!data || data.version !== 1 || ![data.entries, data.goals, data.journals, data.shoes, data.plans].every(Array.isArray) ||
       data.entries.length > 10000 || data.journals.length > 100000 || data.goals.length > 10000 || data.shoes.length > 1000 || data.plans.length > 1000 ||
-      !optionalId(data.selectedEntryId) || !optionalId(data.defaultShoeId) ||
-      (data.profileName !== undefined && !text(data.profileName, 40))) throw new Error('Stockage de progression illisible ou version inconnue. Les données ont été conservées.');
+      !optionalId(data.selectedEntryId) || !optionalId(data.defaultShoeId)) throw new Error('Stockage de progression illisible ou version inconnue. Les données ont été conservées.');
   data.entries.forEach(validateEntry); data.goals.forEach(validateGoal); data.journals.forEach(validateJournal); data.shoes.forEach(validateShoe); data.plans.forEach(validatePlan);
   for (const values of [data.entries.map(e => e.id), data.journals.map(j => j.runId), data.shoes.map(s => s.id), data.goals.map(g => g.week), data.plans.map(p => p.id)]) if (new Set(values).size !== values.length) throw new Error('Identifiants de progression dupliqués. Données conservées.');
   return data;
