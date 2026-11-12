@@ -5,7 +5,7 @@ import { Copy } from './components';
 import { MapPlaceholder } from './MapPlaceholder';
 import { EMPTY_REFERENCE, RecordedTrack, referenceSegments, type RouteMapProps } from './routeMapData';
 import { useTheme } from './theme';
-import { radii } from './tokens';
+import { mapColors, radii } from './tokens';
 
 const edgePadding = { top: 60, right: 48, bottom: 52, left: 48 };
 const localRegion = { latitudeDelta: 0.007, longitudeDelta: 0.007 };
@@ -172,9 +172,9 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#2F82F5',
+    backgroundColor: mapColors.position,
     borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderColor: mapColors.positionHalo,
   },
   caption: { position: 'absolute', bottom: 12, left: 14, right: 14, textAlign: 'center' },
 });

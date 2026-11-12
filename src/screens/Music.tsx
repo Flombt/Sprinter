@@ -1,5 +1,5 @@
 import { Switch } from '../ui/controls';
-import { contrastAccent, interaction, paperColors, spacing, typography } from '../ui/tokens';
+import { contrastAccent, controlColors, interaction, paperColors, spacing, typography } from '../ui/tokens';
 import {
   Button,
   Card,
@@ -159,7 +159,7 @@ export default function Music({
       <Card variant="paper" contentStyle={{ padding: 18, gap: 13 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Icon name="link-outline" color={colors.heroText} size={17} />
-          <Label style={{ color: '#706C65' }}>AJOUTER UNE PLAYLIST</Label>
+          <Label style={{ color: paperColors.label }}>AJOUTER UNE PLAYLIST</Label>
         </View>
         <View
           style={{
@@ -168,13 +168,13 @@ export default function Music({
             borderRadius: 9,
             borderWidth: 1,
             borderColor: paperColors.line,
-            backgroundColor: '#E6E3DC',
+            backgroundColor: paperColors.field,
           }}
         >
           <TextInput
             accessibilityLabel="Lien de playlist Spotify"
             placeholder="Collez votre lien Spotify…"
-            placeholderTextColor="#77736D"
+            placeholderTextColor={paperColors.placeholder}
             value={input}
             onChangeText={(value) => {
               inputRevision.current++;
@@ -205,7 +205,7 @@ export default function Music({
             onPress={() => void paste()}
             style={{ width: 44, minHeight: 50, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Icon name="clipboard-outline" size={17} color="#706C65" />
+            <Icon name="clipboard-outline" size={17} color={paperColors.label} />
           </Pressable>
         </View>
         <Button
@@ -302,7 +302,7 @@ export default function Music({
                 </Copy>
                 <Switch
                   accessibilityRole="switch"
-                  trackColor={{ false: '#424248', true: accent }}
+                  trackColor={{ false: controlColors.switchTrackOff, true: accent }}
                   accessibilityLabel="Lancer Spotify avec la course"
                   value={state.preferences.autoPlay}
                   disabled={state.busy || state.preferencesSaving}

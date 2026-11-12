@@ -30,6 +30,17 @@ export const paperColors = {
   pressed: '#DDDAD2',
   badge: '#E3E0D8',
   badgeText: '#5F5D58',
+  label: '#706C65',
+  field: '#E6E3DC',
+  placeholder: '#77736D',
+} as const;
+export const controlColors = {
+  switchTrackOff: '#424248',
+  choicePressed: '#36363A',
+} as const;
+export const mapColors = {
+  position: '#2F82F5',
+  positionHalo: '#FFFFFF',
 } as const;
 export const contrastAccent = (colors: ThemeColors) => (colors.dark ? colors.accent : colors.accentText);
 export const spacing = {
