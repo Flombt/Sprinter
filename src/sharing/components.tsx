@@ -41,7 +41,7 @@ export function ActivitySharing({ run }: { run: RunRecord }) {
     <Button title={`Exporter CSV ${privacy.mode === 'public' ? 'public' : 'complet'}`} secondary icon="share-outline" disabled={busy} onPress={() => void act('csv')} />
     <Button title="Exporter les statistiques CSV sans positions" secondary icon="stats-chart-outline" disabled={busy} onPress={() => void act('statistics')} />
     <Copy muted variant="small">Le résumé et le CSV public conservent les vrais compteurs de la course entière. Le GPX public décrit seulement le tracé restant, sans temps ni compteurs d’origine. Dans la feuille de partage iPhone, « Enregistrer dans Fichiers » conserve la copie choisie.</Copy>
-    {message && <Copy accessibilityRole="alert" style={{ color: colors.orange }}>{message}</Copy>}
+    {message && <Copy accessibilityRole="alert" style={{ color: colors.warning.text }}>{message}</Copy>}
   </Panel>;
 }
 export function RouteSharing({ route }: { route: SavedRoute }) {

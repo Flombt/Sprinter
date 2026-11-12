@@ -218,7 +218,7 @@ export default function Detail({
               </View>
             </View>
           </Panel>
-          {run.workoutError && <Copy style={{ color: colors.orange }}>{run.workoutError}</Copy>}
+          {run.workoutError && <Copy style={{ color: colors.warning.text }}>{run.workoutError}</Copy>}
           {run.workout && <WorkoutResult workout={run.workout} />}
           {onCompare && (
             <Button title="Comparer cette sortie" secondary icon="git-compare-outline" onPress={onCompare} />
@@ -322,7 +322,7 @@ export default function Detail({
                         </Copy>
                       )}
                       {!split.reliable && (
-                        <Copy variant="small" style={{ color: colors.orange }}>
+                        <Copy variant="small" style={{ color: colors.warning.text }}>
                           {split.source === 'counter' ? 'Compteur archivé' : 'GPS incomplet'}
                         </Copy>
                       )}
@@ -374,7 +374,7 @@ export default function Detail({
       )}
       <SettingsDisclosure title="À propos de ces mesures" icon="information-circle-outline">
         {analysis.warnings.map((warning) => (
-          <Copy key={warning} style={{ color: colors.orange }}>
+          <Copy key={warning} style={{ color: colors.warning.text }}>
             {warning}
           </Copy>
         ))}

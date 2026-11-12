@@ -190,7 +190,7 @@ export default function Settings({
             onChange={(enabled) => void workouts.setVoice(enabled)}
           />
           {library.preferences.voiceEnabled && !audio && (
-            <Copy variant="caption" style={{ color: colors.orange }}>
+            <Copy variant="caption" style={{ color: colors.warning.text }}>
               Voix en attente : activez les signaux audio pour entendre le coach.
             </Copy>
           )}

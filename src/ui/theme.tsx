@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Platform, useColorScheme, useWindowDimensions } from 'react-native';
 import { Appearance } from '../core/types';
-import { palettes, type ThemeColors } from './tokens';
+import { ACTIVE_PALETTE, buildPalettes, type ThemeColors } from './palettes';
 
 export type Theme = ThemeColors;
-const ThemeContext = createContext({ colors: palettes.dark, reduceMotion: false, reduceTransparency: false });
+export const defaultPalettes = buildPalettes(ACTIVE_PALETTE);
+const ThemeContext = createContext({
+  colors: defaultPalettes.dark,
+  reduceMotion: false,
+  reduceTransparency: false,
+});
 export function ThemeProvider({
   appearance,
   children,
@@ -41,8 +46,8 @@ export function ThemeProvider({
     };
   }, []);
   const colors = (appearance === 'system' ? system === 'dark' : appearance === 'dark')
-    ? palettes.dark
-    : palettes.light;
+    ? defaultPalettes.dark
+    : defaultPalettes.light;
   const value = useMemo(
     () => ({ colors, reduceMotion, reduceTransparency }),
     [colors, reduceMotion, reduceTransparency],

@@ -20,16 +20,16 @@ export function PacingProgressPanel({ run, quality = 'good', running = false }: 
     {!reference.explicitTime && <Copy muted variant="caption">Référence calculée à partir du milieu des plages prévues ; aucun temps final n’a été imposé.</Copy>}
     <MetricGrid><Metric label="Capital de temps" value={signed} unit={capital === null ? undefined : 's'} />
       <Metric label={status === 'completed' ? 'Temps à la distance cible' : 'Arrivée estimée'} value={progress.projectedFinishSeconds === null ? '—' : duration(progress.projectedFinishSeconds)} /></MetricGrid>
-    {capital !== null && <Copy style={{ fontWeight: '600', color: capital < 0 ? colors.orange : colors.text }}>{capital === 0 ? 'À l’heure sur la référence.' : `${Math.abs(capital)} secondes ${capital > 0 ? 'd’avance' : 'de retard'} à la distance mesurée.`}</Copy>}
+    {capital !== null && <Copy style={{ fontWeight: '600', color: capital < 0 ? colors.warning.text : colors.text }}>{capital === 0 ? 'À l’heure sur la référence.' : `${Math.abs(capital)} secondes ${capital > 0 ? 'd’avance' : 'de retard'} à la distance mesurée.`}</Copy>}
     {progress.estimatedArrival !== null && <Copy muted>Heure estimée : {new Date(progress.estimatedArrival).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.</Copy>}
     {status === 'running' && <>{reference.explicitTime && <><Copy>Allure moyenne restante nécessaire : {progress.reachable && progress.requiredPace !== null && progress.requiredPace <= 1200 ? `${pace(progress.requiredPace)} /km` : '—'}.</Copy>
       {progress.requiredPace !== null && progress.requiredPace > 1200 && <Copy muted variant="caption">Marge importante : aucune accélération supplémentaire n’est nécessaire pour respecter ce temps.</Copy>}
-      {!progress.reachable && <Copy style={{ fontSize: 12, color: colors.orange }}>Le temps restant exige une allure plus rapide que les limites du guide, ou le temps visé est déjà dépassé.</Copy>}</>}
+      {!progress.reachable && <Copy style={{ fontSize: 12, color: colors.warning.text }}>Le temps restant exige une allure plus rapide que les limites du guide, ou le temps visé est déjà dépassé.</Copy>}</>}
       <Copy muted variant="caption">Projection à partir de l’allure moyenne active mesurée, sans prévoir de futur arrêt. Le capital suit le temps de passage prévu à cette position.</Copy></>}
     {status === 'acquiring' && <Copy muted>Le capital et l’arrivée deviennent disponibles après 50 m et la stabilisation GPS.</Copy>}
     {status === 'gpsUnavailable' && <Copy muted>Estimations suspendues pendant la stabilisation ou l’interruption GPS.</Copy>}
     {status === 'estimatedTime' && <Copy muted>La chronologie totale comporte une estimation après interruption. Le capital et l’arrivée sur cet objectif de temps total restent indisponibles.</Copy>}
-    {status === 'partialDistance' && <Copy style={{ color: colors.orange, fontSize: 12 }}>La distance comporte une interruption ou un historique incomplet. Capital et arrivée indisponibles pour éviter une comparaison trompeuse.</Copy>}
+    {status === 'partialDistance' && <Copy style={{ color: colors.warning.text, fontSize: 12 }}>La distance comporte une interruption ou un historique incomplet. Capital et arrivée indisponibles pour éviter une comparaison trompeuse.</Copy>}
     {status === 'paused' && <Copy muted>{reference.timeBasis === 'total' ? 'Pause : le temps total et le capital continuent d’évoluer. La projection d’arrivée est suspendue.' : 'Pause : le temps actif et le capital sont suspendus.'}</Copy>}
     {status === 'completed' && <Copy muted>Capital figé au franchissement mesuré de la distance cible. L’enregistrement de la sortie peut continuer.</Copy>}
     {status === 'stopped' && <Copy muted>Sortie terminée avant la distance cible. Le capital correspond au dernier point accepté ; aucune arrivée future n’est projetée.</Copy>}
@@ -38,7 +38,7 @@ export function PacingProgressPanel({ run, quality = 'good', running = false }: 
 }
 export function PaceHistory({ run, live = false }: { run: RunRecord; live?: boolean }) {
   const { colors } = useTheme(); const [expanded, setExpanded] = useState(false), s = run.pacing;
-  if (!s) return run.pacingError ? <Copy style={{ color: colors.orange }}>{run.pacingError}</Copy> : null;
+  if (!s) return run.pacingError ? <Copy style={{ color: colors.warning.text }}>{run.pacingError}</Copy> : null;
   const items = expanded ? [...s.deviations].reverse() : s.deviations.slice(live ? -3 : -12).reverse();
   const percentage = targetPercentage(run);
   return <Panel style={{ gap: 15 }}><Label>Coach · historique des écarts</Label>

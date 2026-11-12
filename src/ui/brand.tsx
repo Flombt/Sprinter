@@ -2,12 +2,13 @@ import { View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Copy } from './components';
 import { useTheme } from './theme';
-import { palettes, spacing } from './tokens';
+import { spacing } from './tokens';
 
-export function SpeedMark({ size = 30, color = palettes.dark.accent }: { size?: number; color?: string }) {
+export function SpeedMark({ size = 30, color }: { size?: number; color?: string }) {
+  const { colors } = useTheme();
   return (
     <Svg accessible={false} width={size} height={size * 0.8} viewBox="0 0 36 28">
-      <Path d="M2 25 14 3h6L8 25Zm10 0L24 3h6L18 25Zm10 0L34 3h2L24 25Z" fill={color} />
+      <Path d="M2 25 14 3h6L8 25Zm10 0L24 3h6L18 25Zm10 0L34 3h2L24 25Z" fill={color ?? colors.accent} />
     </Svg>
   );
 }

@@ -140,7 +140,7 @@ export function TrackingPanel({ state, onApple }: { state: SessionStructure; onA
             }}
           />
           {message && (
-            <Copy accessibilityRole="alert" variant="caption" style={{ color: colors.orange }}>
+            <Copy accessibilityRole="alert" variant="caption" style={{ color: colors.warning.text }}>
               {message}
             </Copy>
           )}

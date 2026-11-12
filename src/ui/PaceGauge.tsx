@@ -52,11 +52,11 @@ export function PaceGauge({
       : STATE_LABELS[status];
   const color =
     status === 'tooFast'
-      ? colors.orange
+      ? colors.zone.fast.text
       : status === 'tooSlow'
-        ? colors.blue
+        ? colors.zone.slow.text
         : status === 'onTarget'
-          ? colors.accentText
+          ? colors.zone.on.text
           : colors.secondary;
   const model = target
     ? paceGaugePosition(running && quality === 'good' ? value : null, target, tolerance)

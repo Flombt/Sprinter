@@ -14,9 +14,9 @@ import { useRunStart } from './src/navigation/useRunStart';
 import { session, type SessionState } from './src/services/session';
 import { sameFields } from './src/services/snapshotSelection';
 import { useSessionSelector } from './src/services/useSessionSelector';
-import { ThemeProvider, useTheme } from './src/ui/theme';
+import { defaultPalettes, ThemeProvider, useTheme } from './src/ui/theme';
 import { Button, Copy, Label, Screen } from './src/ui/components';
-import { palettes, spacing } from './src/ui/tokens';
+import { spacing } from './src/ui/tokens';
 import { confirm } from './src/ui/confirm';
 import { haptic } from './src/ui/haptics';
 import { RunCountdown } from './src/ui/RunCountdown';
@@ -205,10 +205,10 @@ export default function App() {
               flex: 1,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: palettes.dark.background,
+              backgroundColor: defaultPalettes.dark.background,
             }}
           >
-            <ActivityIndicator color={palettes.dark.accent} />
+            <ActivityIndicator color={defaultPalettes.dark.accent} />
           </View>
         )}
       </ThemeProvider>
