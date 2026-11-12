@@ -2,6 +2,10 @@ import { PlaylistReference } from './types';
 
 const ID = /^[A-Za-z0-9]{22}$/;
 export const validPlaylistId = (value: unknown): value is string => typeof value === 'string' && ID.test(value);
+export function playlistEmbedUrl(id: string): string {
+  if (!validPlaylistId(id)) throw new Error('Identifiant de playlist Spotify invalide.');
+  return `https://open.spotify.com/embed/playlist/${id}`;
+}
 const invalid = () => new Error('Collez un lien de playlist open.spotify.com ou une URI spotify:playlist valide.');
 export function playlistReference(id: string, savedAt = Date.now()): PlaylistReference {
   if (!validPlaylistId(id)) throw invalid();

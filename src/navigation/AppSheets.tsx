@@ -8,7 +8,7 @@ import Workouts from '../screens/Workouts';
 import { useSessionStructure } from '../services/useSessionSelector';
 import { useTheme } from '../ui/theme';
 
-export type Sheet = 'music' | 'settings' | 'workouts' | 'tools';
+export type Sheet = 'music' | 'player' | 'settings' | 'workouts' | 'tools';
 
 export const AppSheets = memo(function AppSheets({
   sheet,
@@ -38,8 +38,10 @@ export const AppSheets = memo(function AppSheets({
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        {sheet === 'music' && (
+        {(sheet === 'music' || sheet === 'player') && (
           <Music
+            key={sheet}
+            initialPlayer={sheet === 'player'}
             onClose={onClose}
             foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
           />
