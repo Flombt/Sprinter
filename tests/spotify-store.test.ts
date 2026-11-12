@@ -19,37 +19,18 @@ function setup({ connected = false, canAuthenticate = true, prefs = {} as Partia
     authorize: vi.fn().mockResolvedValue({ code: 'code', verifier: 'verifier', redirectUri }),
     resolveShortLink: vi.fn(), openSpotify: vi.fn().mockResolvedValue(undefined) };
   let disallows: Record<string, boolean> = {};
-  let snapshot = 'first';
-  let titles = Array.from({ length: 2 }, (_, index) => `Titre ${index + 1}`);
-  let itemStatus = 200;
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.includes('/api/token')) return new Response(JSON.stringify({ access_token: 'access', refresh_token: 'refresh', expires_in: 3600, scope: SPOTIFY_SCOPES.join(' ') }));
     if (url.endsWith('/me')) return new Response(JSON.stringify({ id: 'runner', display_name: 'Runner' }));
-    if (url.includes('/oembed')) return new Response(null, { status: 503 });
-    if (url.includes(`/playlists/${id}/items`)) {
-      if (itemStatus !== 200) return new Response(null, { status: itemStatus });
-      const query = new URL(url);
-      const offset = Number(query.searchParams.get('offset'));
-      const limit = Number(query.searchParams.get('limit'));
-      const items = titles.slice(offset, offset + limit).map(name => ({
-        item: { id: other, name, type: 'track', duration_ms: 180000 },
-      }));
-      query.searchParams.set('offset', String(offset + limit));
-      return new Response(JSON.stringify({ items, total: titles.length, next: offset + limit < titles.length ? query.href : null }));
-    }
-    if (url.includes(`/playlists/${id}`)) return new Response(JSON.stringify({
-      id, name: 'Accessible playlist', snapshot_id: snapshot, items: { total: titles.length },
-    }));
-    if (url.endsWith('/me/player') && (!init?.method || init.method === 'GET')) return new Response(JSON.stringify({ is_playing: true, progress_ms: 1000, shuffle_state: false, repeat_state: 'off',
+    if (url.includes('/me/playlists')) return new Response(JSON.stringify({ items: [{ id, name: 'Owned playlist', items: { total: 2 } }], next: null }));
+    if (url.includes(`/playlists/${id}`)) return new Response(JSON.stringify({ id, name: 'Accessible playlist', items: { total: 2 } }));
+    if (url.endsWith('/me/player') && (!init?.method || init.method === 'GET')) return new Response(JSON.stringify({ is_playing: true, progress_ms: 1000, shuffle_state: false,
       device: { id: 'iphone', name: 'iPhone', is_restricted: false }, actions: { disallows }, item: { type: 'track', id: other, name: 'Test track', artists: [{ name: 'Test artist' }], duration_ms: 200000 } }));
     return new Response(null, { status: 204 });
   });
   const auth = new SpotifyAuth(vault, fetcher), api = new SpotifyApi(auth, fetcher);
   const store = new SpotifyStore(auth, api, persistence, platform); stores.push(store);
-  return { store, fetcher, auth, api, persistence, platform, vault, saved: () => saved, restrict: (value: Record<string, boolean>) => { disallows = value; },
-    changePlaylist: (value: string[], version: string) => { titles = value; snapshot = version; },
-    rejectItems: (status: number) => { itemStatus = status; },
-  };
+  return { store, fetcher, auth, api, persistence, platform, vault, saved: () => saved, restrict: (value: Record<string, boolean>) => { disallows = value; } };
 }
 afterEach(() => { stores.splice(0).forEach(store => store.setForeground(false)); vi.useRealTimers(); });
 describe('Spotify module, independent of sport recording', () => {
@@ -58,20 +39,16 @@ describe('Spotify module, independent of sport recording', () => {
     expect(await store.importPlaylist(`spotify:playlist:${id}`)).toBe(true);
     expect(await store.importPlaylist(`https://open.spotify.com/playlist/${id}?si=tracking`)).toBe(true);
     expect(saved().playlists).toHaveLength(1); expect(saved().selectedId).toBe(id);
-    expect(selectedPlaylist(store.getSnapshot())?.name).toBeNull();
-    expect(fetcher).toHaveBeenCalledOnce();
-    expect(new URL(fetcher.mock.calls[0]![0]).pathname).toBe('/oembed');
+    expect(selectedPlaylist(store.getSnapshot())?.name).toBeNull(); expect(fetcher).not.toHaveBeenCalled();
   });
   it('does not change selection after an invalid link', async () => {
     const { store, saved } = setup(); await store.initialize(); await store.importPlaylist(`spotify:playlist:${id}`);
     expect(await store.importPlaylist('https://evil.test/playlist/whatever')).toBe(false); expect(saved().selectedId).toBe(id);
   });
-  it('connects without adding any Spotify playlist to the local library', async () => {
-    const { store, platform, fetcher } = setup({ prefs: { clientId } }); await store.initialize(); await store.connect();
+  it('connects through the injected authorization adapter and loads permitted playlists', async () => {
+    const { store, platform } = setup({ prefs: { clientId } }); await store.initialize(); await store.connect();
     expect(platform.authorize).toHaveBeenCalledWith(clientId, SPOTIFY_SCOPES, redirectUri);
-    expect(store.getSnapshot().status).toBe('connected');
-    expect(store.getSnapshot().profile?.name).toBe('Runner');
-    expect(fetcher.mock.calls.some(([url]) => url.includes('/me/playlists'))).toBe(false);
+    expect(store.getSnapshot().status).toBe('connected'); expect(store.getSnapshot().library[0]?.name).toBe('Owned playlist');
   });
   it('does not pretend OAuth works inside Expo Go', async () => {
     const { store, platform } = setup({ canAuthenticate: false, prefs: { clientId } }); await store.initialize(); await store.connect();
@@ -82,45 +59,11 @@ describe('Spotify module, independent of sport recording', () => {
     const { store, platform } = setup({ prefs: { selectedId: id, playlists: [playlistReference(id)] } });
     await store.initialize(); expect(selectedPlaylist(store.getSnapshot())?.id).toBe(id); expect(platform.openSpotify).not.toHaveBeenCalled();
   });
-  it('loads all 200 titles, replaces the list when Spotify changes it, and keeps the last list after an outage', async () => {
-    const { store, fetcher, saved, changePlaylist, rejectItems } = setup({
-      connected: true, prefs: { playlists: [playlistReference(id)] },
-    });
-    const titles = Array.from({ length: 200 }, (_, index) => `Titre ${index + 1}`);
-    changePlaylist(titles, 'initial');
-    await store.initialize();
-    await store.refreshPlaylist(id);
-    expect(store.getSnapshot().playlistContents?.[id]?.tracks?.map(track => track.title)).toEqual(titles);
-    expect(fetcher.mock.calls.filter(([url]) => url.includes('/items?')).map(([url]) =>
-      Number(new URL(url).searchParams.get('offset')))).toEqual([0, 50, 100, 150]);
-    expect(saved().playlists[0]?.count).toBe(200);
-    expect(saved().playlists[0]?.name).toBe('Accessible playlist');
-    const next = ['Nouveau titre', ...titles.slice(1, -1).reverse()];
-    changePlaylist(next, 'updated');
-    await store.refreshPlaylist(id, 'manual');
-    expect(store.getSnapshot().playlistContents?.[id]?.tracks?.map(track => track.title)).toEqual(next);
-    rejectItems(503);
-    await store.refreshPlaylist(id, 'manual');
-    expect(store.getSnapshot().playlistContents?.[id]).toMatchObject({ error: 'network', total: next.length });
-    expect(store.getSnapshot().playlistContents?.[id]?.tracks?.map(track => track.title)).toEqual(next);
-    rejectItems(403);
-    await store.refreshPlaylist(id, 'manual');
-    expect(store.getSnapshot().playlistContents?.[id]).toMatchObject({ error: 'restricted', tracks: null });
-    expect(saved().playlists[0]?.id).toBe(id);
-  });
   it('refreshes and sends actual control commands without inventing a player state', async () => {
     const { store, fetcher } = setup({ connected: true }); await store.initialize(); await store.refreshPlayback();
     expect(controlReason(store.getSnapshot(), 'next')).toBeNull(); await store.command('next');
     expect(fetcher.mock.calls.some(([url, init]) => new URL(url).pathname === '/v1/me/player/next' && init?.method === 'POST' && new URL(url).searchParams.get('device_id') === 'iphone')).toBe(true);
     expect(store.getSnapshot().playback?.track?.title).toBe('Test track');
-    await store.command('repeat');
-    expect(fetcher.mock.calls.some(([url, init]) => new URL(url).pathname === '/v1/me/player/repeat' &&
-      init?.method === 'PUT' && new URL(url).searchParams.get('state') === 'context')).toBe(true);
-    await store.playPlaylist(playlistReference(id), `spotify:track:${other}`);
-    const play = fetcher.mock.calls.find(([url]) => new URL(url).pathname === '/v1/me/player/play');
-    expect(JSON.parse(String(play?.[1]?.body))).toEqual({
-      context_uri: `spotify:playlist:${id}`, offset: { uri: `spotify:track:${other}` },
-    });
   });
   it('respects per-action restrictions, Free accounts, and stale player data', async () => {
     const { store, restrict } = setup({ connected: true }); await store.initialize(); restrict({ skipping_next: true }); await store.refreshPlayback();
@@ -142,7 +85,7 @@ describe('Spotify module, independent of sport recording', () => {
     const run = new RunEngine(DEFAULT_TARGET, undefined, 0); await store.initialize(); await store.disconnectSafely(); run.tick(20, Date.now());
     expect(run.running).toBe(true); expect(run.record.activeSeconds).toBe(20);
     expect(vault.clear).toHaveBeenCalled(); expect(selectedPlaylist(store.getSnapshot())?.id).toBe(id);
-    expect(selectedPlaylist(store.getSnapshot())?.name).toBeNull(); expect(store.getSnapshot().playlistContents).toEqual({});
+    expect(selectedPlaylist(store.getSnapshot())?.name).toBeNull(); expect(store.getSnapshot().library).toEqual([]);
   });
   it('never prevents the running clock or coach because Spotify playback failed', async () => {
     const { store, fetcher } = setup({ connected: true, prefs: { selectedId: id, playlists: [playlistReference(id)] } });

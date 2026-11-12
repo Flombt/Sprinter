@@ -74,7 +74,6 @@ class ProgressionStore {
   removeGoal = (week: string) => this.write(data => { data.goals = data.goals.filter(g => g.week !== week); });
   saveShoe = (shoe: Shoe) => { const copy = clone(shoe); return this.write(data => { validateShoe(copy); data.shoes = [copy, ...data.shoes.filter(s => s.id !== copy.id)]; if (copy.archived && data.defaultShoeId === copy.id) data.defaultShoeId = null; }); };
   selectShoe = (id: string | null) => this.write(data => { if (id && !data.shoes.some(s => s.id === id && !s.archived)) throw new Error('Chaussure active introuvable.'); data.defaultShoeId = id; });
-  saveProfileName = (name: string) => this.write(data => { data.profileName = name.trim(); });
   savePlan = (plan: TrainingPlan, entries: CalendarEntry[]) => { const copy = clone({ plan, entries }); return this.write(data => {
     validatePlan(copy.plan); if (data.plans.some(p => p.id === plan.id)) throw new Error('Ce plan est déjà enregistré. Modifiez les dates individuellement.');
     copy.entries.forEach(validateEntry); data.plans.unshift(copy.plan); data.entries.push(...copy.entries);

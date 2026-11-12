@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactElement, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { RunRecord } from '../core/types';
 import { duration, km, runDate } from '../core/format';
-import type { SessionState } from '../services/session';
-import { Button, Copy, Header, Label, ListRow, Panel, Screen, SectionHeading } from '../ui/components';
+import type { SessionStructure } from '../services/useSessionSelector';
+import { Button, Copy, Header, Label, ListRow, Panel, ScreenList, SectionHeading } from '../ui/components';
 import { ChoiceGroup, Toggle } from '../ui/controls';
 import { useTheme } from '../ui/theme';
 import { spacing } from '../ui/tokens';
@@ -20,15 +20,14 @@ export type WorkoutLibraryFilter = 'all' | 'models' | 'saved' | 'challenges' | '
 type TemplateInfo = (typeof TEMPLATE_INFO)[number];
 type FavoriteEntry = { key: string; type: 'template'; template: TemplateInfo } | { key: string; type: 'saved'; definition: WorkoutDefinition };
 interface LibraryProps {
-  library: ReturnType<typeof workouts.getSnapshot>; running: SessionState; error: string | null;
-  filter: WorkoutLibraryFilter; shown: number; onBrowse: (filter: WorkoutLibraryFilter) => void; onShowMore: () => void;
+  library: ReturnType<typeof workouts.getSnapshot>; running: SessionStructure; error: string | null;
+  filter: WorkoutLibraryFilter; onBrowse: (filter: WorkoutLibraryFilter) => void;
   onClose?: () => void; onSelected: () => void; canPrepare: boolean; onDetail?: (run: RunRecord) => void;
   onEdit: (definition: WorkoutDefinition) => void; onTemplate: (kind: TemplateInfo['kind']) => void; onRecords: () => void;
 }
-export const WORKOUT_LIBRARY_PAGE_SIZE = 20;
 const challengeKinds = new Set<WorkoutKind>(CHALLENGE_KINDS);
 
-export function WorkoutLibraryView({ library, running, error, filter, shown, onBrowse: browse, onShowMore, onClose, onSelected, canPrepare, onDetail, onEdit, onTemplate, onRecords }: LibraryProps) {
+export function WorkoutLibraryView({ library, running, error, filter, onBrowse: browse, onClose, onSelected, canPrepare, onDetail, onEdit, onTemplate, onRecords }: LibraryProps) {
   const { colors } = useTheme();
   const disabled = !library.ready || library.busy;
   const favoriteKeys = useMemo(() => new Set(library.preferences.favoriteKeys ?? []), [library.preferences.favoriteKeys]);
@@ -71,19 +70,19 @@ export function WorkoutLibraryView({ library, running, error, filter, shown, onB
     return <WorkoutCard key={`${prefix}${key}`} title={definition.name} description={definition.description} definition={definition} kind={definition.kind} origin="Ma séance" disabled={disabled}
       selected={selectedDefinition?.id === definition.id && selectedDefinition.updatedAt === definition.updatedAt}
       favorite={favoriteKeys.has(key)} onFavorite={() => void workouts.toggleFavorite(key)}
-      action={{ title: running.run ? 'Choisir pour la prochaine course' : 'Choisir cette séance', onPress: () => choose(definition) }}
+      action={{ title: running.runId ? 'Choisir pour la prochaine course' : 'Choisir cette séance', onPress: () => choose(definition) }}
       management={{ edit: () => onEdit(definition), duplicate: () => { void workouts.duplicate(definition); },
         remove: () => confirm('Supprimer cette séance ?', 'Les sorties déjà enregistrées conserveront leurs blocs et leurs résultats.', 'Supprimer', () => { void workouts.remove(definition.id); }, true) }} />;
   };
   const showAll = filter === 'all';
-  return <Screen bottom={onClose ? 45 : spacing.xxl}><Header title="Séances & Défis" subtitle="Votre bibliothèque" onBack={onClose} />
+  const header = <View style={{ gap: spacing.lg, paddingBottom: spacing.lg }}><Header title="Séances & Défis" subtitle="Votre bibliothèque" onBack={onClose} />
     {(library.message || error) && <Panel style={{ gap: spacing.md }}><Copy accessibilityRole="alert" style={{ color: colors.danger }}>{library.message ?? error}</Copy>
       {!library.ready && <Button title="Réessayer la bibliothèque" variant="secondary" onPress={() => void workouts.initialize()} />}
     </Panel>}
     {library.unreadable > 0 && <Copy variant="caption" muted>{library.unreadable} {library.unreadable === 1 ? 'élément de bibliothèque indisponible, conservé' : 'éléments de bibliothèque indisponibles, conservés'} localement.</Copy>}
     {selectedDefinition && <Panel variant="list" style={{ gap: spacing.md }}><Label>Pour la prochaine sortie</Label><Copy variant="section">{selectedDefinition.name}</Copy>
       {selectedInfo && <Copy variant="caption" muted>{selectedInfo.volume} · {selectedInfo.structure}</Copy>}
-      {canPrepare && <Button title={running.run ? 'Choix conservé pour la prochaine course' : 'Préparer cette séance'} disabled={!!running.run} onPress={onSelected} />}
+      {canPrepare && <Button title={running.runId ? 'Choix conservé pour la prochaine course' : 'Préparer cette séance'} disabled={!!running.runId} onPress={onSelected} />}
       <Button title="Revenir à la course libre" variant="quiet" disabled={disabled} onPress={() => void workouts.select(null)} />
     </Panel>}
     <View style={{ gap: spacing.sm }}><Button title="Créer ma séance" icon="add" disabled={disabled} onPress={() => onEdit(newWorkout())} />
@@ -93,48 +92,54 @@ export function WorkoutLibraryView({ library, running, error, filter, shown, onB
       <ChoiceGroup<WorkoutLibraryFilter> label="Explorer les séances" value={filter} choices={[["all", "Tout"], ["models", "Modèles"], ["saved", "Mes séances"], ["challenges", "Défis"], ["favorites", "Favoris"]]} onChange={browse} />
     </ScrollView>
     <Copy variant="small" muted>Les niveaux décrivent la structure des blocs et des règles. Adaptez l’intensité avec vos allures et vos volumes.</Copy>
+  </View>;
 
-    {(filter === 'favorites' || showAll && favorites.length > 0) && <View style={{ gap: spacing.md }}><SectionHeading title={`Favoris · ${favorites.length}`} />
-      {!favorites.length && <Panel variant="list"><Copy variant="caption" muted>Touchez l’étoile d’un modèle ou d’une séance enregistrée pour le retrouver ici.</Copy></Panel>}
-      {favorites.slice(0, showAll ? 3 : shown).map(item => item.type === 'template' ? templateCard(item.template, 'favorite:') : savedCard(item.definition, 'favorite:'))}
-      {showAll && favorites.length > 3 && <Button title="Voir tous mes favoris" variant="quiet" onPress={() => browse('favorites')} />}
-      {filter === 'favorites' && favorites.length > shown && <Button title="Afficher plus de favoris" variant="secondary" onPress={onShowMore} />}
-    </View>}
-
-    {showAll && <View style={{ gap: spacing.md }}><SectionHeading title="Dernières séances" />
-      {!recent.length && <Copy variant="caption" muted>Vos séances réalisées apparaîtront ici après l’enregistrement d’une course.</Copy>}
-      {recent.map(({ run, definition }) => <WorkoutCard key={run.id} title={definition.name} definition={definition} kind={definition.kind} origin="Dernière séance" disabled={disabled}
-        note={`${runDate(run.startedAt)} · ${WORKOUT_STATUS[run.workout!.status]} · ${CHALLENGE_STATUS[run.workout!.challengeStatus]}\nCourse : ${km(run.distanceMeters)} km · ${duration(run.activeSeconds)} actifs`}
-        action={{ title: 'Refaire cette séance', onPress: () => choose(definition) }} onDetail={onDetail ? () => onDetail(run) : undefined} />)}
-    </View>}
-
-    {(showAll || filter === 'models') && <View style={{ gap: spacing.md }}><SectionHeading title={showAll ? 'Modèles essentiels' : 'Tous les modèles'} />
-      <Copy variant="caption" muted>{showAll ? 'Une sélection pour commencer. Chaque modèle reste entièrement personnalisable.' : 'Fractionné, endurance, progression et sprint : tous les modèles de la bibliothèque.'}</Copy>
-      {(showAll ? templates.slice(0, 3) : templates).map(template => templateCard(template))}
-      {showAll && <Button title={`Voir les ${templates.length} modèles`} variant="quiet" onPress={() => browse('models')} />}
-    </View>}
-
-    {(showAll || filter === 'challenges') && <View style={{ gap: spacing.md }}><SectionHeading title="Défis" />
-      <Copy variant="caption" muted>Un objectif et des conditions de réussite. Le GPS continue même si le défi est perdu.</Copy>
-      {(showAll ? challenges.slice(0, 3) : challenges).map(template => templateCard(template))}
-      {showAll && <Button title={`Explorer les ${challenges.length} défis`} variant="quiet" onPress={() => browse('challenges')} />}
-    </View>}
-
-    {filter === 'challenges' && ownChallenges.length > 0 && <View style={{ gap: spacing.md }}><SectionHeading title="Mes défis enregistrés" />
-      {ownChallenges.slice(0, shown).map(definition => savedCard(definition, 'challenge:'))}
-      {ownChallenges.length > shown && <Button title="Afficher plus de défis enregistrés" variant="secondary" onPress={onShowMore} />}
-    </View>}
-
-    {(showAll || filter === 'saved') && <View style={{ gap: spacing.md }}><SectionHeading title={`Mes séances · ${library.definitions.length}`} />
-      {!library.definitions.length && <Panel variant="list"><Copy variant="caption" muted>Enregistrez votre création ou un modèle personnalisé pour le retrouver ici. Le menu « … » permet ensuite de modifier, dupliquer ou supprimer une séance.</Copy></Panel>}
-      {library.definitions.slice(0, showAll ? 3 : shown).map(definition => savedCard(definition))}
-      {showAll && library.definitions.length > 3 && <Button title="Ouvrir toutes mes séances" variant="quiet" onPress={() => browse('saved')} />}
-      {filter === 'saved' && library.definitions.length > shown && <Button title="Afficher plus de séances" variant="secondary" onPress={onShowMore} />}
-    </View>}
-
+  const rows: ReactElement[] = [];
+  const section = (key: string, title: string, cards: ReactElement[], description?: ReactNode, more?: ReactNode) => {
+    rows.push(<View key={key} style={{ gap: spacing.sm, paddingTop: rows.length ? spacing.lg : 0 }}>
+      <SectionHeading title={title} />{description}
+    </View>, ...cards);
+    if (more) rows.push(<View key={key + ':more'}>{more}</View>);
+  };
+  if (filter === 'favorites' || showAll && favorites.length > 0) {
+    section('favorites', 'Favoris · ' + favorites.length, (showAll ? favorites.slice(0, 3) : favorites).map(item =>
+      item.type === 'template' ? templateCard(item.template, 'favorite:') : savedCard(item.definition, 'favorite:')),
+      !favorites.length && <Panel variant="list"><Copy variant="caption" muted>Touchez l’étoile d’un modèle ou d’une séance enregistrée pour le retrouver ici.</Copy></Panel>,
+      showAll && favorites.length > 3 && <Button title="Voir tous mes favoris" variant="quiet" onPress={() => browse('favorites')} />);
+  }
+  if (showAll) {
+    section('recent', 'Dernières séances', recent.map(({ run, definition }) =>
+      <WorkoutCard key={'recent:' + run.id} title={definition.name} definition={definition} kind={definition.kind} origin="Dernière séance" disabled={disabled}
+        note={runDate(run.startedAt) + ' · ' + WORKOUT_STATUS[run.workout!.status] + ' · ' + CHALLENGE_STATUS[run.workout!.challengeStatus] + '\nCourse : ' + km(run.distanceMeters) + ' km · ' + duration(run.activeSeconds) + ' actifs'}
+        action={{ title: 'Refaire cette séance', onPress: () => choose(definition) }} onDetail={onDetail ? () => onDetail(run) : undefined} />),
+      !recent.length && <Copy variant="caption" muted>Vos séances réalisées apparaîtront ici après l’enregistrement d’une course.</Copy>);
+  }
+  if (showAll || filter === 'models') {
+    section('models', showAll ? 'Modèles essentiels' : 'Tous les modèles',
+      (showAll ? templates.slice(0, 3) : templates).map(template => templateCard(template)),
+      <Copy variant="caption" muted>{showAll ? 'Une sélection pour commencer. Chaque modèle reste entièrement personnalisable.' : 'Fractionné, endurance, progression et sprint : tous les modèles de la bibliothèque.'}</Copy>,
+      showAll && <Button title={'Voir les ' + templates.length + ' modèles'} variant="quiet" onPress={() => browse('models')} />);
+  }
+  if (showAll || filter === 'challenges') {
+    section('challenges', 'Défis', (showAll ? challenges.slice(0, 3) : challenges).map(template => templateCard(template)),
+      <Copy variant="caption" muted>Un objectif et des conditions de réussite. Le GPS continue même si le défi est perdu.</Copy>,
+      showAll && <Button title={'Explorer les ' + challenges.length + ' défis'} variant="quiet" onPress={() => browse('challenges')} />);
+  }
+  if (filter === 'challenges' && ownChallenges.length > 0) {
+    section('own-challenges', 'Mes défis enregistrés', ownChallenges.map(definition => savedCard(definition, 'challenge:')));
+  }
+  if (showAll || filter === 'saved') {
+    section('saved', 'Mes séances · ' + library.definitions.length, (showAll ? library.definitions.slice(0, 3) : library.definitions).map(definition => savedCard(definition)),
+      !library.definitions.length && <Panel variant="list"><Copy variant="caption" muted>Enregistrez votre création ou un modèle personnalisé pour le retrouver ici. Le menu « … » permet ensuite de modifier, dupliquer ou supprimer une séance.</Copy></Panel>,
+      showAll && library.definitions.length > 3 && <Button title="Ouvrir toutes mes séances" variant="quiet" onPress={() => browse('saved')} />);
+  }
+  return <ScreenList bottom={onClose ? 45 : spacing.xxl} data={rows} ListHeaderComponent={header}
+    keyExtractor={item => String(item.key)} renderItem={({ item }) => item}
+    ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+    ListFooterComponent={<View style={{ gap: spacing.lg, paddingTop: spacing.lg }}>
     <ListRow icon="trophy-outline" title="Records de séances" onPress={onRecords} subtitle={<Copy variant="caption" muted>Vos résultats sur des séances identiques et validées.</Copy>} />
     <Panel variant="setting" style={{ gap: spacing.md }}><Toggle title="Annonces vocales du coach" disabled={disabled} value={library.preferences.voiceEnabled} onChange={enabled => void workouts.setVoice(enabled)} />
       <Copy variant="caption" muted>Les annonces nécessitent les signaux audio activés et Sprinter à l’écran. Sur iPhone, désactivez le mode silencieux pour la voix. Les vibrations dépendent des réglages et de l’appareil.</Copy>
     </Panel>
-  </Screen>;
+    </View>} />;
 }

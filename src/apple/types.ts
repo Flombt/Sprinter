@@ -13,4 +13,4 @@ export interface HealthWrite {
 }
 export interface HealthReceipt { runId: string; uuid: string; syncedAt: number }
 export interface ApplePreferences { version: 1; autoWrite: boolean; readRequested: boolean; liveEnabled: boolean; receipts: HealthReceipt[]; pendingRunIds?: string[] }
-export const defaultApplePreferences = (): ApplePreferences => ({ version: 1, autoWrite: false, readRequested: false, liveEnabled: true, receipts: [], pendingRunIds: [] });
+export const defaultApplePreferences = (): ApplePreferences => ({ version: 1, autoWrite: false, readRequested: false, liveEnabled: false, receipts: [], pendingRunIds: [] });

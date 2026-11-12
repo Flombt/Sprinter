@@ -1,5 +1,7 @@
+import { spacing, radii, fontWeights } from '../ui/tokens';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { FeedbackPressable } from '../ui/FeedbackPressable';
 import type { RunRecord } from '../core/types';
 import { km } from '../core/format';
 import { uid } from '../workouts/definition';
@@ -31,17 +33,17 @@ export function Plans({ history, onBack, onSaved }: { history: RunRecord[]; onBa
   return <Screen bottom={40}><Header title="Plans de préparation" onBack={onBack} /><Copy muted>Une structure locale pour organiser votre préparation. Vous choisissez le volume, les jours et le plafond par sortie. Allure libre par défaut, sans prédiction de performance ni obligation de courir la distance finale à une date donnée.</Copy>
     <Choices<TrainingPlan['goalMeters']> value={goal} choices={[[5000, '5 km'], [10000, '10 km'], [21097.5, 'Semi-marathon']]} onChange={v => changed(() => { setGoal(v); setName(`Préparation ${v === 5000 ? '5 km' : v === 10000 ? '10 km' : 'semi-marathon'}`); setWeeks(v === 5000 ? '6' : v === 10000 ? '8' : '12'); })} />
     <Field label="Nom du plan" value={name} onChange={v => changed(() => setName(v))} /><Field label="Lundi de début (AAAA-MM-JJ)" value={start} onChange={v => changed(() => setStart(v))} /><Field label="Nombre de semaines (4 à 24)" value={weeks} numeric onChange={v => changed(() => setWeeks(v))} />
-    <Label>Jours de course · choisissez 2 à 4 jours</Label><View style={[styles.row, { gap: 6, flexWrap: 'wrap' }]}>{['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((label, i) => <Pressable key={i} accessibilityRole="button" accessibilityState={{ selected: weekdays.includes(i) }} onPress={() => changed(() => setWeekdays(weekdays.includes(i) ? weekdays.filter(d => d !== i) : [...weekdays, i]))}
-      style={{ minHeight: 44, padding: 11, borderWidth: 1, borderColor: weekdays.includes(i) ? colors.text : colors.line, borderRadius: 12 }}><Copy>{label}</Copy></Pressable>)}</View>
+    <Label>Jours de course · choisissez 2 à 4 jours</Label><View style={[styles.row, { gap: spacing.xs, flexWrap: 'wrap' }]}>{['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((label, i) => <FeedbackPressable key={i} accessibilityRole="button" accessibilityState={{ selected: weekdays.includes(i) }} onPress={() => changed(() => setWeekdays(weekdays.includes(i) ? weekdays.filter(d => d !== i) : [...weekdays, i]))}
+      style={{ minHeight: 44, padding: spacing.md, borderWidth: 1, borderColor: weekdays.includes(i) ? colors.text : colors.line, borderRadius: radii.control }}><Copy>{label}</Copy></FeedbackPressable>)}</View>
     <Field label="Volume initial choisi (km/semaine)" value={base} numeric onChange={v => changed(() => setBase(v))} /><Field label="Plafond choisi par sortie (km)" value={maximum} numeric onChange={v => changed(() => setMaximum(v))} /><Field label="Progression linéaire par semaine (%)" value={growth} numeric onChange={v => changed(() => setGrowth(v))} />
     <Copy muted variant="caption">Si disponibles, les champs sont préremplis avec les kilomètres enregistrés sur les 28 jours calendaires et la plus longue sortie de cette fenêtre. Vérifiez ces valeurs : elles ne mesurent pas votre capacité future. La progression vaut zéro par défaut. Les jours non choisis sont indiqués comme repos prévu, sans certifier un repos réel.</Copy>
     <Button title="Prévisualiser le calendrier" secondary onPress={build} />{error && <Copy accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Copy>}
-    {preview && <Panel style={{ gap: 12 }}><Label>Calendrier proposé · allures libres</Label><Copy>{preview.plan.weeks} semaines, {preview.plan.weekdays.length} sorties par semaine. Chaque séance peut ensuite être déplacée ou éditée.</Copy>
+    {preview && <Panel style={{ gap: spacing.md }}><Label>Calendrier proposé · allures libres</Label><Copy>{preview.plan.weeks} semaines, {preview.plan.weekdays.length} sorties par semaine. Chaque séance peut ensuite être déplacée ou éditée.</Copy>
       {Array.from({ length: preview.plan.weeks }, (_, i) => { const entries = preview.entries.slice(i * 7, i * 7 + 7), meters = entries.reduce((sum, e) => sum + (e.workout?.blocks[0]?.kind === 'segment' ? e.workout.blocks[0].end.value : 0), 0); return <Copy key={i} muted variant="caption">S{i + 1} · {dayLabel(entries[0]!.day)} · {km(meters)} km</Copy>; })}
       <Button title="Ajouter ce plan au calendrier" disabled={state.busy || !state.ready} onPress={() => void save()} /><Copy muted variant="small">Les éléments déjà présents sont conservés ; les dates communes restent visibles pour vous permettre d’adapter le plan.</Copy>
     </Panel>}
     {state.message && <Copy accessibilityRole="alert">{state.message}</Copy>}
-    <Label>Plans enregistrés</Label>{state.data.plans.map(plan => <Panel key={plan.id} style={{ gap: 12 }}><Copy style={{ fontWeight: '600' }}>{plan.name}</Copy><Copy muted>{plan.weeks} semaines à partir du {dayLabel(plan.start)}</Copy>
+    <Label>Plans enregistrés</Label>{state.data.plans.map(plan => <Panel key={plan.id} style={{ gap: spacing.md }}><Copy style={{ fontWeight: fontWeights.semibold }}>{plan.name}</Copy><Copy muted>{plan.weeks} semaines à partir du {dayLabel(plan.start)}</Copy>
       <Button title="Voir les dates et personnaliser" secondary onPress={() => onSaved(plan.start)} /><Button title="Retirer les éléments non réalisés" secondary danger disabled={state.busy} onPress={() => confirm('Retirer ce plan ?', 'Les activités et leurs associations réalisées restent conservées. Les éléments non réalisés de ce plan seront retirés du calendrier.', 'Retirer', () => { void progression.removePlan(plan.id, history); }, true)} />
     </Panel>)}
   </Screen>;

@@ -1,36 +1,36 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { session, type SessionState } from './session';
-import { sameFields, snapshotSelection } from './snapshotSelection';
 
-export function useSessionSelector<T>(
-  selector: (state: SessionState) => T,
-  isEqual: (left: T, right: T) => boolean = Object.is,
-): T {
-  const read = useMemo(() => snapshotSelection(session.getSnapshot, selector, isEqual), [selector, isEqual]);
-  return useSyncExternalStore(session.subscribe, read, read);
+const unsubscribe = () => {};
+const ignoreUpdates = () => unsubscribe;
+
+export function shallowEqual<T extends object>(left: T, right: T) {
+  const keys = Object.keys(left) as (keyof T)[];
+  return keys.length === Object.keys(right).length && keys.every(key => Object.is(left[key], right[key]));
 }
 
-function selectStructure(state: SessionState) {
-  return {
-    history: state.history,
-    settings: state.settings,
-    runId: state.run?.id ?? null,
-    busy: state.busy,
-    running: state.running,
-    autoPaused: state.autoPaused,
-    backgroundActive: state.backgroundActive,
-    recoveryBlocked: state.recoveryBlocked === true,
-    unreadableCount: state.unreadableCount,
-  };
+export function useSessionSelector<T>(select: (state: SessionState) => T, active = true, equal: (a: T, b: T) => boolean = Object.is): T {
+  const getSelection = useMemo(() => {
+    let previous: SessionState | undefined;
+    let selection: T;
+    return () => {
+      const state = session.getSnapshot();
+      if (state === previous) return selection;
+      const next = select(state);
+      if (!previous || !equal(selection, next)) selection = next;
+      previous = state;
+      return selection;
+    };
+  }, [select, equal]);
+  return useSyncExternalStore(active ? session.subscribe : ignoreUpdates, getSelection, getSelection);
 }
+
+const selectStructure = ({ run, history, settings, running, autoPaused, busy, backgroundActive, recoveryBlocked, unreadableCount }: SessionState) => ({
+  runId: run?.id, routeId: run?.routeId, history, settings, running, autoPaused, busy, backgroundActive, recoveryBlocked, unreadableCount,
+});
+
 export type SessionStructure = ReturnType<typeof selectStructure>;
-export const useSessionStructure = () => useSessionSelector(selectStructure, sameFields);
 
-const identity = (state: SessionState) => state;
-const sameStructure = (left: SessionState, right: SessionState) =>
-  sameFields(selectStructure(left), selectStructure(right));
-
-/** A hidden tab retains its React state but only observes the shape of the current session. */
-export function useLiveSession(active: boolean): SessionState {
-  return useSessionSelector(identity, active ? Object.is : sameStructure);
+export function useSessionStructure(active = true) {
+  return useSessionSelector(selectStructure, active, shallowEqual);
 }
