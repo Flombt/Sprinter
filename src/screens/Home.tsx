@@ -93,7 +93,9 @@ export default function Home({
   const points = run?.points ?? EMPTY_TRACK;
   const reference = run ? tools.routes.find((route) => route.id === run.routeId) : setup.route;
   const lastFix = points.at(-1)?.fix;
-  const preview = useMapPosition(active && !runId && !state.busy && !starting);
+  const preview = useMapPosition(active && !runId && !state.busy && !starting, {
+    requestPermissionOnOpen: true,
+  });
   const position = run ? state.mapFix : preview.position;
   const hasRoute = points.length > 0 || !!reference;
   const isWeb = Platform.OS === 'web';
