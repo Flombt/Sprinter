@@ -17,6 +17,7 @@ import {
   SectionHeading,
 } from '../ui/components';
 import { SegmentedControl, Toggle } from '../ui/controls';
+import type { PaletteName } from '../ui/palettes';
 import { SettingsDisclosure, SettingsNotice } from '../ui/settings';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
 import { spacing } from '../ui/tokens';
@@ -91,7 +92,7 @@ export default function Settings({
   onRecovery?: () => void;
   onClose?: () => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, devPalette } = useTheme();
   const { largeText } = useAdaptiveLayout();
   const [page, setPage] = useState<SettingsPage>('main');
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
@@ -319,6 +320,24 @@ export default function Settings({
           />
         </Panel>
       </View>
+
+      {__DEV__ && devPalette && (
+        <View style={{ gap: spacing.md }}>
+          <SectionHeading title="Palette (dev)" />
+          <Panel variant="setting">
+            <SegmentedControl<PaletteName>
+              label="Palette de développement"
+              value={devPalette.name}
+              choices={[
+                ['tempo', 'Tempo'],
+                ['signal', 'Signal'],
+                ['cobalt', 'Cobalt'],
+              ]}
+              onChange={devPalette.select}
+            />
+          </Panel>
+        </View>
+      )}
 
       <View style={{ gap: spacing.md }}>
         <SectionHeading title="Avancé" />
