@@ -43,10 +43,14 @@ export default function Music({
   onClose,
   foregroundOnlyRun = false,
   active = true,
+  playlistImport,
+  onPlaylistImportRead,
 }: {
   onClose?: () => void;
   foregroundOnlyRun?: boolean;
   active?: boolean;
+  playlistImport?: string;
+  onPlaylistImportRead?: () => void;
 }) {
   const state = useMusic(),
     { colors, reduceMotion } = useTheme(),
@@ -75,6 +79,13 @@ export default function Music({
     };
   }, []);
   useEffect(() => (active ? music.watchPlayback() : undefined), [active]);
+  useEffect(() => {
+    if (!active || !playlistImport) return;
+    inputRevision.current++;
+    setInput(playlistImport);
+    setNotice(null);
+    onPlaylistImportRead?.();
+  }, [active, onPlaylistImportRead, playlistImport]);
   useEffect(() => {
     if (active && connected && !music.getSnapshot().library.length) void music.loadLibrary();
   }, [active, connected]);
@@ -142,9 +153,9 @@ export default function Music({
     <Screen gap={spacing.xl}>
       <View style={s.row}>
         <View>
-          <Label>VOTRE BANDE-SON</Label>
+          <Label>SPOTIFY</Label>
           <Copy variant="condensedTitle" accessibilityRole="header">
-            MUSIQUE.
+            {onClose ? 'Musique' : 'Intégrations'}
           </Copy>
         </View>
         <IconButton
@@ -160,6 +171,10 @@ export default function Music({
           <Icon name="link-outline" color={colors.heroText} size={17} />
           <Label style={{ color: paperColors.label }}>AJOUTER UNE PLAYLIST</Label>
         </View>
+        <Copy variant="caption" style={{ color: colors.heroSecondary }}>
+          Dans Spotify, ouvrez la playlist puis choisissez Partager → Copier le lien. Collez-le ici et
+          importez-le.
+        </Copy>
         <View
           style={{
             flexDirection: 'row',

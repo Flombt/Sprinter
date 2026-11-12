@@ -54,7 +54,13 @@ export function ConnectionCard({ state, openExternal, onMessage }: {
         <Button title={connecting ? 'Connexion…' : 'Réautoriser Spotify'} secondary disabled={state.busy || !music.platform.canAuthenticate} onPress={() => void connect()} />
         <Button title="Déconnecter ce compte" variant="quiet" disabled={state.busy} onPress={() => void music.disconnectSafely()} />
       </View>}
-      <Label>Configuration Spotify Developer</Label>
+      <Label>Connexion avancée · Spotify Developer</Label>
+      <Copy muted variant="caption">La connexion développeur sert à retrouver votre bibliothèque et à piloter la lecture. Pour enregistrer une playlist, son lien suffit.</Copy>
+      <Copy muted variant="caption">
+        1. Ouvrez votre application dans Spotify Developer et copiez le Client ID depuis Settings.{'\n'}
+        2. Déclarez l’adresse HTTPS de votre page de retour dans les Redirect URIs de Spotify.{'\n'}
+        3. Collez ici ces deux valeurs, enregistrez, puis choisissez Connecter Spotify.
+      </Copy>
       <TextField label="Client ID public" value={clientId} onChangeText={setClientId} editable={!state.busy}
         placeholder="Client ID de votre application Spotify" autoCapitalize="none" autoCorrect={false} maxLength={40} />
       <TextField label="Page de retour HTTPS" value={redirectUri} onChangeText={setRedirectUri} editable={!state.busy}
@@ -62,7 +68,7 @@ export function ConnectionCard({ state, openExternal, onMessage }: {
       <Button title="Enregistrer la configuration" secondary disabled={!state.ready || state.busy
         || (!!clientId.trim() && !validClientId(clientId.trim())) || (!!redirectUri.trim() && !validSpotifyRedirect(redirectUri.trim()))}
         onPress={() => void music.configure(clientId, redirectUri)} />
-      <Copy muted variant="small">Hébergez la page de retour fournie avec le projet et déclarez exactement cette adresse HTTPS dans Spotify Developer. Aucun hébergement n’est configuré automatiquement.</Copy>
+      <Copy muted variant="small">L’adresse doit correspondre exactement à celle déclarée dans Spotify. La page de retour doit être hébergée en HTTPS. Aucun Client Secret n’est demandé.</Copy>
       <Copy muted variant="small">Retour interne utilisé par cette page :</Copy><Copy selectable variant="caption">{music.platform.redirectUri}</Copy>
       <Copy muted variant="small">Aucun client secret à saisir. En mode développement, le propriétaire de l’application doit être Premium et votre compte autorisé dans Spotify Developer.</Copy>
       <Button title="Ouvrir Spotify Developer" variant="quiet" icon="open-outline" onPress={() => openExternal(() => {

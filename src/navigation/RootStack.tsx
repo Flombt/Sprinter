@@ -11,12 +11,14 @@ import type { PaceTarget, RunRecord } from '../core/types';
 import AppleIntegrations from '../screens/AppleIntegrations';
 import Comparison from '../screens/Comparison';
 import Detail from '../screens/Detail';
+import ExampleDetail from '../screens/ExampleDetail';
 import History from '../screens/History';
 import PersonalRecords from '../screens/PersonalRecords';
 import Preparation from '../screens/Preparation';
 import Progression from '../screens/Progression';
 import Recovery from '../screens/Recovery';
 import RunSummary from '../screens/RunSummary';
+import { Shoes } from '../progression/Shoes';
 import { useSessionStructure } from '../services/useSessionSelector';
 import { EmptyState, Header, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
@@ -81,6 +83,8 @@ export function RootStack({
   onReady,
   tab,
   onTabChange,
+  playlistImport,
+  onPlaylistImportRead,
   target,
   onTargetChange,
   starting,
@@ -94,6 +98,8 @@ export function RootStack({
   onReady: () => void;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
+  playlistImport?: string;
+  onPlaylistImportRead: () => void;
   target: PaceTarget;
   onTargetChange: (target: PaceTarget) => void;
   starting: boolean;
@@ -139,6 +145,8 @@ export function RootStack({
               state={state}
               tab={tab}
               onTabChange={onTabChange}
+              playlistImport={playlistImport}
+              onPlaylistImportRead={onPlaylistImportRead}
               target={target}
               onTargetChange={onTargetChange}
               starting={starting}
@@ -147,6 +155,14 @@ export function RootStack({
               onRecover={() => navigation.push('Recovery')}
               onPrepare={() => navigation.push('Preparation')}
               onHistory={() => navigation.push('History')}
+              statsNavigation={{
+                onHistory: () => navigation.push('History'),
+                onDetail: (run) => navigation.push('Detail', { runId: run.id }),
+                onExample: (id) => navigation.push('ExampleDetail', { id }),
+                onRecords: () => navigation.push('Records'),
+                onProgression: () => navigation.push('Progression'),
+                onShoes: () => navigation.push('Shoes'),
+              }}
               onSettings={() => onOpenSheet('settings')}
               onMusic={() => onOpenSheet('music')}
               onFinish={onFinish}
@@ -179,6 +195,12 @@ export function RootStack({
               onTools={() => onOpenSheet('tools')}
             />
           )}
+        </Stack.Screen>
+        <Stack.Screen name="ExampleDetail">
+          {({ route, navigation }) => <ExampleDetail id={route.params.id} onBack={navigation.goBack} />}
+        </Stack.Screen>
+        <Stack.Screen name="Shoes">
+          {({ navigation }) => <Shoes history={state.history} onBack={navigation.goBack} />}
         </Stack.Screen>
         <Stack.Screen name="RunSummary">
           {({ route, navigation }) => (

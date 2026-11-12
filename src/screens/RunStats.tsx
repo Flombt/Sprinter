@@ -1,14 +1,17 @@
 import { useTheme } from '../ui/theme';
 import { Switch } from '../ui/controls';
-import { controlColors, paperColors, spacing, typography, type ThemeColors } from '../ui/tokens';
+import { controlColors, spacing, typography, type ThemeColors } from '../ui/tokens';
 import { PaceGauge } from '../ui/PaceGauge';
 import {
   Button,
   Card,
   Copy,
+  Header,
   Icon,
   IconButton,
   Label,
+  Metric,
+  MetricGrid,
   Screen,
   SectionLabel,
   StatusBadge,
@@ -88,6 +91,7 @@ export default function RunStats({
   onMusic,
   onFinish,
   onConfirmFinish,
+  onBack,
 }: {
   active: boolean;
   state: SessionState;
@@ -98,6 +102,7 @@ export default function RunStats({
   onMusic: () => void;
   onFinish: () => void;
   onConfirmFinish: () => void;
+  onBack: () => void;
 }) {
   const { colors } = useTheme();
   const s = createStyles(colors);
@@ -120,48 +125,25 @@ export default function RunStats({
   };
   return (
     <Screen gap={spacing.lg}>
-      <View style={s.row}>
-        <View>
-          <Label>VOTRE COURSE</Label>
-          <Copy variant="condensedTitle" accessibilityRole="header">
-            STATS.
-          </Copy>
-        </View>
-        <IconButton square icon="options-outline" label="Tous les réglages" onPress={onSettings} />
-      </View>
-
-      <Card variant="paper" contentStyle={{ padding: 20, gap: 10 }}>
-        <View style={s.row}>
-          <Label style={s.paperLabel}>ALLURE ACTUELLE</Label>
+      <Header
+        title={run ? 'Course en direct' : 'Réglages de course'}
+        onBack={onBack}
+        right={<IconButton square icon="options-outline" label="Tous les réglages" onPress={onSettings} />}
+      />
+      {run && (
+        <View style={{ gap: spacing.md }}>
           <StatusBadge
-            paper
             active={state.running}
             label={
-              run
-                ? state.autoPaused
-                  ? 'PAUSE AUTO'
-                  : state.running
-                    ? QUALITY_LABELS[state.quality]
-                    : 'EN PAUSE'
-                : 'AVANT LE DÉPART'
+              state.autoPaused ? 'Pause auto' : state.running ? QUALITY_LABELS[state.quality] : 'En pause'
             }
           />
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 9 }}>
-          <Copy
-            variant="condensedMetric"
-            style={{ fontSize: 77, lineHeight: 83, color: colors.heroText, letterSpacing: -1.5 }}
-          >
-            {run ? pace(state.pace) : '—'}
-          </Copy>
-          <Copy variant="bodyCompact" style={{ fontSize: 12, color: paperColors.label }}>
-            min / km
-          </Copy>
-        </View>
-        <View style={{ height: 1, backgroundColor: paperColors.line }} />
-        {run && (
+          <MetricGrid>
+            <Metric label="Allure" value={pace(state.pace)} unit="/km" />
+            <Metric label="Temps actif" value={duration(run.activeSeconds)} />
+            <Metric label="Distance" value={km(run.distanceMeters)} unit="km" />
+          </MetricGrid>
           <PaceGauge
-            paper
             value={state.pace}
             target={liveTarget}
             tolerance={run.config.toleranceSeconds ?? 0}
@@ -170,27 +152,8 @@ export default function RunStats({
             running={state.running}
             autoPaused={state.autoPaused}
           />
-        )}
-        <View style={{ flexDirection: 'row', gap: 18, paddingTop: 3 }}>
-          <View style={{ flex: 1 }}>
-            <Label style={s.paperLabel}>TEMPS ACTIF</Label>
-            <Copy variant="condensedMetric" style={s.paperNumber}>
-              {duration(run?.activeSeconds ?? 0)}
-            </Copy>
-          </View>
-          <View style={{ width: 1, backgroundColor: paperColors.line }} />
-          <View style={{ flex: 1 }}>
-            <Label style={s.paperLabel}>DISTANCE</Label>
-            <Copy variant="condensedMetric" style={s.paperNumber}>
-              {km(run?.distanceMeters ?? 0)}
-              <Copy variant="bodyCompact" style={{ color: paperColors.label, fontSize: 12 }}>
-                {' '}
-                km
-              </Copy>
-            </Copy>
-          </View>
         </View>
-      </Card>
+      )}
       {run?.workout && (
         <WorkoutLivePanel workout={run.workout} qualityGood={state.quality === 'good'} busy={state.busy} />
       )}
@@ -447,7 +410,5 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     caption: { fontSize: 12, lineHeight: 18, color: colors.secondary },
-    paperLabel: { color: paperColors.label, fontSize: typography.label.fontSize, letterSpacing: 1 },
-    paperNumber: { color: colors.heroText, fontSize: 36, lineHeight: 42 },
     separator: { height: 1, marginLeft: 31, backgroundColor: colors.line },
   });

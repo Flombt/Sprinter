@@ -52,13 +52,18 @@ describe('Core Location adapter through the Expo public API (simulated native se
       deferredUpdatesInterval: 3000, pausesUpdatesAutomatically: false, showsBackgroundLocationIndicator: true }));
     expect(mocks.watch).not.toHaveBeenCalled();
   });
-  it('explains a refused Always permission without silently claiming background tracking', async () => {
-    mocks.background.mockResolvedValue({ granted: false }); mocks.requestBackground.mockResolvedValue({ granted: false });
-    await expect(new DeviceLocationService().start(true, false, vi.fn(), vi.fn())).rejects.toThrow('Toujours');
+  it('starts in the foreground after the runner declines Always permission', async () => {
+    mocks.background.mockResolvedValue({ granted: false, canAskAgain: true });
+    mocks.requestBackground.mockResolvedValue({ granted: false });
+    const service = new DeviceLocationService();
+    await service.ensureForeground(true);
+    expect(await service.start(true, false, vi.fn(), vi.fn())).toBe(false);
+    expect(mocks.requestBackground).toHaveBeenCalledOnce();
+    expect(mocks.watch).toHaveBeenCalledOnce();
     expect(mocks.start).not.toHaveBeenCalled();
   });
   it('obtains Always permission during preparation before the session starts its clock', async () => {
-    mocks.background.mockResolvedValue({ granted: false }); mocks.requestBackground.mockResolvedValue({ granted: true });
+    mocks.background.mockResolvedValue({ granted: false, canAskAgain: true }); mocks.requestBackground.mockResolvedValue({ granted: true });
     await new DeviceLocationService().ensureForeground(true);
     expect(mocks.requestBackground).toHaveBeenCalledOnce(); expect(mocks.start).not.toHaveBeenCalled();
   });

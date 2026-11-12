@@ -23,6 +23,7 @@ import { RunCountdown } from './src/ui/RunCountdown';
 import { Toast } from './src/ui/Toast';
 import { sessionMessageSeverity } from './src/ui/sessionMessageSeverity';
 import { music } from './src/spotify/device';
+import { playlistFromAppLink } from './src/spotify/links';
 import { workouts } from './src/workouts/store';
 import { progression } from './src/progression/store';
 import { connectAppleIntegrations } from './src/apple/connect';
@@ -62,6 +63,8 @@ function AppContent() {
   const navigation = useNavigationContainerRef<RootRoutes>();
   const pendingHome = useRef(false);
   const [tab, setTab] = useState<Tab>('home');
+  const [playlistImport, setPlaylistImport] = useState<string>();
+  const clearPlaylistImport = useCallback(() => setPlaylistImport(undefined), []);
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [sheet, setSheet] = useState<Sheet | null>(null);
 
@@ -84,13 +87,21 @@ function AppContent() {
   useEffect(() => {
     const open = (url: string | null | undefined) => {
       if (url === 'sprinter://run') void session.initialize().then(openHome);
+      const playlist = playlistFromAppLink(url);
+      if (playlist) {
+        setPlaylistImport(playlist);
+        setTab('music');
+        setSheet(null);
+        pendingHome.current = false;
+        if (navigation.isReady() && navigation.canGoBack()) navigation.dispatch(StackActions.popToTop());
+      }
     };
     void Linking.getInitialURL()
       .then(open)
       .catch(() => undefined);
     const subscription = Linking.addEventListener('url', (event) => open(event.url));
     return () => subscription.remove();
-  }, [openHome]);
+  }, [navigation, openHome]);
 
   const openRecovery = useCallback(() => navigation.navigate('Recovery'), [navigation]);
   const runStart = useRunStart(openHome, openRecovery);
@@ -134,6 +145,8 @@ function AppContent() {
               }}
               tab={tab}
               onTabChange={setTab}
+              playlistImport={playlistImport}
+              onPlaylistImportRead={clearPlaylistImport}
               target={target}
               onTargetChange={setTarget}
               starting={runStart.starting}

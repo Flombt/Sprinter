@@ -4,6 +4,7 @@ import type { PaceTarget } from '../core/types';
 import Home from '../screens/Home';
 import Music from '../screens/Music';
 import RunStats from '../screens/RunStats';
+import StatsDashboard, { type StatsNavigation } from '../screens/StatsDashboard';
 import { useLiveSession, type SessionStructure } from '../services/useSessionSelector';
 import { BottomBarInsetContext } from '../ui/layout';
 import { BottomTabs, TabPane, type TabItem } from '../ui/navigation';
@@ -12,7 +13,7 @@ export type Tab = 'stats' | 'home' | 'music';
 const tabs: readonly TabItem<Tab>[] = [
   { key: 'stats', title: 'Stats', icon: 'stats-chart-outline' },
   { key: 'home', title: 'Courir', icon: 'flash-outline' },
-  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
+  { key: 'music', title: 'Intégrations', icon: 'apps-outline' },
 ];
 
 function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
@@ -20,15 +21,29 @@ function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
   return <Home {...props} state={state} />;
 }
 
-function LiveStats(props: Omit<ComponentProps<typeof RunStats>, 'state'>) {
-  const state = useLiveSession(props.active);
-  return <RunStats {...props} state={state} />;
+function LiveStats({
+  navigation,
+  ...props
+}: Omit<ComponentProps<typeof RunStats>, 'state' | 'onBack'> & { navigation: StatsNavigation }) {
+  const [showRunSettings, setShowRunSettings] = useState(false);
+  const state = useLiveSession(props.active && showRunSettings);
+  if (showRunSettings) return <RunStats {...props} state={state} onBack={() => setShowRunSettings(false)} />;
+  return (
+    <StatsDashboard
+      {...navigation}
+      history={state.history}
+      hasRun={!!state.run}
+      onRunSettings={() => setShowRunSettings(true)}
+    />
+  );
 }
 
 export function RunTabs({
   state,
   tab,
   onTabChange,
+  playlistImport,
+  onPlaylistImportRead,
   target,
   onTargetChange,
   starting,
@@ -37,6 +52,7 @@ export function RunTabs({
   onRecover,
   onPrepare,
   onHistory,
+  statsNavigation,
   onSettings,
   onMusic,
   onFinish,
@@ -45,6 +61,8 @@ export function RunTabs({
   state: SessionStructure;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
+  playlistImport?: string;
+  onPlaylistImportRead: () => void;
   target: PaceTarget;
   onTargetChange: (target: PaceTarget) => void;
   starting: boolean;
@@ -53,6 +71,7 @@ export function RunTabs({
   onRecover: () => void;
   onPrepare: () => void;
   onHistory: () => void;
+  statsNavigation: StatsNavigation;
   onSettings: () => void;
   onMusic: () => void;
   onFinish: () => void;
@@ -92,6 +111,7 @@ export function RunTabs({
       </TabPane>
       <TabPane visible={tab === 'stats'}>
         <LiveStats
+          navigation={statsNavigation}
           active={active && tab === 'stats'}
           target={target}
           onTargetChange={onTargetChange}
@@ -104,7 +124,12 @@ export function RunTabs({
       </TabPane>
       {(musicVisited || tab === 'music') && (
         <TabPane visible={tab === 'music'}>
-          <Music active={active && tab === 'music'} foregroundOnlyRun={running && !state.backgroundActive} />
+          <Music
+            active={active && tab === 'music'}
+            foregroundOnlyRun={running && !state.backgroundActive}
+            playlistImport={playlistImport}
+            onPlaylistImportRead={onPlaylistImportRead}
+          />
         </TabPane>
       )}
       <BottomTabs

@@ -1,5 +1,10 @@
 # Spotify dans Sprinter
 
+Dans **Intégrations → Spotify**, collez un lien obtenu avec **Partager → Copier le lien** puis choisissez
+**Importer la playlist**. L’enregistrement du lien et son ouverture dans Spotify ne demandent pas de Client ID.
+Sur iOS, un lien `sprinter://playlist/<identifiant>` ouvre le formulaire prérempli. L’import se confirme dans
+Sprinter et s’enregistre sur l’appareil utilisé.
+
 ## Interface Musique — 2 novembre 2026
 
 Compte, lecteur réel et playlist prévue pour la course sont maintenant séparés. Cartes de playlists réutilisables, configuration repliée, ajout de lien plus lisible et mini-lecteur partagé amélioré. Les services OAuth/API, la persistance et les restrictions de contrôle restent inchangés. Voir le [compte rendu UI](MUSIC_UI.md) pour l’audit, les états affichés et les limites de vérification. Aucun test créé, modifié ou exécuté pour cette évolution.
