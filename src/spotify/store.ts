@@ -231,18 +231,21 @@ export class SpotifyStore {
     if (this.now() < (connected ? this.api.retryAt : this.api.publicRetryAt)) return Promise.resolve(null);
     this.metadataChecked.set(id, this.now());
     const generation = this.generation;
+    const session = this.auth.sessionVersion;
+    const current = () => generation === this.generation && session === this.auth.sessionVersion;
     const request = (async () => {
       try {
         const metadata = connected ? await this.api.playlist(id) : await this.api.publicPlaylist(id);
-        if (generation !== this.generation || !this.preferences.playlists.some(playlist => playlist.id === id)) return null;
+        if (!current() || !this.preferences.playlists.some(playlist => playlist.id === id)) return null;
         const updated = { ...saved, ...metadata, source: saved.source, savedAt: saved.savedAt };
         await this.save({
           ...this.preferences,
           playlists: this.preferences.playlists.map(playlist => playlist.id === id ? updated : playlist),
         });
-        return generation === this.generation ? updated : null;
+        return current() ? updated : null;
       } catch (error) {
-        if (generation === this.generation && error instanceof SpotifyError && connected && error.status === 401) this.failure(error);
+        if (generation === this.generation && connected && error instanceof SpotifyError &&
+            error.status === 401 && (current() || !this.auth.connected)) this.failure(error);
         return null;
       }
     })().finally(() => {
@@ -293,7 +296,8 @@ export class SpotifyStore {
       return Promise.resolve();
     }
     const generation = this.generation;
-    const current = () => generation === this.generation && this.value.status === 'connected' &&
+    const session = this.auth.sessionVersion;
+    const current = () => generation === this.generation && session === this.auth.sessionVersion && this.value.status === 'connected' &&
       this.preferences.playlists.some(playlist => playlist.id === id);
     const request = this.readPlaylist(id, previous, current, force).finally(() => {
       if (this.contentRequests.get(id) === request) this.contentRequests.delete(id);
@@ -333,11 +337,11 @@ export class SpotifyStore {
       const now = this.now();
       contents = { tracks, total, snapshotId, refreshing: false, checkedAt: now, loadedAt: now, error: null };
     } catch (error) {
-      if (!current()) return;
       if (error instanceof SpotifyError && error.status === 401) {
-        this.failure(error);
+        if (current() || (this.value.status === 'connected' && !this.auth.connected)) this.failure(error);
         return;
       }
+      if (!current()) return;
       const restricted = error instanceof SpotifyError && (error.status === 403 || error.status === 404);
       contents = {
         ...(restricted ? emptyContents : previous),
@@ -435,7 +439,7 @@ export class SpotifyStore {
     this.foreground = active;
     if (active) {
       this.startPoll();
-      if (changed && this.value.ready) {
+      if (changed && this.value.ready && !this.value.busy) {
         void this.syncSaved();
         this.refreshOpenPlaylists();
       }
