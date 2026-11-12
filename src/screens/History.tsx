@@ -136,7 +136,7 @@ function HistoryOverview({ stats, count }: { stats: ReturnType<typeof aggregate>
         <Metric label="Temps actif" value={duration(stats.activeSeconds)} />
       </MetricGrid>
       {stats.outings < count && (
-        <Copy variant="caption" style={{ color: colors.orange }}>
+        <Copy variant="caption" style={{ color: colors.warning.text }}>
           {count - stats.outings}{' '}
           {count - stats.outings === 1
             ? 'activité ne permet pas de calculer ce cumul.'
@@ -165,12 +165,12 @@ function HistoryEmpty({
           width: 48,
           height: 48,
           borderRadius: radii.control,
-          backgroundColor: colors.accentSoft,
+          backgroundColor: colors.raised,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon name="footsteps-outline" color={colors.accentText} size={25} />
+        <Icon name="footsteps-outline" color={colors.secondary} size={25} />
       </View>
       <View style={{ gap: spacing.sm }}>
         <Copy variant="heading" accessibilityRole="header">
@@ -268,7 +268,7 @@ export default function History({
       {state.unreadableCount > 0 && (
         <Panel variant="list" style={{ gap: spacing.sm }}>
           <View style={[styles.row, { gap: spacing.sm }]}>
-            <Icon name="alert-circle-outline" size={20} color={colors.orange} />
+            <Icon name="alert-circle-outline" size={20} color={colors.warning.text} />
             <Copy variant="emphasis" style={{ flex: 1 }}>
               {state.unreadableCount}{' '}
               {state.unreadableCount === 1 ? 'activité indisponible' : 'activités indisponibles'}

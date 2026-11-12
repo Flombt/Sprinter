@@ -43,7 +43,7 @@ function RouteInspector({
           Longueur géométrique estimée. Un GPX importé ne devient pas une activité ni une performance passée.
         </Copy>
         {route.warnings.map((text) => (
-          <Copy key={text} style={{ color: colors.orange, fontSize: 12 }}>
+          <Copy key={text} style={{ color: colors.warning.text, fontSize: 12 }}>
             {text}
           </Copy>
         ))}
@@ -151,7 +151,7 @@ export default function RunningTools({ onBack, onPrepare }: { onBack: () => void
         )}
       </Panel>
       {(message || state.message) && (
-        <Copy accessibilityRole="alert" style={{ color: colors.orange }}>
+        <Copy accessibilityRole="alert" style={{ color: colors.warning.text }}>
           {message ?? state.message}
         </Copy>
       )}

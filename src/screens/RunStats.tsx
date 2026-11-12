@@ -1,6 +1,7 @@
 import { useTheme } from '../ui/theme';
 import { Switch } from '../ui/controls';
-import { contrastAccent, paperColors, spacing, typography, type ThemeColors } from '../ui/tokens';
+import { controlColors, paperColors, spacing, typography, type ThemeColors } from '../ui/tokens';
+import { PaceGauge } from '../ui/PaceGauge';
 import {
   Button,
   Card,
@@ -44,7 +45,6 @@ function Setting({
   disabled?: boolean;
 }) {
   const { colors } = useTheme();
-  const accent = contrastAccent(colors);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 53 }}>
       <Icon name={icon} size={19} color={colors.secondary} />
@@ -67,7 +67,7 @@ function Setting({
       </View>
       <Switch
         accessibilityRole="switch"
-        trackColor={{ false: '#424248', true: accent }}
+        trackColor={{ false: controlColors.switchTrackOff, true: colors.switchOn }}
         accessibilityLabel={title}
         accessibilityHint={disabled ? 'Modifiable entre deux courses' : detail}
         value={value}
@@ -154,11 +154,23 @@ export default function RunStats({
           >
             {run ? pace(state.pace) : '—'}
           </Copy>
-          <Copy variant="bodyCompact" style={{ fontSize: 12, color: '#706C65' }}>
+          <Copy variant="bodyCompact" style={{ fontSize: 12, color: paperColors.label }}>
             min / km
           </Copy>
         </View>
         <View style={{ height: 1, backgroundColor: paperColors.line }} />
+        {run && (
+          <PaceGauge
+            paper
+            value={state.pace}
+            target={liveTarget}
+            tolerance={run.config.toleranceSeconds ?? 0}
+            state={state.paceState}
+            quality={state.quality}
+            running={state.running}
+            autoPaused={state.autoPaused}
+          />
+        )}
         <View style={{ flexDirection: 'row', gap: 18, paddingTop: 3 }}>
           <View style={{ flex: 1 }}>
             <Label style={s.paperLabel}>TEMPS ACTIF</Label>
@@ -171,7 +183,7 @@ export default function RunStats({
             <Label style={s.paperLabel}>DISTANCE</Label>
             <Copy variant="condensedMetric" style={s.paperNumber}>
               {km(run?.distanceMeters ?? 0)}
-              <Copy variant="bodyCompact" style={{ color: '#706C65', fontSize: 12 }}>
+              <Copy variant="bodyCompact" style={{ color: paperColors.label, fontSize: 12 }}>
                 {' '}
                 km
               </Copy>
@@ -337,7 +349,7 @@ export default function RunStats({
                       activeTarget.distanceMeters === meters
                         ? colors.heroStart
                         : pressed
-                          ? '#36363A'
+                          ? controlColors.choicePressed
                           : colors.raised,
                   })}
                 >
@@ -435,7 +447,7 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     caption: { fontSize: 12, lineHeight: 18, color: colors.secondary },
-    paperLabel: { color: '#706C65', fontSize: typography.label.fontSize, letterSpacing: 1 },
+    paperLabel: { color: paperColors.label, fontSize: typography.label.fontSize, letterSpacing: 1 },
     paperNumber: { color: colors.heroText, fontSize: 36, lineHeight: 42 },
     separator: { height: 1, marginLeft: 31, backgroundColor: colors.line },
   });

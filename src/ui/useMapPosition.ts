@@ -11,6 +11,7 @@ type Preview = {
 
 let cachedPosition: RouteCoordinate | undefined;
 let attemptedAutomaticFix = false;
+let requestedInitialPermission = false;
 
 function suitablePosition(
   value: Location.LocationObject | null,
@@ -24,7 +25,8 @@ function suitablePosition(
 }
 
 /** One foreground preview fix. The session exclusively records the route. */
-export function useMapPosition(enabled: boolean) {
+export function useMapPosition(enabled: boolean, { requestPermissionOnOpen = false } = {}) {
+  const canRequestOnOpen = requestPermissionOnOpen && Platform.OS === 'ios';
   const [preview, setPreview] = useState<Preview>(() => ({
     position: cachedPosition,
     status: cachedPosition ? 'cached' : 'idle',
@@ -38,14 +40,19 @@ export function useMapPosition(enabled: boolean) {
       const { signal } = controller;
       pending.current = controller;
       try {
-        // Automatic checks are passive after the first foreground preview.
         if (!ask && Platform.OS === 'web') return;
         const current = await Location.getForegroundPermissionsAsync();
         if (signal.aborted) return;
-        const permission =
-          !current.granted && ask && current.canAskAgain
-            ? await Location.requestForegroundPermissionsAsync()
-            : current;
+        const requestOnOpen =
+          canRequestOnOpen &&
+          !requestedInitialPermission &&
+          current.status === 'undetermined' &&
+          AppState.currentState === 'active';
+        let permission = current;
+        if (!current.granted && current.canAskAgain && (ask || requestOnOpen)) {
+          if (requestOnOpen) requestedInitialPermission = true;
+          permission = await Location.requestForegroundPermissionsAsync();
+        }
         if (signal.aborted) return;
         if (!permission.granted) {
           cachedPosition = undefined;
@@ -117,7 +124,7 @@ export function useMapPosition(enabled: boolean) {
         if (pending.current === controller) pending.current = null;
       }
     },
-    [enabled],
+    [canRequestOnOpen, enabled],
   );
 
   useEffect(() => {
@@ -129,16 +136,16 @@ export function useMapPosition(enabled: boolean) {
       stop();
       return;
     }
-    void locate(false);
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background') stop();
       if (state === 'active') void locate(false);
     });
+    if (!canRequestOnOpen || AppState.currentState === 'active') void locate(false);
     return () => {
       stop();
       subscription.remove();
     };
-  }, [enabled, locate]);
+  }, [canRequestOnOpen, enabled, locate]);
 
   return { ...preview, locate };
 }

@@ -57,9 +57,9 @@ export function WeatherPanel({ route }: { route?: SavedRoute }) {
     {busy && <Button title="Annuler la consultation" secondary onPress={() => { request.current?.abort(); setBusy(false); }} />}
     {value && <><Copy style={{ fontWeight: '600' }}>{weatherLabel(value.code)} · {Math.round(value.temperature)} °C</Copy><Copy>Précipitations : {value.precipitation} mm / {Math.round(value.intervalSeconds / 60)} min</Copy><Copy>Vent : {Math.round(value.wind)} km/h · rafales {Math.round(value.gusts)} km/h</Copy>
       <Copy muted variant="small">Modèle pour le {new Date(value.validAt).toLocaleString('fr-FR')} · consulté à {new Date(value.fetchedAt).toLocaleTimeString('fr-FR')}. {Date.now() - value.validAt > 1800000 ? 'Donnée ancienne : actualisez-la avant de partir.' : ''}</Copy>
-      {weatherAdvice(value).map(text => <Copy key={text} style={{ color: colors.orange, fontSize: 12 }}>{text}</Copy>)}
+      {weatherAdvice(value).map(text => <Copy key={text} style={{ color: colors.warning.text, fontSize: 12 }}>{text}</Copy>)}
       <Button title="Source et attribution : Open-Meteo" secondary onPress={() => { void Linking.openURL(value.attributionURL).catch(() => setMessage('Source : Open-Meteo, open-meteo.com.')); }} /></>}
-    {message && <Copy accessibilityRole="alert" style={{ color: colors.orange }}>{message} Vous pouvez partir sans météo.</Copy>}
+    {message && <Copy accessibilityRole="alert" style={{ color: colors.warning.text }}>{message} Vous pouvez partir sans météo.</Copy>}
     <Copy muted variant="small">Prévisions modélisées, locales et potentiellement incomplètes. Elles ne garantissent ni les conditions réelles ni la sécurité du parcours ; consultez les vigilances officielles.</Copy>
   </Panel>;
 }

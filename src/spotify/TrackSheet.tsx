@@ -1,4 +1,4 @@
-import { contrastAccent, typography } from '../ui/tokens';
+import { typography } from '../ui/tokens';
 import { Button, Card, Copy, IconButton } from '../ui/components';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
@@ -30,7 +30,6 @@ export function TrackSheet({
     loading = useRef(false);
   const { colors, reduceMotion } = useTheme(),
     insets = useSafeAreaInsets();
-  const accent = contrastAccent(colors);
   const load = async (offset = 0) => {
     if (loading.current) return;
     loading.current = true;
@@ -150,7 +149,7 @@ export function TrackSheet({
             ))}
           </View>
           {busy ? (
-            <ActivityIndicator color={accent} accessibilityLabel="Chargement des morceaux" />
+            <ActivityIndicator color={colors.secondary} accessibilityLabel="Chargement des morceaux" />
           ) : next !== null || error ? (
             <Button
               highContrast

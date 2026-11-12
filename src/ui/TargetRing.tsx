@@ -37,7 +37,7 @@ export function TargetRing({ percentage }: { percentage: number | null }) {
             cx={center}
             cy={center}
             r={radius}
-            stroke={colors.accentText}
+            stroke={colors.zone.on.color}
             strokeWidth={7}
             fill="none"
             strokeDasharray={[(circumference * percentage) / 100, circumference]}
@@ -63,7 +63,7 @@ export function TargetRing({ percentage }: { percentage: number | null }) {
               <Svg width={size} height={size} accessible={false}>
                 <Path
                   d={`M ${from.join(' ')} A ${radius} ${radius} 0 0 1 ${to.join(' ')}`}
-                  stroke={colors.accentText}
+                  stroke={colors.zone.on.color}
                   strokeWidth={7}
                   strokeLinecap="round"
                   fill="none"

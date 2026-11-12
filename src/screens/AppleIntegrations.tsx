@@ -200,7 +200,7 @@ export default function AppleIntegrations({ onBack }: { onBack: () => void }) {
         )}
       </Panel>
       {(message || state.message) && (
-        <Copy accessibilityRole="alert" style={{ color: colors.orange }}>
+        <Copy accessibilityRole="alert" style={{ color: colors.warning.text }}>
           {message ?? state.message}
         </Copy>
       )}

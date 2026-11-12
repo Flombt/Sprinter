@@ -1,4 +1,3 @@
-import { contrastAccent } from './tokens';
 import { SpeedMark } from './brand';
 import { AppBackground, Copy, IconButton, Label } from './components';
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +8,6 @@ import { haptic } from './haptics';
 export function RunCountdown({ onComplete, onCancel }: { onComplete: () => void; onCancel: () => void }) {
   const [count, setCount] = useState(3),
     { colors, reduceMotion } = useTheme();
-  const accent = contrastAccent(colors);
   const scale = useRef(new Animated.Value(1)).current;
   const complete = useRef(onComplete),
     cancel = useRef(onCancel);
@@ -78,7 +76,7 @@ export function RunCountdown({ onComplete, onCancel }: { onComplete: () => void;
           {[3, 2, 1].map((step) => (
             <View
               key={step}
-              style={{ width: 44, height: 4, backgroundColor: step >= count ? accent : colors.line }}
+              style={{ width: 44, height: 4, backgroundColor: step >= count ? colors.text : colors.line }}
             />
           ))}
         </View>

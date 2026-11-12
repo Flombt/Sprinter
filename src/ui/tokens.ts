@@ -1,37 +1,41 @@
 import type { TextStyle } from 'react-native';
 
-/** Shared identity, including the secondary screens and native controls. */
+/** The paper surface uses the same neutrals in both modes. */
 // prettier-ignore
-const brand = {
-  accent: '#FF5C35', accentInk: '#FFFFFF', heroStart: '#F2F0E9', heroEnd: '#F2F0E9',
-  heroText: '#171719', heroSecondary: '#65615C', heroAction: '#FF5C35', heroActionText: '#FFFFFF', heroDecoration: '#C3BFB6',
-  routeReference: '#6D9FDA', routeStart: '#719B35', routeFinish: '#F0A57E', routePosition: '#4395E6',
+const hero = {
+  heroStart: '#F2F0E9', heroEnd: '#F2F0E9',
+  heroText: '#171719', heroSecondary: '#65615C', heroDecoration: '#C3BFB6',
 };
 // prettier-ignore
-export const palettes = {
+export const neutralPalettes = {
   light: {
-    ...brand, dark: false, background: '#F2F0E9', surface: '#FFFFFF', raised: '#E7E4DD', field: '#F7F6F2',
+    ...hero, dark: false, background: '#F2F0E9', surface: '#FFFFFF', raised: '#E7E4DD', field: '#F7F6F2',
     text: '#171719', secondary: '#606066', muted: '#67676F', line: '#D7D4CC', controlLine: '#8D8B87',
-    accentText: '#B63113', accentSoft: '#FBE7DF', switchOn: '#D24321', switchThumb: '#FFFFFF',
-    orange: '#91501A', blue: '#326797', danger: '#AD332B', dangerSurface: '#FCEDEA',
+    switchThumb: '#FFFFFF', danger: '#AD332B', dangerSurface: '#FCEDEA',
     glass: 'rgba(255,255,255,0.90)', scrim: 'rgba(10,16,8,0.48)', shadow: '#101A08',
   },
   dark: {
-    ...brand, dark: true, background: '#101011', surface: '#1B1B1E', raised: '#252528', field: '#151517',
+    ...hero, dark: true, background: '#101011', surface: '#1B1B1E', raised: '#252528', field: '#151517',
     text: '#FAF9F6', secondary: '#A0A0A7', muted: '#94949C', line: '#303034', controlLine: '#73737B',
-    accentText: '#FF8D6E', accentSoft: '#322019', switchOn: '#FF5C35', switchThumb: '#FFFFFF',
-    orange: '#FFC28B', blue: '#A5CCF3', danger: '#FFA59F', dangerSurface: '#392522',
+    switchThumb: '#FFFFFF', danger: '#FFA59F', dangerSurface: '#392522',
     glass: 'rgba(25,25,28,0.94)', scrim: 'rgba(0,0,0,0.64)', shadow: '#000000',
   },
 };
-export type ThemeColors = typeof palettes.light;
+export type { ThemeColors } from './palettes';
 export const paperColors = {
   line: '#D7D4CC',
   pressed: '#DDDAD2',
   badge: '#E3E0D8',
   badgeText: '#5F5D58',
+  label: '#706C65',
+  field: '#E6E3DC',
+  placeholder: '#77736D',
 } as const;
-export const contrastAccent = (colors: ThemeColors) => (colors.dark ? colors.accent : colors.accentText);
+export const controlColors = {
+  switchTrackOff: '#424248',
+  choicePressed: '#36363A',
+} as const;
+export const mapPositionHalo = '#FFFFFF';
 export const spacing = {
   none: 0,
   xs: 4,

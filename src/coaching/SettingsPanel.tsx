@@ -30,7 +30,7 @@ export function CoachingSettings({ value, onChange }: { value?: CoachingPreferen
           onChange={level => onChange(coachingPreset(level))} />
         <Copy variant="caption">{COACH_LEVEL_DESCRIPTION[config.level]}</Copy>
         <View style={[styles.row, { flexWrap: 'wrap', gap: spacing.sm }]}>
-          <Copy variant="caption" style={{ color: colors.accentText }}>{customized ? 'Personnalisé' : 'Préréglage'}</Copy>
+          <Copy variant="caption" muted>{customized ? 'Personnalisé' : 'Préréglage'}</Copy>
           <Copy muted variant="caption">{enabled} type{enabled > 1 ? 's' : ''} d’annonce activé{enabled > 1 ? 's' : ''}</Copy>
         </View>
         <Copy muted variant="small">Choisir un niveau réapplique son préréglage : types, intervalles, priorités et palier de distance. Vos ajustements ci-dessous remplacent ensuite cette base.</Copy>

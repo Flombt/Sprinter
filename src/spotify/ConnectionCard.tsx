@@ -31,7 +31,7 @@ export function ConnectionCard({ state, openExternal, onMessage }: {
       <View style={{ flex: largeText ? undefined : 1, minWidth: 0, gap: spacing.xs }}>
         <Label>Votre compte</Label>
         <Copy variant="emphasis">{connected ? state.profile?.name ?? 'Compte Spotify' : 'Spotify'}</Copy>
-        <Copy variant="caption" style={{ color: connected ? colors.accentText : colors.secondary }}>
+        <Copy variant="caption" style={{ color: connected ? colors.text : colors.secondary }}>
           {!state.ready ? 'Chargement…' : connected ? 'Connecté' : state.status === 'expired' ? 'Connexion expirée' : 'Non connecté · liens disponibles'}
         </Copy>
       </View>

@@ -270,7 +270,7 @@ export function MiniPlayer({
           )}
           <Copy
             variant="small"
-            style={{ color: view.kind === 'playing' ? colors.accentText : colors.secondary }}
+            style={{ color: view.kind === 'playing' ? colors.text : colors.secondary }}
           >
             {view.label}
             {!track && selected && state.status !== 'connected' ? ' · choisie pour la course' : ''}
@@ -340,11 +340,11 @@ export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpo
                   : 'radio-outline'
             }
             size={16}
-            color={view.kind === 'playing' ? colors.accentText : colors.secondary}
+            color={view.kind === 'playing' ? colors.text : colors.secondary}
           />
           <Copy
             variant="caption"
-            style={{ flexShrink: 1, color: view.kind === 'playing' ? colors.accentText : colors.secondary }}
+            style={{ flexShrink: 1, color: view.kind === 'playing' ? colors.text : colors.secondary }}
           >
             {view.label}
           </Copy>
@@ -404,7 +404,7 @@ export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpo
               style={{
                 width: `${progress * 100}%`,
                 height: 4,
-                backgroundColor: view.fresh ? colors.accentText : colors.muted,
+                backgroundColor: view.fresh ? colors.text : colors.muted,
                 borderRadius: 2,
               }}
             />

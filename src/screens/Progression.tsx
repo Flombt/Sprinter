@@ -181,7 +181,7 @@ function Dashboard({
         </Panel>
       )}
       {local.message && (
-        <Copy accessibilityRole="alert" style={{ color: colors.orange }}>
+        <Copy accessibilityRole="alert" style={{ color: colors.warning.text }}>
           {local.message}
         </Copy>
       )}

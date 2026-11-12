@@ -82,7 +82,7 @@ export default function Recovery({ state, onBack }: { state: SessionStructure; o
           <Copy variant="bodyCompact" style={{ fontSize: 17, fontWeight: '700', color: colors.heroText }}>
             Une sauvegarde est illisible
           </Copy>
-          <Copy variant="bodyCompact" style={{ color: '#65615C' }}>
+          <Copy variant="bodyCompact" style={{ color: colors.heroSecondary }}>
             Conservez une archive de la course interrompue pour débloquer un nouveau départ. Aucune donnée de
             cette sauvegarde ne sera supprimée.
           </Copy>

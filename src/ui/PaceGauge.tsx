@@ -22,6 +22,7 @@ const icons: Record<PaceState, IconName> = {
   free: 'pulse-outline',
 };
 const cursorSize = 12;
+const paceZones = { onTarget: 'on', tooFast: 'fast', tooSlow: 'slow' } as const;
 
 export function PaceGauge({
   value,
@@ -31,6 +32,7 @@ export function PaceGauge({
   quality,
   running,
   autoPaused,
+  paper = false,
 }: {
   value: number | null;
   target: Pick<PaceTarget, 'fast' | 'slow'> | null;
@@ -39,8 +41,10 @@ export function PaceGauge({
   quality: SignalQuality;
   running: boolean;
   autoPaused: boolean;
+  paper?: boolean;
 }) {
-  const { colors, reduceMotion } = useTheme();
+  const { colors, lightColors, reduceMotion } = useTheme();
+  const palette = paper ? lightColors : colors;
   const [width, setWidth] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
   const positioned = useRef(false);
@@ -50,14 +54,10 @@ export function PaceGauge({
     : running && quality !== 'good'
       ? QUALITY_LABELS[quality]
       : STATE_LABELS[status];
-  const color =
-    status === 'tooFast'
-      ? colors.orange
-      : status === 'tooSlow'
-        ? colors.blue
-        : status === 'onTarget'
-          ? colors.accentText
-          : colors.secondary;
+  const zone = status === 'onTarget' || status === 'tooFast' || status === 'tooSlow'
+    ? palette.zone[paceZones[status]]
+    : undefined;
+  const textColor = zone?.text ?? palette.secondary;
   const model = target
     ? paceGaugePosition(running && quality === 'good' ? value : null, target, tolerance)
     : null;
@@ -92,7 +92,7 @@ export function PaceGauge({
           onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
           style={styles.rail}
         >
-          <View style={[styles.line, { backgroundColor: colors.line }]} />
+          <View style={[styles.line, { backgroundColor: palette.line }]} />
           {width > 0 && (
             <View
               style={[
@@ -100,7 +100,7 @@ export function PaceGauge({
                 {
                   left: cursorSize / 2 + (width - cursorSize) * model.start - 2,
                   width: Math.max(4, (width - cursorSize) * (model.end - model.start) + 4),
-                  backgroundColor: colors.accentText,
+                  backgroundColor: palette.zone.on.color,
                 },
               ]}
             />
@@ -110,8 +110,8 @@ export function PaceGauge({
               style={[
                 styles.cursor,
                 {
-                  backgroundColor: color,
-                  borderColor: colors.background,
+                  backgroundColor: zone?.color ?? palette.secondary,
+                  borderColor: palette.background,
                   transform: [{ translateX }],
                 },
               ]}
@@ -119,9 +119,9 @@ export function PaceGauge({
           )}
         </View>
       )}
-      <View style={styles.status}>
-        <Icon name={icons[status]} size={17} color={color} />
-        <Copy variant="caption" accessibilityLiveRegion="polite" style={{ color, flexShrink: 1 }}>
+      <View style={[styles.status, zone && { backgroundColor: zone.soft }]}>
+        <Icon name={icons[status]} size={17} color={textColor} />
+        <Copy variant="caption" accessibilityLiveRegion="polite" style={{ color: textColor, flexShrink: 1 }}>
           {label}
         </Copy>
       </View>
@@ -141,5 +141,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: radii.pill,
   },
-  status: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  status: {
+    flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radii.pill,
+  },
 });

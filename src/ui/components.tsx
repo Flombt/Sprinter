@@ -19,7 +19,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdaptiveLayout, useTheme } from './theme';
 import {
   cardStyles,
-  contrastAccent,
   interaction,
   layout,
   paperColors,
@@ -140,9 +139,7 @@ export function Button({
             ? colors.danger
             : colors.dangerSurface
           : primary
-            ? highContrast
-              ? contrastAccent(colors)
-              : colors.accent
+            ? colors.accent
             : kind === 'secondary'
               ? colors.raised
               : 'transparent';
@@ -356,20 +353,20 @@ export function StatusBadge({
   paper?: boolean;
 }) {
   const { colors } = useTheme();
-  const accent = contrastAccent(colors);
+  const ink = paper ? paperColors.badgeText : active ? colors.text : colors.secondary;
   return (
     <View
       style={[
         styles.statusBadge,
         {
-          backgroundColor: paper ? paperColors.badge : active ? colors.accentSoft : colors.raised,
+          backgroundColor: paper ? paperColors.badge : colors.raised,
         },
       ]}
     >
-      <View style={[styles.statusDot, { backgroundColor: active ? accent : colors.muted }]} />
+      <View style={[styles.statusDot, { backgroundColor: ink }]} />
       <Label
         style={{
-          color: paper ? paperColors.badgeText : active ? accent : colors.secondary,
+          color: ink,
           letterSpacing: 0.7,
           flexShrink: 1,
         }}
