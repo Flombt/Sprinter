@@ -18,5 +18,6 @@ export interface TrainingPlan {
 export interface ProgressionData {
   version: 1; entries: CalendarEntry[]; goals: WeeklyGoal[]; journals: RunJournal[]; shoes: Shoe[]; plans: TrainingPlan[];
   selectedEntryId: string | null; defaultShoeId: string | null;
+  profileName?: string;
 }
 export const emptyProgression = (): ProgressionData => ({ version: 1, entries: [], goals: [], journals: [], shoes: [], plans: [], selectedEntryId: null, defaultShoeId: null });

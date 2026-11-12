@@ -17,8 +17,8 @@ export default function PersonalRecords({
     <Screen bottom={40}>
       <Header title="Records personnels GPS" onBack={onBack} />
       <Copy muted>
-        Les meilleures performances mesurées sur 1 km, 5 km, 10 km, semi et marathon. Une portion de course
-        peut établir un record ; les pauses et pertes GPS ne sont pas traversées.
+        De 100 m au marathon, les meilleurs passages sont détectés sur vos portions GPS continues. Les
+        pauses et les pertes GPS interrompent la mesure.
       </Copy>
       {state.busy && (
         <Copy accessibilityLiveRegion="polite">

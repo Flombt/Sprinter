@@ -8,6 +8,10 @@ export function playlistReference(id: string, savedAt = Date.now()): PlaylistRef
   return { id, uri: `spotify:playlist:${id}`, url: `https://open.spotify.com/playlist/${id}`, savedAt,
     name: null, image: null, owner: null, count: null, fetchedAt: null, source: 'link' };
 }
+export function playlistFromAppLink(url: string | null | undefined): string | null {
+  const id = /^sprinter:\/\/playlist\/([A-Za-z0-9]{22})\/?$/.exec(url ?? '')?.[1];
+  return id ? playlistReference(id).url : null;
+}
 export type ParsedPlaylist = { kind: 'playlist'; playlist: PlaylistReference } | { kind: 'short'; url: string };
 export function parsePlaylistInput(input: string): ParsedPlaylist {
   const value = input.trim();

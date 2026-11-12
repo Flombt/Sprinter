@@ -23,7 +23,8 @@ export interface RunAnalysis {
   minimumAltitude: number | null; maximumAltitude: number | null; ascent: number | null; descent: number | null; elevationSeconds: number;
   splits: KilometerSplit[]; deviations: DeviationSummary; warnings: string[];
 }
-export const RECORD_DISTANCES = [{ meters: 1000, label: '1 km' }, { meters: 5000, label: '5 km' }, { meters: 10000, label: '10 km' },
+export const RECORD_DISTANCES = [{ meters: 100, label: '100 m' }, { meters: 200, label: '200 m' }, { meters: 500, label: '500 m' },
+  { meters: 1000, label: '1 km' }, { meters: 5000, label: '5 km' }, { meters: 10000, label: '10 km' },
   { meters: 21097.5, label: 'Semi-marathon' }, { meters: 42195, label: 'Marathon' }] as const;
 export interface RecordPerformance {
   runId: string; meters: number; seconds: number; activeSeconds: number; pace: number;

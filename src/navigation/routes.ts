@@ -7,6 +7,8 @@ export type RootRoutes = {
   Apple: undefined;
   Preparation: undefined;
   Detail: { runId: string };
+  ExampleDetail: { id: string };
+  Shoes: undefined;
   RunSummary: { runId: string };
   Records: undefined;
   Comparison: { runId: string } | undefined;

@@ -195,9 +195,15 @@ export class RunningStore {
     } finally { this.operation = false; this.emit({ busy: false }); if (this.deferredPause) { this.deferredPause = false; await this.pause(); } }
   }
   private async startTracking() {
-    const backgroundActive = await this.location.start(this.location.canBackground && this.value.settings.backgroundEnabled,
+    const backgroundRequested = this.location.canBackground && this.value.settings.backgroundEnabled;
+    const backgroundActive = await this.location.start(backgroundRequested,
       this.engine?.record.autoPauseEnabled === true, locations => this.receive(locations), error => { void this.handleLocationError(error); });
-    this.emit({ backgroundActive });
+    this.emit({
+      backgroundActive,
+      ...(backgroundRequested && !backgroundActive && {
+        message: 'Gardez Sprinter à l’écran. Pour courir écran verrouillé, autorisez la localisation « Toujours ».'
+      }),
+    });
   }
   private async stopTracking() {
     try { await this.location.stop(); } finally { this.emit({ backgroundActive: false }); }

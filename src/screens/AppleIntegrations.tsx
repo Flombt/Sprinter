@@ -5,6 +5,7 @@ import { apple } from '../apple/store';
 import { APPLE_BUILD_REQUIRED, nativeApple } from '../apple/bridge';
 import { healthDuplicate, importedRun, validateHealthWorkout } from '../apple/mapping';
 import type { HealthWorkout } from '../apple/types';
+import { CAN_BACKGROUND } from '../services/capabilities';
 import { duration, km, runDate } from '../core/format';
 import { session } from '../services/session';
 import { Button, Copy, Header, Label, Panel, Screen, styles } from '../ui/components';
@@ -64,6 +65,38 @@ export default function AppleIntegrations({ onBack }: { onBack: () => void }) {
       disabled={disabled || extraDisabled}
     />
   );
+  if (!nativeApple) {
+    return (
+      <Screen bottom={40}>
+        <Header title="Apple & confidentialité" onBack={onBack} />
+        <Panel style={{ gap: 12 }}>
+          <Label>Apple Santé et activités en direct</Label>
+          <Copy>{APPLE_BUILD_REQUIRED}</Copy>
+        </Panel>
+        {CAN_BACKGROUND && (
+          <Panel style={{ gap: 12 }}>
+            <Label>GPS écran verrouillé</Label>
+            <Copy>
+              Pour enregistrer le parcours écran verrouillé, activez le suivi de course dans Sprinter et
+              autorisez la localisation « Toujours » dans iOS.
+            </Copy>
+            <Button
+              title="Ouvrir les réglages iPhone"
+              secondary
+              onPress={() =>
+                void Linking.openSettings().catch(() =>
+                  setMessage(
+                    'Ouvrez Réglages → Confidentialité et sécurité → Service de localisation → Sprinter.',
+                  ),
+                )
+              }
+            />
+            {message && <Copy accessibilityRole="alert">{message}</Copy>}
+          </Panel>
+        )}
+      </Screen>
+    );
+  }
   return (
     <Screen bottom={40}>
       <Header title="Apple & confidentialité" onBack={onBack} />
