@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Pressable, View, useWindowDimensions } from 'react-native';
 import { music } from './device';
 import { controlReason, selectedPlaylist } from './store';
 import { MusicState, PlayerCommand } from './types';
@@ -9,6 +9,7 @@ import { interaction, radii, spacing } from '../ui/tokens';
 import { playbackPresentation, playlistTitle } from './presentation';
 import { duration } from '../core/format';
 import { confirm } from '../ui/confirm';
+import { GlassSurface } from '../ui/GlassSurface';
 
 export const useMusic = () => useSyncExternalStore(music.subscribe, music.getSnapshot, music.getSnapshot);
 export function SpotifyBrand({ onPress, caption }: { onPress?: () => void; caption?: string }) {
@@ -103,6 +104,7 @@ function MusicControl({
   const { colors } = useTheme();
   const reason = controlReason(state, command);
   const primary = command === 'play' || command === 'pause';
+  const glass = primary && !reason;
   return (
     <Pressable
       accessibilityRole="button"
@@ -115,13 +117,18 @@ function MusicControl({
         width: large ? 62 : 48,
         height: large ? 62 : 48,
         borderRadius: 31,
-        opacity: reason ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1,
-        backgroundColor: primary ? colors.accent : 'transparent',
+        opacity: reason ? interaction.disabledOpacity : pressed && !glass ? interaction.pressedOpacity : 1,
+        backgroundColor: primary && !glass ? colors.accent : 'transparent',
         justifyContent: 'center',
         alignItems: 'center',
       })}
     >
-      <Icon name={icon} color={primary ? colors.accentInk : colors.text} size={large ? 27 : 22} />
+      {({ pressed }) => (
+        <>
+          {glass && <GlassSurface kind="solid" radius={31} color={colors.accent} pressed={pressed} />}
+          <Icon name={icon} color={primary ? colors.accentInk : colors.text} size={large ? 27 : 22} />
+        </>
+      )}
     </Pressable>
   );
 }
@@ -156,6 +163,51 @@ export function PlaybackControls({ state, compact = false }: { state: MusicState
     </View>
   );
 }
+export function MusicDock({ onExpand, active = true }: { onExpand: () => void; active?: boolean }) {
+  const state = useMusic();
+  const { colors } = useTheme();
+  useEffect(() => (active ? music.watchPlayback() : undefined), [active]);
+  const track = state.playback?.track;
+  if (!active || !track || state.status !== 'connected') return null;
+  return (
+    <View style={{ paddingHorizontal: spacing.md, paddingVertical: 4 }}>
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 500,
+          alignSelf: 'center',
+          borderRadius: radii.card,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.line,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Ouvrir le lecteur Spotify, ${track.title}`}
+          onPress={onExpand}
+          style={{ flex: 1, minWidth: 0, minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 9 }}
+        >
+          <Artwork image={track.image} size={36} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Copy variant="bodyCompact" numberOfLines={1}>
+              {track.title}
+            </Copy>
+            <Copy variant="small" muted numberOfLines={1}>
+              {track.artist}
+            </Copy>
+          </View>
+        </Pressable>
+        <PlaybackControls state={state} compact />
+      </View>
+    </View>
+  );
+}
+
 export function MusicSelection({ onChoose }: { onChoose: () => void }) {
   const state = useMusic();
   const selected = selectedPlaylist(state);
@@ -268,10 +320,7 @@ export function MiniPlayer({
               {track.artist}
             </Copy>
           )}
-          <Copy
-            variant="small"
-            style={{ color: view.kind === 'playing' ? colors.text : colors.secondary }}
-          >
+          <Copy variant="small" style={{ color: view.kind === 'playing' ? colors.text : colors.secondary }}>
             {view.label}
             {!track && selected && state.status !== 'connected' ? ' · choisie pour la course' : ''}
           </Copy>
@@ -310,7 +359,7 @@ export function MiniPlayer({
 }
 export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpotify: () => void }) {
   const { colors } = useTheme();
-  const { largeText } = useAdaptiveLayout();
+  const { width } = useWindowDimensions();
   const playback = state.playback,
     track = playback?.track;
   const view = playbackPresentation(state);
@@ -326,10 +375,17 @@ export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpo
       : null;
   const reason = controlReason(state, playback?.playing ? 'pause' : 'play');
   const shuffleReason = controlReason(state, 'shuffle');
+  const repeatReason = controlReason(state, 'repeat');
+  const repeatLabel =
+    playback?.repeat === 'context'
+      ? 'Répéter la playlist'
+      : playback?.repeat === 'track'
+        ? 'Répéter le titre'
+        : 'Répétition';
   return (
     <Panel style={{ gap: spacing.lg }}>
       <View style={[styles.row, { justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm }]}>
-        <Label>Votre lecteur</Label>
+        <SpotifyBrand onPress={openSpotify} />
         <View style={[styles.row, { gap: spacing.xs, maxWidth: '100%' }]}>
           <Icon
             name={
@@ -350,25 +406,19 @@ export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpo
           </Copy>
         </View>
       </View>
-      <View
-        style={{
-          flexDirection: largeText ? 'column' : 'row',
-          alignItems: largeText ? 'flex-start' : 'center',
-          gap: spacing.lg,
-        }}
-      >
+      <View style={{ alignItems: 'center', gap: spacing.lg }}>
         <Pressable
           accessibilityRole="link"
           accessibilityLabel="Écouter ce contenu dans Spotify"
           onPress={openSpotify}
         >
-          <Artwork image={track?.image} size={track ? 96 : 56} />
+          <Artwork image={track?.image} size={track ? Math.min(228, width * 0.62) : 72} />
         </Pressable>
-        <View style={{ flex: largeText ? undefined : 1, minWidth: 0, gap: spacing.xs }}>
-          <Copy variant="section">
+        <View style={{ alignItems: 'center', gap: spacing.xs }}>
+          <Copy variant="section" style={{ textAlign: 'center' }}>
             {track?.title ?? (playback?.advertisement ? 'Publicité Spotify' : 'À lancer dans Spotify')}
           </Copy>
-          <Copy muted variant="caption">
+          <Copy muted variant="caption" style={{ textAlign: 'center' }}>
             {track?.artist ||
               (state.status === 'connected'
                 ? 'Lancez une lecture dans Spotify pour synchroniser le lecteur.'
@@ -379,7 +429,6 @@ export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpo
               accessibilityLabel="Contenu explicite"
               variant="small"
               style={{
-                alignSelf: 'flex-start',
                 borderWidth: 1,
                 borderColor: colors.secondary,
                 paddingHorizontal: spacing.xs,
@@ -454,6 +503,27 @@ export function PlayerPanel({ state, openSpotify }: { state: MusicState; openSpo
           <Icon name="shuffle" size={21} color={playback?.shuffle ? colors.accentText : colors.secondary} />
           <Copy muted variant="caption">
             Aléatoire
+          </Copy>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={repeatLabel}
+          accessibilityHint={repeatReason ?? 'Touchez pour changer le mode de répétition.'}
+          accessibilityState={{
+            disabled: !!repeatReason,
+            selected: !!playback?.repeat && playback.repeat !== 'off',
+          }}
+          disabled={!!repeatReason}
+          onPress={() => void music.command('repeat')}
+          style={[styles.row, { minHeight: 44, gap: 7, opacity: repeatReason ? 0.35 : 1 }]}
+        >
+          <Icon
+            name="repeat"
+            size={21}
+            color={playback?.repeat && playback.repeat !== 'off' ? colors.accentText : colors.secondary}
+          />
+          <Copy muted variant="caption">
+            {repeatLabel}
           </Copy>
         </Pressable>
         <Pressable

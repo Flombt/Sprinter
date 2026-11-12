@@ -1,19 +1,22 @@
 import { useCallback, useState, type ComponentProps } from 'react';
 import { useIsFocused } from '@react-navigation/native';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PaceTarget } from '../core/types';
 import Home from '../screens/Home';
 import Music from '../screens/Music';
 import RunStats from '../screens/RunStats';
 import StatsDashboard, { type StatsNavigation } from '../screens/StatsDashboard';
 import { useLiveSession, type SessionStructure } from '../services/useSessionSelector';
+import { MusicDock } from '../spotify/components';
 import { BottomBarInsetContext } from '../ui/layout';
 import { BottomTabs, TabPane, type TabItem } from '../ui/navigation';
 
 export type Tab = 'stats' | 'home' | 'music';
 const tabs: readonly TabItem<Tab>[] = [
-  { key: 'stats', title: 'Stats', icon: 'stats-chart-outline' },
+  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
   { key: 'home', title: 'Courir', icon: 'flash-outline' },
-  { key: 'music', title: 'Intégrations', icon: 'apps-outline' },
+  { key: 'stats', title: 'Stats', icon: 'stats-chart-outline' },
 ];
 
 function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
@@ -55,6 +58,7 @@ export function RunTabs({
   statsNavigation,
   onSettings,
   onMusic,
+  onPlayer,
   onFinish,
   onConfirmFinish,
 }: {
@@ -74,15 +78,20 @@ export function RunTabs({
   statsNavigation: StatsNavigation;
   onSettings: () => void;
   onMusic: () => void;
+  onPlayer: () => void;
   onFinish: () => void;
   onConfirmFinish: () => void;
 }) {
   const focused = useIsFocused();
+  const insets = useSafeAreaInsets();
   const [musicVisited, setMusicVisited] = useState(false);
   const [tabBarHeight, setTabBarHeight] = useState(0);
+  const [playerHeight, setPlayerHeight] = useState(0);
   const active = focused && !covered;
   const running = state.running || state.autoPaused;
   const hideTabBar = tab === 'home' && running;
+  const playerBottom = hideTabBar ? insets.bottom : tabBarHeight;
+  const bottomInset = hideTabBar && !playerHeight ? 0 : playerBottom + playerHeight;
   const changeTab = useCallback(
     (next: Tab) => {
       if (next === 'music') setMusicVisited(true);
@@ -92,7 +101,7 @@ export function RunTabs({
   );
 
   return (
-    <BottomBarInsetContext.Provider value={hideTabBar ? 0 : tabBarHeight}>
+    <BottomBarInsetContext.Provider value={bottomInset}>
       <TabPane visible={tab === 'home'}>
         <LiveHome
           active={active && tab === 'home'}
@@ -132,6 +141,13 @@ export function RunTabs({
           />
         </TabPane>
       )}
+      <View
+        pointerEvents="box-none"
+        onLayout={(event) => setPlayerHeight(event.nativeEvent.layout.height)}
+        style={{ position: 'absolute', zIndex: 2, left: 0, right: 0, bottom: playerBottom }}
+      >
+        <MusicDock active={active} onExpand={onPlayer} />
+      </View>
       <BottomTabs
         items={tabs}
         value={tab}

@@ -165,6 +165,7 @@ export function RootStack({
               }}
               onSettings={() => onOpenSheet('settings')}
               onMusic={() => onOpenSheet('music')}
+              onPlayer={() => onOpenSheet('player')}
               onFinish={onFinish}
               onConfirmFinish={onConfirmFinish}
             />

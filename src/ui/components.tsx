@@ -30,6 +30,7 @@ import {
 import { useBottomBarInset } from './layout';
 import { ScreenEntrance } from './motion';
 import { haptic, type HapticFeedback } from './haptics';
+import { GlassSurface } from './GlassSurface';
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 export function Copy({
@@ -144,6 +145,7 @@ export function Button({
               ? colors.raised
               : 'transparent';
   const showArrow = arrow && primary;
+  const glass = !disabled && (kind !== 'quiet' || onHero || danger);
   useEffect(() => {
     if (reduceMotion || disabled) {
       scale.stopAnimation();
@@ -188,33 +190,45 @@ export function Button({
           showArrow && { justifyContent: 'space-between' },
           highContrast && (disabled || !primary) && { borderWidth: 1, borderColor: colors.line },
           {
-            backgroundColor,
+            backgroundColor: glass ? 'transparent' : backgroundColor,
             opacity:
               disabled && !highContrast
                 ? interaction.disabledOpacity
-                : pressed
+                : pressed && !glass
                   ? interaction.pressedOpacity
                   : 1,
           },
         ]}
       >
-        {children ?? (
+        {({ pressed }) => (
           <>
-            <View style={styles.buttonLabel}>
-              {icon && <Icon name={icon} color={color} size={highContrast ? 19 : 22} />}
-              <Copy
-                variant={size === 'compact' ? 'bodyCompact' : 'button'}
-                style={{
-                  color,
-                  flexShrink: 1,
-                  textAlign: showArrow ? 'left' : 'center',
-                  fontWeight: highContrast ? '700' : typography.button.fontWeight,
-                }}
-              >
-                {title}
-              </Copy>
-            </View>
-            {showArrow && <Icon name="arrow-forward" size={22} color={color} />}
+            {glass && (
+              <GlassSurface
+                radius={radii.button}
+                kind={primary || danger || onHero ? 'solid' : 'control'}
+                color={backgroundColor}
+                pressed={pressed}
+              />
+            )}
+            {children ?? (
+              <>
+                <View style={styles.buttonLabel}>
+                  {icon && <Icon name={icon} color={color} size={highContrast ? 19 : 22} />}
+                  <Copy
+                    variant={size === 'compact' ? 'bodyCompact' : 'button'}
+                    style={{
+                      color,
+                      flexShrink: 1,
+                      textAlign: showArrow ? 'left' : 'center',
+                      fontWeight: highContrast ? '700' : typography.button.fontWeight,
+                    }}
+                  >
+                    {title}
+                  </Copy>
+                </View>
+                {showArrow && <Icon name="arrow-forward" size={22} color={color} />}
+              </>
+            )}
           </>
         )}
       </Pressable>
@@ -249,6 +263,7 @@ export function IconButton({
   delayLongPress?: number;
 }) {
   const { colors } = useTheme();
+  const glass = !disabled && !paper && (!quiet || square);
   const press = () => {
     if (feedback !== 'none') haptic[feedback]();
     onPress();
@@ -268,12 +283,13 @@ export function IconButton({
         styles.iconButton,
         square && {
           borderRadius: radii.control,
-          borderWidth: 1,
+          borderWidth: glass ? 0 : 1,
           borderColor: paper ? paperColors.line : colors.line,
         },
         {
-          backgroundColor:
-            square && pressed
+          backgroundColor: glass
+            ? 'transparent'
+            : square && pressed
               ? paper
                 ? paperColors.pressed
                 : colors.raised
@@ -284,13 +300,24 @@ export function IconButton({
             ? square
               ? 0.3
               : interaction.disabledOpacity
-            : pressed
+            : pressed && !glass
               ? interaction.pressedOpacity
               : 1,
         },
       ]}
     >
-      <Icon name={icon} size={square ? 19 : 22} color={paper ? colors.heroText : colors.text} />
+      {({ pressed }) => (
+        <>
+          {glass && (
+            <GlassSurface
+              radius={square ? radii.control : radii.pill}
+              color={quiet ? colors.background : colors.surface}
+              pressed={pressed}
+            />
+          )}
+          <Icon name={icon} size={square ? 19 : 22} color={paper ? colors.heroText : colors.text} />
+        </>
+      )}
     </Pressable>
   );
 }

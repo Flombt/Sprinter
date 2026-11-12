@@ -4,6 +4,7 @@ import { Copy, Icon } from './components';
 import { haptic } from './haptics';
 import { useTheme } from './theme';
 import { interaction, radii, spacing } from './tokens';
+import { GlassSurface } from './GlassSurface';
 
 const holdDuration = 1000;
 const finishAction = [{ name: 'activate', label: 'Confirmer la fin de la course' }];
@@ -100,12 +101,13 @@ export function HoldToFinish({
       style={[
         styles.button,
         {
-          backgroundColor: colors.raised,
+          backgroundColor: disabled ? colors.raised : 'transparent',
           borderColor: colors.line,
           opacity: disabled ? interaction.disabledOpacity : 1,
         },
       ]}
     >
+      {!disabled && <GlassSurface radius={radii.button} color={colors.raised} />}
       <Animated.View
         pointerEvents="none"
         accessible={false}
