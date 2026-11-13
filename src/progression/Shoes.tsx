@@ -1,4 +1,3 @@
-import { spacing } from '../ui/tokens';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { RunRecord } from '../core/types';
@@ -17,10 +16,10 @@ export function Shoes({ history, onBack }: { history: RunRecord[]; onBack: () =>
   const save = async () => { if (editing && await progression.saveShoe({ ...editing, name: name.trim(), initialMeters: numberValue(initial) * 1000 })) setEditing(null); };
   return <Screen bottom={40}><Header title="Mes chaussures" onBack={onBack} /><Copy muted>Le kilométrage provient des activités attribuées à chaque paire. Le kilométrage initial est une valeur déclarée, affichée séparément.</Copy>
     {state.message && <Copy accessibilityRole="alert">{state.message}</Copy>}
-    {editing ? <Panel style={{ gap: spacing.md }}><Field label="Nom de la paire" value={name} onChange={setName} /><Field label="Kilométrage avant Sprinter (km)" value={initial} numeric onChange={setInitial} />
+    {editing ? <Panel style={{ gap: 14 }}><Field label="Nom de la paire" value={name} onChange={setName} /><Field label="Kilométrage avant Sprinter (km)" value={initial} numeric onChange={setInitial} />
       <Button title="Enregistrer la paire" disabled={state.busy} onPress={() => void save()} /><Button title="Annuler" secondary onPress={() => setEditing(null)} /></Panel> : <Button title="Ajouter une paire" icon="add" disabled={!state.ready} onPress={() => edit()} />}
     {!state.data.shoes.length && <Copy muted>Aucune paire enregistrée. Attribuez ensuite une paire avant le départ ou dans le journal d’une ancienne activité.</Copy>}
-    {state.data.shoes.map(shoe => { const mileage = shoeMileage(history, state.data, shoe.id); return <Panel key={shoe.id} style={{ gap: spacing.md }}><Label>{shoe.archived ? 'Archivée' : state.data.defaultShoeId === shoe.id ? 'Pour les prochaines sorties' : 'Paire active'}</Label>
+    {state.data.shoes.map(shoe => { const mileage = shoeMileage(history, state.data, shoe.id); return <Panel key={shoe.id} style={{ gap: 12 }}><Label>{shoe.archived ? 'Archivée' : state.data.defaultShoeId === shoe.id ? 'Pour les prochaines sorties' : 'Paire active'}</Label>
       <Copy variant="section">{shoe.name}</Copy><Copy>{km(mileage.totalMeters)} km au total</Copy><Copy muted variant="caption">{km(mileage.measuredMeters)} km enregistrés sur {mileage.runs} sorties + {km(shoe.initialMeters)} km déclarés avant Sprinter.</Copy>
       {!shoe.archived && <Button title={state.data.defaultShoeId === shoe.id ? 'Retirer le choix par défaut' : 'Choisir pour les prochaines sorties'} secondary disabled={state.busy} onPress={() => void progression.selectShoe(state.data.defaultShoeId === shoe.id ? null : shoe.id)} />}
       <Button title="Modifier la paire" secondary disabled={state.busy} onPress={() => edit(shoe)} /><Button title={shoe.archived ? 'Réactiver' : 'Archiver'} secondary disabled={state.busy} onPress={() => confirm(shoe.archived ? 'Réactiver cette paire ?' : 'Archiver cette paire ?', 'Les activités et le kilométrage déjà attribués restent conservés.', 'Continuer', () => { void progression.saveShoe({ ...shoe, archived: !shoe.archived }); })} />

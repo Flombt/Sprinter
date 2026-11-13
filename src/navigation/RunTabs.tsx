@@ -1,70 +1,160 @@
-import { memo, useMemo, useState } from 'react';
+import { useCallback, useState, type ComponentProps } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { PaceTarget } from '../core/types';
 import Home from '../screens/Home';
-import RunStats from '../screens/RunStats';
 import Music from '../screens/Music';
-import { useSessionSelector } from '../services/useSessionSelector';
-import type { SessionState } from '../services/session';
+import RunStats from '../screens/RunStats';
+import StatsDashboard, { type StatsNavigation } from '../screens/StatsDashboard';
+import { useLiveSession, type SessionStructure } from '../services/useSessionSelector';
+import { MusicDock } from '../spotify/components';
 import { BottomBarInsetContext } from '../ui/layout';
-import { BottomTabs, TabTransition, useTabActive, type TabItem } from '../ui/navigation';
-import { useRunControls } from './RunContext';
-import type { RootRoutes } from './routes';
+import { BottomTabs, TabPane, type TabItem } from '../ui/navigation';
 
-type Tab = 'stats' | 'home' | 'music';
-type Navigation = NativeStackNavigationProp<RootRoutes, 'Tabs'>;
-const items: readonly TabItem<Tab>[] = [
-  { key: 'stats', title: 'Stats', icon: 'stats-chart-outline', selectedIcon: 'stats-chart' },
-  { key: 'home', title: 'Courir', icon: 'flash-outline', selectedIcon: 'flash' },
-  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline', selectedIcon: 'musical-notes' },
+export type Tab = 'stats' | 'home' | 'music';
+const tabs: readonly TabItem<Tab>[] = [
+  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
+  { key: 'home', title: 'Courir', icon: 'flash-outline' },
+  { key: 'stats', title: 'Stats', icon: 'stats-chart-outline' },
 ];
 
-const selectSession = (state: SessionState) => state;
-const selectForegroundRun = (state: SessionState) => (state.running || state.autoPaused) && !state.backgroundActive;
+function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
+  const state = useLiveSession(props.active);
+  return <Home {...props} state={state} />;
+}
 
-const HomePane = memo(function HomePane({ navigation, setTab }: { navigation: Navigation; setTab: (tab: Tab) => void }) {
-  const controls = useRunControls();
+function LiveStats({
+  navigation,
+  ...props
+}: Omit<ComponentProps<typeof RunStats>, 'state' | 'onBack'> & { navigation: StatsNavigation }) {
+  const [showRunSettings, setShowRunSettings] = useState(false);
+  const state = useLiveSession(props.active && showRunSettings);
+  if (showRunSettings) return <RunStats {...props} state={state} onBack={() => setShowRunSettings(false)} />;
+  return (
+    <StatsDashboard
+      {...navigation}
+      history={state.history}
+      hasRun={!!state.run}
+      onRunSettings={() => setShowRunSettings(true)}
+    />
+  );
+}
+
+export function RunTabs({
+  state,
+  tab,
+  onTabChange,
+  playlistImport,
+  onPlaylistImportRead,
+  target,
+  onTargetChange,
+  starting,
+  covered,
+  onStart,
+  onRecover,
+  onPrepare,
+  onHistory,
+  statsNavigation,
+  onSettings,
+  onMusic,
+  onPlayer,
+  onFinish,
+  onConfirmFinish,
+}: {
+  state: SessionStructure;
+  tab: Tab;
+  onTabChange: (tab: Tab) => void;
+  playlistImport?: string;
+  onPlaylistImportRead: () => void;
+  target: PaceTarget;
+  onTargetChange: (target: PaceTarget) => void;
+  starting: boolean;
+  covered: boolean;
+  onStart: () => void;
+  onRecover: () => void;
+  onPrepare: () => void;
+  onHistory: () => void;
+  statsNavigation: StatsNavigation;
+  onSettings: () => void;
+  onMusic: () => void;
+  onPlayer: () => void;
+  onFinish: () => void;
+  onConfirmFinish: () => void;
+}) {
   const focused = useIsFocused();
-  const active = useTabActive() && focused;
-  const actions = useMemo(() => ({
-    onRecovery: () => navigation.push('Recovery'), onPrepare: () => navigation.push('Preparation'),
-    onHistory: () => navigation.push('History'), onStats: () => setTab('stats'), onMusic: () => setTab('music'),
-    onSettings: () => navigation.push('Settings'),
-  }), [navigation, setTab]);
-  return <Home {...actions} active={active} target={controls.target} starting={controls.starting}
-    onStart={controls.start} onFinish={controls.finish} />;
-});
+  const insets = useSafeAreaInsets();
+  const [musicVisited, setMusicVisited] = useState(false);
+  const [tabBarHeight, setTabBarHeight] = useState(0);
+  const [playerHeight, setPlayerHeight] = useState(0);
+  const active = focused && !covered;
+  const running = state.running || state.autoPaused;
+  const hideTabBar = tab === 'home' && running;
+  const playerBottom = hideTabBar ? insets.bottom : tabBarHeight;
+  const bottomInset = hideTabBar && !playerHeight ? 0 : playerBottom + playerHeight;
+  const changeTab = useCallback(
+    (next: Tab) => {
+      if (next === 'music') setMusicVisited(true);
+      onTabChange(next);
+    },
+    [onTabChange],
+  );
 
-const StatsPane = memo(function StatsPane({ navigation }: { navigation: Navigation }) {
-  const controls = useRunControls();
-  const focused = useIsFocused();
-  const active = useTabActive() && focused;
-  const state = useSessionSelector(selectSession, active);
-  return <RunStats state={state} target={controls.target} onTargetChange={controls.setTarget}
-    onPrepare={() => navigation.push('Preparation')} onSettings={() => navigation.push('Settings')} onFinish={controls.finish} />;
-});
-
-const MusicPane = memo(function MusicPane({ navigation }: { navigation: Navigation }) {
-  const focused = useIsFocused();
-  const active = useTabActive() && focused;
-  const foregroundOnlyRun = useSessionSelector(selectForegroundRun, active);
-  return <Music active={active} foregroundOnlyRun={foregroundOnlyRun} onAccount={() => navigation.push('SpotifyAccount')}
-    onTracks={playlist => navigation.push('SpotifyTracks', { playlist })} />;
-});
-
-export function RunTabs({ navigation, route }: NativeStackScreenProps<RootRoutes, 'Tabs'>) {
-  const request = route.params?.homeRequest;
-  const [seenRequest, setSeenRequest] = useState(request);
-  const [tab, setTab] = useState<Tab>('home');
-  const [barHeight, setBarHeight] = useState(0);
-  if (seenRequest !== request) { setSeenRequest(request); setTab('home'); }
-  const content = tab === 'home' ? <HomePane navigation={navigation} setTab={setTab} />
-    : tab === 'stats' ? <StatsPane navigation={navigation} /> : <MusicPane navigation={navigation} />;
-  return <BottomBarInsetContext.Provider value={barHeight}>
-    <View style={{ flex: 1 }}>
-      <TabTransition value={tab}>{content}</TabTransition>
-      <BottomTabs items={items} value={tab} onChange={setTab} onHeightChange={setBarHeight} />
-    </View>
-  </BottomBarInsetContext.Provider>;
+  return (
+    <BottomBarInsetContext.Provider value={bottomInset}>
+      <TabPane visible={tab === 'home'}>
+        <LiveHome
+          active={active && tab === 'home'}
+          target={target}
+          starting={starting}
+          onStart={onStart}
+          onRecovery={onRecover}
+          onPrepare={onPrepare}
+          onHistory={onHistory}
+          onStats={() => changeTab('stats')}
+          onMusic={() => changeTab('music')}
+          onSettings={onSettings}
+          onFinish={onFinish}
+          onConfirmFinish={onConfirmFinish}
+        />
+      </TabPane>
+      <TabPane visible={tab === 'stats'}>
+        <LiveStats
+          navigation={statsNavigation}
+          active={active && tab === 'stats'}
+          target={target}
+          onTargetChange={onTargetChange}
+          onPrepare={onPrepare}
+          onSettings={onSettings}
+          onMusic={onMusic}
+          onFinish={onFinish}
+          onConfirmFinish={onConfirmFinish}
+        />
+      </TabPane>
+      {(musicVisited || tab === 'music') && (
+        <TabPane visible={tab === 'music'}>
+          <Music
+            active={active && tab === 'music'}
+            foregroundOnlyRun={running && !state.backgroundActive}
+            playlistImport={playlistImport}
+            onPlaylistImportRead={onPlaylistImportRead}
+          />
+        </TabPane>
+      )}
+      <View
+        pointerEvents="box-none"
+        onLayout={(event) => setPlayerHeight(event.nativeEvent.layout.height)}
+        style={{ position: 'absolute', zIndex: 2, left: 0, right: 0, bottom: playerBottom }}
+      >
+        <MusicDock active={active} onExpand={onPlayer} />
+      </View>
+      <BottomTabs
+        items={tabs}
+        value={tab}
+        hidden={hideTabBar}
+        onChange={changeTab}
+        onHeightChange={setTabBarHeight}
+      />
+    </BottomBarInsetContext.Provider>
+  );
 }

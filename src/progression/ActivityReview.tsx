@@ -1,4 +1,3 @@
-import { spacing } from '../ui/tokens';
 import { Picker } from '../ui/controls';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -21,7 +20,7 @@ export function ActivityReview({ run, history }: { run: RunRecord; history: RunR
   const complete = state.done >= history.length;
   const achievements = useMemo(() => complete ? recordTimeline(state.records.flatMap(r => r.performances)).filter(e => e.performance.runId === run.id).sort((a, b) => b.performance.meters - a.performance.meters) : [], [state.records, run.id, complete]);
   const gains = achievements.filter(a => a.gainSeconds !== null);
-  return <Panel style={{ gap: spacing.md }}><Label>Votre bilan automatique</Label>
+  return <Panel style={{ gap: 12 }}><Label>Votre bilan automatique</Label>
     <Copy>{analysis.deviations.percentage === null ? 'Les mesures ne permettent pas de calculer un pourcentage fiable en cible.' : `Vous avez respecté votre cible pendant ${analysis.deviations.percentage.toFixed(0)} % du temps d’allure fiable, sur ${duration(analysis.deviations.reliableSeconds)} de mesures.`}</Copy>
     {!complete ? <Copy muted>Analyse des records de l’historique : {state.done} / {history.length}.</Copy> : gains.length ? gains.slice(0, 3).map(gain => <Copy key={gain.performance.meters}>Vous avez amélioré votre record GPS sur {gain.label} de {gain.gainSeconds! < .5 ? 'moins d’une seconde' : `${Math.round(gain.gainSeconds!)} seconde${Math.round(gain.gainSeconds!) > 1 ? 's' : ''}`}.</Copy>)
       : achievements.length ? <Copy>Première marque GPS qualifiée sur {achievements.slice(0, 3).map(a => a.label).join(', ')}.</Copy> : <Copy muted>Aucun nouveau record GPS qualifié pour cette activité.</Copy>}
@@ -34,7 +33,7 @@ function JournalForm({ run, data }: { run: RunRecord; data: ProgressionData }) {
   const [note, setNote] = useState(existing?.note ?? ''), [shoeId, setShoe] = useState(existing?.shoeId !== undefined ? existing.shoeId : run.shoeId ?? null);
   const [busy, setBusy] = useState(false), [saved, setSaved] = useState(false);
   const save = async () => { setBusy(true); if (await progression.saveJournal({ runId: run.id, feeling, difficulty, note, shoeId, updatedAt: Date.now() })) setSaved(true); setBusy(false); };
-  return <Panel style={{ gap: spacing.lg }}><Label>Journal après course</Label><Copy muted variant="caption">Ces informations sont facultatives et restent sur cet appareil.</Copy>
+  return <Panel style={{ gap: 15 }}><Label>Journal après course</Label><Copy muted variant="caption">Ces informations sont facultatives et restent sur cet appareil.</Copy>
     <Choices value={feeling ?? 'none'} choices={[["none", "Non renseigné"], ["great", "Très bonnes"], ["good", "Bonnes"], ["neutral", "Neutres"], ["tired", "Fatigué"], ["difficult", "Difficiles"]]} onChange={v => { setFeeling(v === 'none' ? null : v as RunJournal['feeling']); setSaved(false); }} />
     <Label>Difficulté ressentie · 1 très facile, 10 très difficile</Label><Picker accessibilityLabel="Difficulté ressentie de un à dix" selectedValue={difficulty ?? 0} onValueChange={v => { setDifficulty(Number(v) || null); setSaved(false); }} itemStyle={{ color: colors.text }}>
       <Picker.Item label="Non renseignée" value={0} />{Array.from({ length: 10 }, (_, i) => <Picker.Item key={i} label={String(i + 1)} value={i + 1} />)}</Picker>
@@ -47,6 +46,6 @@ function JournalForm({ run, data }: { run: RunRecord; data: ProgressionData }) {
 }
 export function ActivityJournal({ run }: { run: RunRecord }) {
   const state = useProgression();
-  return <View style={{ gap: spacing.md }}>{state.ready ? <JournalForm key={run.id} run={run} data={state.data} /> : <Panel><Copy muted>Journal local en attente.</Copy><Button title="Ouvrir le journal" secondary onPress={() => void progression.initialize()} /></Panel>}
+  return <View style={{ gap: 12 }}>{state.ready ? <JournalForm key={run.id} run={run} data={state.data} /> : <Panel><Copy muted>Journal local en attente.</Copy><Button title="Ouvrir le journal" secondary onPress={() => void progression.initialize()} /></Panel>}
     {state.message && <Copy accessibilityRole="alert">{state.message}</Copy>}</View>;
 }

@@ -1,7 +1,11 @@
 import { SpotifyApi } from './api';
 import { SpotifyAuth, SpotifyError, SPOTIFY_SCOPES, validClientId, validSpotifyRedirect } from './auth';
 import { playlistReference, resolvePlaylist, spotifyImage, validPlaylistId } from './links';
-import { EMPTY_MUSIC, MusicPersistence, MusicState, PlayerCommand, PlaylistReference, SpotifyPlatform, SpotifyPreferences } from './types';
+import { EMPTY_MUSIC, MusicPersistence, MusicState, PlayerCommand, PlaylistContents, PlaylistReference, PlaylistTrack, SpotifyPlatform, SpotifyPreferences } from './types';
+
+const emptyContents: PlaylistContents = {
+  tracks: null, snapshotId: null, total: null, checkedAt: 0, loadedAt: 0, refreshing: false, error: null,
+};
 
 export const selectedPlaylist = (state: MusicState) => state.preferences.playlists.find(p => p.id === state.preferences.selectedId) ?? null;
 class PreferenceWriteError extends Error {
@@ -17,11 +21,12 @@ export function controlReason(state: MusicState, command: PlayerCommand, now = D
   if (state.playerBusy) return 'Commande en cours…';
   if (state.stale || !state.playback || now - state.playback.receivedAt > 15000) return 'Actualisez le lecteur ou lancez une lecture dans Spotify.';
   if (!state.playback.deviceId || state.playback.restricted) return 'Ouvrez Spotify sur un appareil permettant le contrôle.';
-  const disallow: Record<PlayerCommand, string> = { play: 'resuming', pause: 'pausing', next: 'skipping_next', previous: 'skipping_prev', shuffle: 'toggling_shuffle', seek: 'seeking' };
+  const disallow: Record<PlayerCommand, string> = { play: 'resuming', pause: 'pausing', next: 'skipping_next', previous: 'skipping_prev', shuffle: 'toggling_shuffle', repeat: 'toggling_repeat_context', seek: 'seeking' };
   if (state.playback.disallows[disallow[command]] || (state.playback.advertisement && ['next', 'previous', 'seek', 'shuffle'].includes(command))) {
     return 'Cette commande est indisponible pour la lecture en cours.';
   }
   if (command === 'shuffle' && state.playback.shuffle === null) return 'Le mode aléatoire n’est pas disponible.';
+  if (command === 'repeat' && (!state.playback.repeat || state.playback.advertisement || state.playback.disallows.toggling_repeat_track)) return 'La répétition n’est pas disponible.';
   return null;
 }
 export function cleanPreferences(value: SpotifyPreferences, now = Date.now()): SpotifyPreferences {
@@ -32,7 +37,8 @@ export function cleanPreferences(value: SpotifyPreferences, now = Date.now()): S
     const fresh = Number.isFinite(p.fetchedAt) && p.fetchedAt !== null && now - p.fetchedAt < 86400000 && now >= p.fetchedAt;
     return [{ ...base, ...(fresh ? { name: typeof p.name === 'string' ? p.name.slice(0, 1000) : null,
       image: spotifyImage(p.image), owner: typeof p.owner === 'string' ? p.owner.slice(0, 1000) : null,
-      count: Number.isInteger(p.count) && p.count !== null && p.count >= 0 ? p.count : null, fetchedAt: p.fetchedAt } : {}), source: p.source === 'account' ? 'account' as const : 'link' as const }];
+      count: Number.isInteger(p.count) && p.count !== null && p.count >= 0 ? p.count : null, fetchedAt: p.fetchedAt,
+      snapshotId: typeof p.snapshotId === 'string' ? p.snapshotId.slice(0, 1000) : null } : {}), source: p.source === 'account' ? 'account' as const : 'link' as const }];
   }) : [];
   const unique = [...new Map(playlists.map(p => [p.id, p])).values()];
   return { version: 1, clientId: typeof value?.clientId === 'string' && validClientId(value.clientId) ? value.clientId : '',
@@ -41,7 +47,7 @@ export function cleanPreferences(value: SpotifyPreferences, now = Date.now()): S
 }
 export class SpotifyStore {
   private value: MusicState = { ready: false, busy: false, playerBusy: false, status: 'disconnected',
-    preferences: { ...EMPTY_MUSIC, playlists: [] }, profile: null, library: [], nextOffset: null, playback: null,
+    preferences: { ...EMPTY_MUSIC, playlists: [] }, profile: null, playback: null,
     stale: true, message: null, controlBlocked: false, retryAt: 0, grantedScopes: [] };
   private listeners = new Set<() => void>();
   private generation = 0;
@@ -56,6 +62,11 @@ export class SpotifyStore {
   private get preferences() { return this.pendingPreferences ?? this.value.preferences; }
   private playbackRevision = 0;
   private networkFailures = 0;
+  private metadataRequests = new Map<string, Promise<PlaylistReference | null>>();
+  private metadataChecked = new Map<string, number>();
+  private contentRequests = new Map<string, Promise<void>>();
+  private openPlaylists = new Set<string>();
+  private syncingSaved: Promise<void> | null = null;
   constructor(readonly auth: SpotifyAuth, readonly api: SpotifyApi, private persistence: MusicPersistence,
               readonly platform: SpotifyPlatform, private now = Date.now) {}
   getSnapshot = () => this.value;
@@ -65,7 +76,7 @@ export class SpotifyStore {
   private failure(error: unknown, controls = false) {
     if (error instanceof PreferenceWriteError && error.revision !== this.preferenceRevision) return;
     if (error instanceof SpotifyError) {
-      if (error.status === 401) { this.stopPoll(); this.emit({ status: 'expired', playback: null, stale: true }); }
+      if (error.status === 401) { this.stopPoll(); this.emit({ status: 'expired', playback: null, stale: true, playlistContents: {} }); }
       this.emit({ retryAt: error.retryAt || this.api.retryAt, ...(controls && error.status === 403 ? { controlBlocked: true } : {}) });
     }
     this.emit({ message: error instanceof SpotifyError || error instanceof PreferenceWriteError ? error.message : 'Connexion à Spotify indisponible. Votre course peut continuer.' });
@@ -84,6 +95,7 @@ export class SpotifyStore {
       if (generation !== this.generation) { this.emit({ ready: true }); return; }
       this.emit({ ready: true, preferences, status: connected ? 'connected' : 'disconnected', grantedScopes: connected ? [...this.auth.scopes] : [] });
       if (connected) { void this.loadProfile(); this.startPoll(); }
+      void this.syncSaved();
     } catch { this.emit({ ready: true, message: 'La configuration musicale n’a pas pu être chargée. Les courses restent disponibles.' }); }
   }
   private async save(preferences: SpotifyPreferences) {
@@ -137,8 +149,12 @@ export class SpotifyStore {
       await this.auth.exchange(clientId, authorization);
       if (generation !== this.generation) return;
       this.networkFailures = 0;
-      this.emit({ status: 'connected', controlBlocked: false, retryAt: 0, grantedScopes: [...this.auth.scopes] });
-      await this.loadProfile(); await this.loadLibrary(); this.startPoll();
+      this.resetPlaylistSync();
+      this.emit({ status: 'connected', profile: null, playback: null, playlistContents: {}, controlBlocked: false, retryAt: 0, grantedScopes: [...this.auth.scopes] });
+      await this.loadProfile();
+      void this.syncSaved(true);
+      this.refreshOpenPlaylists();
+      this.startPoll();
     } catch (error) { if (generation === this.generation) this.failure(error); }
     finally { this.emit({ busy: false }); this.startPoll(); }
   }
@@ -149,7 +165,8 @@ export class SpotifyStore {
   }
   async disconnect() {
     this.generation++; this.playbackRevision++; this.networkFailures = 0; this.stopPoll();
-    this.emit({ status: 'disconnected', profile: null, library: [], nextOffset: null, playback: null, stale: true, controlBlocked: false, retryAt: 0, grantedScopes: [] });
+    this.resetPlaylistSync();
+    this.emit({ status: 'disconnected', profile: null, playback: null, playlistContents: {}, stale: true, controlBlocked: false, retryAt: 0, grantedScopes: [] });
     await this.auth.disconnect();
     // Preserve explicit references, but remove account metadata on disconnect.
     await this.save({ ...this.preferences, playlists: this.preferences.playlists.map(p => playlistReference(p.id, p.savedAt)) });
@@ -173,13 +190,7 @@ export class SpotifyStore {
       playlist = existing ?? playlist;
       await this.save({ ...this.preferences, selectedId: playlist.id,
         playlists: [...this.preferences.playlists.filter(p => p.id !== playlist.id), playlist] });
-      if (this.auth.connected) {
-        try {
-          const metadata = await this.api.playlist(playlist.id);
-          if (generation === this.generation) await this.save({ ...this.preferences,
-            playlists: this.preferences.playlists.map(p => p.id === metadata.id ? { ...metadata, savedAt: p.savedAt, source: p.source } : p) });
-        } catch (error) { if (generation === this.generation) this.failure(error); }
-      } else this.emit({ message: 'Référence enregistrée et sélectionnée. Ouvrez-la dans Spotify pour écouter ; les détails nécessitent une connexion autorisée.' });
+      void this.syncMetadata(playlist.id);
       return true;
     } catch (error) { this.emit({ message: error instanceof Error ? error.message : 'Lien Spotify invalide.' }); return false; }
     finally { this.emit({ busy: false }); }
@@ -193,25 +204,153 @@ export class SpotifyStore {
     } catch (error) { this.failure(error); }
   }
   async remove(id: string) {
-    try { await this.save({ ...this.preferences, selectedId: this.preferences.selectedId === id ? null : this.preferences.selectedId,
-      playlists: this.preferences.playlists.filter(p => p.id !== id) }); } catch (error) { this.failure(error); }
+    try {
+      await this.save({ ...this.preferences, selectedId: this.preferences.selectedId === id ? null : this.preferences.selectedId,
+        playlists: this.preferences.playlists.filter(p => p.id !== id) });
+      const playlistContents = { ...this.value.playlistContents };
+      delete playlistContents[id];
+      this.metadataChecked.delete(id);
+      this.emit({ playlistContents });
+    } catch (error) { this.failure(error); }
   }
   async setAutoPlay(autoPlay: boolean) { try { await this.save({ ...this.preferences, autoPlay }); } catch (error) { this.failure(error); } }
-  async loadLibrary(more = false) {
-    if (!this.auth.connected) { this.emit({ message: 'Connectez Spotify pour consulter vos playlists.' }); return; }
-    const generation = this.generation;
-    try {
-      const result = await this.api.playlists(more ? this.value.nextOffset ?? 0 : 0);
-      if (generation !== this.generation) return;
-      const library = [...new Map([...(more ? this.value.library : []), ...result.playlists].map(p => [p.id, p])).values()];
-      this.emit({ library, nextOffset: result.nextOffset });
-    } catch (error) { if (generation === this.generation) this.failure(error); }
+  private resetPlaylistSync() {
+    this.metadataChecked.clear();
+    this.metadataRequests.clear();
+    this.contentRequests.clear();
+    this.syncingSaved = null;
   }
-  async tracks(id: string, offset = 0) {
+  private syncMetadata(id: string, force = false): Promise<PlaylistReference | null> {
+    const saved = this.preferences.playlists.find(playlist => playlist.id === id);
+    if (!saved || !this.foreground) return Promise.resolve(null);
+    const pending = this.metadataRequests.get(id);
+    if (pending) return pending;
+    const checkedAt = this.metadataChecked.get(id);
+    if (!force && checkedAt !== undefined && this.now() - checkedAt < 60000) return Promise.resolve(null);
+    const connected = this.value.status === 'connected' && this.auth.connected;
+    if (this.now() < (connected ? this.api.retryAt : this.api.publicRetryAt)) return Promise.resolve(null);
+    this.metadataChecked.set(id, this.now());
     const generation = this.generation;
-    const result = await this.api.playlistItems(id, offset);
-    if (generation !== this.generation || !this.auth.connected) throw new SpotifyError('Compte Spotify déconnecté.', 401);
-    return result;
+    const session = this.auth.sessionVersion;
+    const current = () => generation === this.generation && session === this.auth.sessionVersion;
+    const request = (async () => {
+      try {
+        const metadata = connected ? await this.api.playlist(id) : await this.api.publicPlaylist(id);
+        if (!current() || !this.preferences.playlists.some(playlist => playlist.id === id)) return null;
+        const updated = { ...saved, ...metadata, source: saved.source, savedAt: saved.savedAt };
+        await this.save({
+          ...this.preferences,
+          playlists: this.preferences.playlists.map(playlist => playlist.id === id ? updated : playlist),
+        });
+        return current() ? updated : null;
+      } catch (error) {
+        if (generation === this.generation && connected && error instanceof SpotifyError &&
+            error.status === 401 && (current() || !this.auth.connected)) this.failure(error);
+        return null;
+      }
+    })().finally(() => {
+      if (this.metadataRequests.get(id) === request) this.metadataRequests.delete(id);
+    });
+    this.metadataRequests.set(id, request);
+    return request;
+  }
+  syncSaved(force = false): Promise<void> {
+    if (this.syncingSaved) return this.syncingSaved;
+    const generation = this.generation;
+    const request = (async () => {
+      for (const { id } of this.preferences.playlists) {
+        if (!this.foreground || generation !== this.generation) break;
+        const checkedAt = this.metadataChecked.get(id);
+        if (force || checkedAt === undefined || this.now() - checkedAt >= 300000) {
+          await this.syncMetadata(id, force);
+        }
+      }
+    })().finally(() => {
+      if (this.syncingSaved === request) this.syncingSaved = null;
+    });
+    this.syncingSaved = request;
+    return request;
+  }
+  watchPlaylist = (id: string) => {
+    this.openPlaylists.add(id);
+    void this.refreshPlaylist(id);
+    return () => { this.openPlaylists.delete(id); };
+  };
+  private refreshOpenPlaylists() {
+    this.openPlaylists.forEach(id => { void this.refreshPlaylist(id, 'foreground'); });
+  }
+  private updateContents(id: string, contents: PlaylistContents) {
+    this.emit({ playlistContents: { ...this.value.playlistContents, [id]: contents } });
+  }
+  refreshPlaylist(id: string, trigger: 'open' | 'foreground' | 'manual' = 'open'): Promise<void> {
+    if (!this.foreground) return Promise.resolve();
+    const force = trigger === 'manual';
+    if (this.value.status !== 'connected') return this.syncMetadata(id, force).then(() => undefined);
+    const pending = this.contentRequests.get(id);
+    if (pending) return pending;
+    const previous = this.value.playlistContents?.[id] ?? emptyContents;
+    const minimumInterval = trigger === 'foreground' ? 10000 : 45000;
+    if (!force && previous.checkedAt && this.now() - previous.checkedAt < minimumInterval) return Promise.resolve();
+    if (this.now() < this.api.retryAt) {
+      this.updateContents(id, { ...previous, error: 'limited' });
+      return Promise.resolve();
+    }
+    const generation = this.generation;
+    const session = this.auth.sessionVersion;
+    const current = () => generation === this.generation && session === this.auth.sessionVersion && this.value.status === 'connected' &&
+      this.preferences.playlists.some(playlist => playlist.id === id);
+    const request = this.readPlaylist(id, previous, current, force).finally(() => {
+      if (this.contentRequests.get(id) === request) this.contentRequests.delete(id);
+    });
+    this.contentRequests.set(id, request);
+    return request;
+  }
+  private async readPlaylist(id: string, previous: PlaylistContents, current: () => boolean, force: boolean) {
+    this.updateContents(id, { ...previous, refreshing: true, error: null });
+    let contents = previous;
+    try {
+      const metadata = await this.syncMetadata(id, true);
+      if (!current() || !this.foreground) return;
+      const snapshotId = metadata?.snapshotId ?? null;
+      if (!force && snapshotId && snapshotId === previous.snapshotId && previous.tracks &&
+          this.now() - previous.loadedAt < 900000) {
+        contents = { ...previous, checkedAt: this.now(), error: null };
+        return;
+      }
+      const tracks: PlaylistTrack[] = [];
+      let next: number | null = 0;
+      let total: number | null = null;
+      do {
+        const page = await this.api.playlistItems(id, next);
+        if (!current() || !this.foreground) return;
+        if (total !== null && page.total !== null && total !== page.total) {
+          throw new SpotifyError('La playlist a changé pendant la synchronisation.');
+        }
+        tracks.push(...page.tracks);
+        total ??= page.total;
+        next = page.nextOffset;
+      } while (next !== null);
+      if (snapshotId && (total ?? tracks.length) > 50) {
+        const latest = await this.api.playlist(id);
+        if (latest.snapshotId !== snapshotId) throw new SpotifyError('La playlist a changé pendant la synchronisation.');
+      }
+      const now = this.now();
+      contents = { tracks, total, snapshotId, refreshing: false, checkedAt: now, loadedAt: now, error: null };
+    } catch (error) {
+      if (error instanceof SpotifyError && error.status === 401) {
+        if (current() || (this.value.status === 'connected' && !this.auth.connected)) this.failure(error);
+        return;
+      }
+      if (!current()) return;
+      const restricted = error instanceof SpotifyError && (error.status === 403 || error.status === 404);
+      contents = {
+        ...(restricted ? emptyContents : previous),
+        checkedAt: this.now(),
+        error: restricted ? 'restricted' : error instanceof SpotifyError && error.status === 429 ? 'limited' : 'network',
+      };
+    } finally {
+      if (current()) this.updateContents(id, { ...contents, refreshing: false });
+    }
   }
   refreshPlayback = async (force = false): Promise<void> => {
     if (this.refreshing) { await this.refreshing; if (force) await this.refreshPlayback(); return; }
@@ -243,7 +382,12 @@ export class SpotifyStore {
     const playback = this.value.playback;
     this.playbackRevision++; this.emit({ playerBusy: true, message: null, stale: true });
     try {
-      await this.api.command(command, !playback?.shuffle, playback?.deviceId);
+      if (command === 'repeat') {
+        const mode = playback?.repeat === 'off' ? 'context' : playback?.repeat === 'context' ? 'track' : 'off';
+        await this.api.setRepeat(mode, playback?.deviceId);
+      } else {
+        await this.api.command(command, !playback?.shuffle, playback?.deviceId);
+      }
       if (generation === this.generation) await this.refreshPlayback(true);
     } catch (error) { if (generation === this.generation) this.failure(error, true); }
     finally { this.emit({ playerBusy: false }); }
@@ -257,11 +401,14 @@ export class SpotifyStore {
     finally { this.emit({ playerBusy: false }); }
   }
   async playSelected() {
-    const playlist = selectedPlaylist(this.value); if (!playlist) return;
+    const playlist = selectedPlaylist(this.value);
+    if (playlist) await this.playPlaylist(playlist);
+  }
+  async playPlaylist(playlist: PlaylistReference, trackUri?: string) {
     const reason = controlReason(this.value, 'play', this.now());
     if (reason) { this.emit({ message: reason }); return; }
     const generation = this.generation, deviceId = this.value.playback?.deviceId; this.playbackRevision++; this.emit({ playerBusy: true, message: null, stale: true });
-    try { await this.api.playPlaylist(playlist.id, deviceId); if (generation === this.generation) await this.refreshPlayback(true); }
+    try { await this.api.playPlaylist(playlist.id, deviceId, trackUri); if (generation === this.generation) await this.refreshPlayback(true); }
     catch (error) { if (generation === this.generation) this.failure(error, true); }
     finally { this.emit({ playerBusy: false }); }
   }
@@ -287,9 +434,16 @@ export class SpotifyStore {
     return () => { this.viewers = Math.max(0, this.viewers - 1); if (!this.viewers) this.stopPoll(); };
   };
   setForeground(active: boolean) {
-    if (this.foreground !== active) this.playbackRevision++;
+    const changed = this.foreground !== active;
+    if (changed) this.playbackRevision++;
     this.foreground = active;
-    if (active) this.startPoll(); else { this.stopPoll(); this.emit({ stale: true }); }
+    if (active) {
+      this.startPoll();
+      if (changed && this.value.ready && !this.value.busy) {
+        void this.syncSaved();
+        this.refreshOpenPlaylists();
+      }
+    } else { this.stopPoll(); this.emit({ stale: true }); }
   }
   private startPoll() {
     if (this.poll || !this.foreground || !this.viewers || !this.auth.connected || !this.auth.scopes.includes('user-read-playback-state')) return;

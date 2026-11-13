@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { parsePlaylistInput, resolvePlaylist, spotifyContentUrl, spotifyImage } from '../src/spotify/links';
+import { parsePlaylistInput, playlistFromAppLink, resolvePlaylist, spotifyContentUrl, spotifyImage } from '../src/spotify/links';
 
 const id = 'A1b2C3d4E5f6G7h8I9j0K1';
 describe('Spotify playlist link validation', () => {
+  it('prefills only canonical Spotify playlists from a Sprinter app link', () => {
+    expect(playlistFromAppLink(`sprinter://playlist/${id}`)).toBe(`https://open.spotify.com/playlist/${id}`);
+    expect(playlistFromAppLink(`sprinter://playlist/${id}?url=https://example.org`)).toBeNull();
+    expect(playlistFromAppLink('sprinter://run')).toBeNull();
+  });
   it.each([`https://open.spotify.com/playlist/${id}`, `https://open.spotify.com/playlist/${id}?si=tracking`,
     `https://open.spotify.com/intl-fr/playlist/${id}`, `https://open.spotify.com/embed/playlist/${id}`,
     `spotify:playlist:${id}`, `spotify:user:user.name:playlist:${id}`])('imports and canonicalizes %s', input => {

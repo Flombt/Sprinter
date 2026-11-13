@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Button, Copy, Divider, Icon, Label, Metric, MetricGrid, Panel, styles } from '../ui/components';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
-import { interaction, layout, radii, spacing, fontWeights, iconSizes } from '../ui/tokens';
+import { interaction, layout, radii, spacing } from '../ui/tokens';
 import { segmentGoal } from './definition';
 import { referencePresentation, workoutPresentation } from './presentation';
 import type { WorkoutBlock, WorkoutDefinition, WorkoutKind } from './types';
@@ -18,11 +18,11 @@ export function WorkoutOverview({ definition, valid = true, plan = false }: { de
   return <Panel variant="metric" style={{ gap: spacing.lg }}><Label>Aperçu de la séance</Label>
     {info ? <><View style={[styles.row, { flexWrap: 'wrap', gap: spacing.sm }]}><Copy variant="emphasis">{info.type}</Copy><Copy variant="caption" muted>Structure {info.complexity.toLowerCase()}</Copy></View>
       <MetricGrid><Metric label="Volume prévu" value={info.volume} /><Metric label="Organisation" value={info.structure} /></MetricGrid>
-      <Copy variant="caption" style={{ color: colors.accentText }}>{info.goal}</Copy>
+      <Copy variant="caption">{info.goal}</Copy>
       {info.detail && <Copy variant="caption" muted>{info.detail}</Copy>}
       {plan && <><Divider /><View style={{ gap: spacing.md }}><Label>Le déroulé en un regard</Label>
         {definition.blocks.slice(0, 5).map((block, index) => <View key={block.id} style={[styles.row, { alignItems: 'flex-start', gap: spacing.md }]}>
-          <Copy variant="caption" style={{ color: colors.accentText, fontWeight: fontWeights.bold }}>{index + 1}.</Copy><Copy variant="caption" style={{ flex: 1 }}>{blockLabel(block)}</Copy>
+          <Copy variant="caption" style={{ color: colors.secondary, fontWeight: '700' }}>{index + 1}.</Copy><Copy variant="caption" style={{ flex: 1 }}>{blockLabel(block)}</Copy>
         </View>)}
         {definition.blocks.length > 5 && <Copy variant="small" muted>Et {definition.blocks.length - 5} autres blocs, modifiables ci-dessous.</Copy>}
       </View></>}
@@ -43,7 +43,7 @@ export function WorkoutCard({ title, description, definition, kind, origin, note
   const info = useMemo(() => { try { return definition ? workoutPresentation(definition) : kind === 'ghost' || kind === 'personalBest' ? referencePresentation(kind) : null; } catch { return null; } }, [definition, kind]);
   return <Panel variant="list" style={{ gap: spacing.md, borderWidth: 1, borderColor: selected ? colors.accentText : 'transparent' }}>
     <View style={[styles.row, { alignItems: 'flex-start', gap: spacing.sm }]}>
-      <View style={{ flex: 1, minWidth: 0, gap: spacing.sm }}><Label style={{ color: colors.accentText }}>{origin}{info ? ` · ${info.type}` : ''}{origin === 'Ma séance' && definition && definition.challenge.kind !== 'none' ? ' · Défi' : ''}</Label>
+      <View style={{ flex: 1, minWidth: 0, gap: spacing.sm }}><Label>{origin}{info ? ` · ${info.type}` : ''}{origin === 'Ma séance' && definition && definition.challenge.kind !== 'none' ? ' · Défi' : ''}</Label>
         <Copy accessibilityRole="header" variant="section">{title}</Copy>
       </View>
       {onFavorite && <Pressable accessibilityRole="button" accessibilityLabel={`${favorite ? 'Retirer' : 'Ajouter'} ${title} ${favorite ? 'des' : 'aux'} favoris`}
@@ -53,12 +53,12 @@ export function WorkoutCard({ title, description, definition, kind, origin, note
       </Pressable>}
     </View>
     {note && <Copy variant="caption" muted>{note}</Copy>}
-    {selected && <View style={[styles.row, { gap: spacing.xs }]}><Icon name="checkmark-circle" size={iconSizes.small} color={colors.accentText} /><Copy variant="caption" style={{ color: colors.accentText }}>Choisie pour la prochaine sortie</Copy></View>}
+    {selected && <View style={[styles.row, { gap: spacing.xs }]}><Icon name="checkmark-circle" size={16} color={colors.accentText} /><Copy variant="caption" style={{ color: colors.accentText }}>Choisie pour la prochaine sortie</Copy></View>}
     {description && <Copy variant="caption" muted numberOfLines={largeText ? undefined : 2}>{description}</Copy>}
     {info ? <><View style={[styles.row, { flexWrap: 'wrap', gap: spacing.sm }]}>
-      <Copy variant="caption" style={{ fontWeight: fontWeights.semibold }}>Prévu · {info.volume}</Copy><Copy variant="caption" muted>· {info.structure}</Copy>
+      <Copy variant="caption" style={{ fontWeight: '600' }}>Prévu · {info.volume}</Copy><Copy variant="caption" muted>· {info.structure}</Copy>
     </View><Copy variant="small" muted>Structure {info.complexity.toLowerCase()}</Copy>
-      <Copy variant="caption"><Copy variant="caption" style={{ fontWeight: fontWeights.semibold }}>Objectif · </Copy>{info.goal}</Copy>
+      <Copy variant="caption"><Copy variant="caption" style={{ fontWeight: '600' }}>Objectif · </Copy>{info.goal}</Copy>
       {info.detail && <Copy variant="small" muted>{info.detail}</Copy>}
     </> : <Copy variant="caption" muted>Configuration à vérifier dans l’éditeur.</Copy>}
     <View style={[styles.row, { gap: spacing.sm }]}><Button title={action.title} variant="secondary" onPress={action.onPress} disabled={disabled} style={{ flex: 1 }} />

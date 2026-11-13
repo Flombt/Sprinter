@@ -1,188 +1,355 @@
-import { spacing, radii, fontSizes, fontWeights, iconSizes } from '../ui/tokens';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { FeedbackPressable } from '../ui/FeedbackPressable';
-import { useAnimateLayoutChange } from '../ui/layoutAnimation';
+import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { music } from '../spotify/device';
-import { Artwork, confirmSpotifySwitch, PlaybackControls, PlayerPanel, useMusic } from '../spotify/components';
-import { TrackSheet } from '../spotify/TrackSheet';
+import {
+  Artwork,
+  confirmSpotifySwitch,
+  MusicDock,
+  PlayerPanel,
+  SpotifyBrand,
+  useMusic,
+} from '../spotify/components';
 import { ConnectionCard } from '../spotify/ConnectionCard';
-import { playbackPresentation, playlistTitle } from '../spotify/presentation';
-import { controlReason, selectedPlaylist } from '../spotify/store';
-import type { PlaylistReference, SpotifyTrack } from '../spotify/types';
-import { Icon } from '../ui/components';
-import { ActionButton, ActionIcon, AppScreen, BodyText, useDesign, DisplayText, Kicker, SectionLabel, StatusBadge, Surface, ToggleSwitch } from '../ui/design';
+import { music } from '../spotify/device';
+import { playlistTitle } from '../spotify/presentation';
+import { TrackSheet } from '../spotify/TrackSheet';
+import { Button, Card, Copy, Header, Icon, IconButton, Screen } from '../ui/components';
+import { confirm } from '../ui/confirm';
+import { Switch, TextField } from '../ui/controls';
+import { spacing } from '../ui/tokens';
 import { useTheme } from '../ui/theme';
 
-export default function Music({ active, onClose, onAccount, onTracks, foregroundOnlyRun = false }: {
-  active: boolean; onClose?: () => void; onAccount: () => void;
-  onTracks: (playlist: PlaylistReference) => void; foregroundOnlyRun?: boolean;
+type Page = { name: 'library' | 'import' | 'account' | 'player' } | { name: 'playlist'; id: string };
+const library: Page = { name: 'library' };
+
+export default function Music({
+  onClose,
+  foregroundOnlyRun = false,
+  active = true,
+  playlistImport,
+  onPlaylistImportRead,
+  initialPlayer = false,
+}: {
+  onClose?: () => void;
+  foregroundOnlyRun?: boolean;
+  active?: boolean;
+  playlistImport?: string;
+  onPlaylistImportRead?: () => void;
+  initialPlayer?: boolean;
 }) {
-  const design = useDesign();
-  const state = useMusic(active), { colors } = useTheme();
-  const animateLayout = useAnimateLayoutChange();
-  const [input, setInput] = useState(''), [adding, setAdding] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null), [noticeError, setNoticeError] = useState(false);
-  const [libraryBusy, setLibraryBusy] = useState(false);
-  const [playerOptions, setPlayerOptions] = useState(false);
-  const mounted = useRef(false), inputRevision = useRef(0);
-  const selected = selectedPlaylist(state), connected = state.status === 'connected';
-  const playback = playbackPresentation(state);
-  const playlists = [...new Map([...state.preferences.playlists, ...state.library].map(p => [p.id, p])).values()];
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
-  useEffect(() => { if (active) return music.watchPlayback(); }, [active]);
-  useEffect(() => { if (connected) void music.loadLibrary(); }, [connected]);
-  useEffect(() => { if (!connected) setPlayerOptions(false); }, [connected]);
+  const state = useMusic();
+  const { colors } = useTheme();
+  const [page, setPage] = useState<Page>(initialPlayer ? { name: 'player' } : library);
+  const [input, setInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const inputRevision = useRef(0);
+  const playlists = state.preferences.playlists;
+  const selected = page.name === 'playlist' ? playlists.find((playlist) => playlist.id === page.id) : null;
   const openExternal = (action: () => void) => confirmSpotifySwitch(foregroundOnlyRun, action);
-  const open = (playlist: PlaylistReference) => openExternal(() => void music.openPlaylist(playlist));
-  const openTrack = (track?: SpotifyTrack, fallback?: PlaylistReference) => openExternal(() => {
-    if (track?.url) void music.platform.openSpotify('spotify:' + track.type + ':' + track.id, track.url).catch(() => music.openPlaylist(fallback));
-    else void music.openPlaylist(fallback);
-  });
-  const importPlaylist = async () => {
-    if (!input.trim() || adding || state.busy || !state.ready) return;
-    const revision = ++inputRevision.current, value = input;
-    setAdding(true); setNotice(null); music.clearMessage();
-    try {
-      const ok = await music.importPlaylist(value);
-      if (!mounted.current) return;
-      if (ok) {
-        if (inputRevision.current === revision) setInput('');
-        setNotice('Playlist ajoutée.'); setNoticeError(false); music.clearMessage();
-      }
-    } finally { if (mounted.current) setAdding(false); }
+  const goBack = () => {
+    if (page.name === 'player' && initialPlayer && onClose) onClose();
+    else setPage(library);
   };
+
+  useEffect(() => {
+    const revision = inputRevision;
+    void music.initialize();
+    return () => {
+      revision.current++;
+    };
+  }, []);
+  useEffect(() => {
+    if (!active) return;
+    void music.initialize().then(() => music.syncSaved());
+    return music.watchPlayback();
+  }, [active]);
+
+  useEffect(() => {
+    if (!active || !playlistImport) return;
+    inputRevision.current++;
+    setInput(playlistImport);
+    setError(null);
+    setPage({ name: 'import' });
+    onPlaylistImportRead?.();
+  }, [active, onPlaylistImportRead, playlistImport]);
+
+  useEffect(() => {
+    if (!active || page.name === 'library') return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (page.name === 'import') inputRevision.current++;
+      if (initialPlayer && page.name === 'player' && onClose) onClose();
+      else setPage(library);
+      return true;
+    });
+    return () => handler.remove();
+  }, [active, initialPlayer, onClose, page.name]);
+
+  const importPlaylist = async () => {
+    if (!input.trim() || state.busy || !state.ready) return;
+    const revision = ++inputRevision.current;
+    setError(null);
+    const added = await music.importPlaylist(input);
+    if (revision !== inputRevision.current) return;
+    if (!added) {
+      setError(music.getSnapshot().message ?? 'Impossible d’enregistrer la playlist.');
+      return;
+    }
+    setInput('');
+    const id = music.getSnapshot().preferences.selectedId;
+    setPage(id ? { name: 'playlist', id } : library);
+  };
+
   const paste = async () => {
     const revision = ++inputRevision.current;
-    try { const value = await Clipboard.getStringAsync(); if (mounted.current && revision === inputRevision.current) { setInput(value); setNotice(null); } }
-    catch { if (mounted.current) { setNotice('Collez votre lien directement dans le champ.'); setNoticeError(true); } }
+    try {
+      const value = await Clipboard.getStringAsync();
+      if (revision === inputRevision.current) setInput(value);
+    } catch {
+      if (revision === inputRevision.current) setError('Collez le lien directement dans le champ.');
+    }
   };
-  const loadMore = async () => {
-    if (libraryBusy) return;
-    setLibraryBusy(true);
-    try { await music.loadLibrary(true); } finally { if (mounted.current) setLibraryBusy(false); }
-  };
-  return <AppScreen gap={18}>
-    <View style={s.row}>
-      <View><Kicker>VOTRE BANDE-SON</Kicker><DisplayText accessibilityRole="header">MUSIQUE.</DisplayText></View>
-      <ActionIcon icon={onClose ? 'close' : 'person-outline'} label={onClose ? 'Fermer Spotify' : 'Connexion et compte Spotify'} onPress={onClose ?? (onAccount)} />
-    </View>
 
-    <Surface paper contentStyle={{ padding: spacing.lg, gap: spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}><Icon name="link-outline" color={design.ink} size={iconSizes.small} /><Kicker style={{ color: '#706C65' }}>AJOUTER UNE PLAYLIST</Kicker></View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: radii.control, borderWidth: 1, borderColor: design.paperLine, backgroundColor: '#E6E3DC' }}>
-        <TextInput accessibilityLabel="Lien de playlist Spotify" placeholder="Collez votre lien Spotify…" placeholderTextColor="#77736D"
-          value={input} onChangeText={value => { inputRevision.current++; setInput(value); setNotice(null); }} autoCapitalize="none" autoCorrect={false}
-          keyboardType="url" returnKeyType="done" onSubmitEditing={() => void importPlaylist()} maxLength={2048} editable={!adding}
-          selectionColor={design.accent} style={{ flex: 1, minWidth: 0, minHeight: 50, paddingHorizontal: spacing.md, color: design.ink, fontSize: fontSizes.caption }} />
-        <FeedbackPressable accessibilityRole="button" accessibilityLabel="Coller le lien Spotify" disabled={adding} onPress={() => void paste()} style={{ width: 44, minHeight: 50, alignItems: 'center', justifyContent: 'center' }}><Icon name="clipboard-outline" size={iconSizes.small} color="#706C65" /></FeedbackPressable>
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await music.syncSaved(true);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const currentTrack = state.playback?.track;
+  const openPlayerSource = () =>
+    openExternal(() => {
+      if (currentTrack?.url) {
+        void music.platform
+          .openSpotify(`spotify:${currentTrack.type}:${currentTrack.id}`, currentTrack.url)
+          .catch(() => music.openPlaylist());
+      } else void music.openPlaylist();
+    });
+
+  if (selected) {
+    return (
+      <View style={{ flex: 1 }}>
+        <TrackSheet
+          key={selected.id}
+          playlist={selected}
+          active={active}
+          onBack={goBack}
+          onAccount={() => setPage({ name: 'account' })}
+          openExternal={openExternal}
+        />
+        {onClose && <MusicDock onExpand={() => setPage({ name: 'player' })} />}
       </View>
-      <ActionButton title={adding ? 'Import en cours…' : 'Importer la playlist'} icon="add" compact onPress={() => void importPlaylist()} disabled={!input.trim() || adding || state.busy || !state.ready} />
-    </Surface>
+    );
+  }
 
-    {(notice || state.message) && <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-      <Icon name={notice && !noticeError ? 'checkmark-circle-outline' : 'information-circle-outline'} size={iconSizes.small} color={notice && !noticeError ? design.accent : design.danger} />
-      <BodyText style={{ flex: 1, fontSize: fontSizes.small, color: notice && !noticeError ? design.accent : design.danger }}>{notice ?? state.message}</BodyText>
-      <ActionIcon icon="close" label="Fermer le message Spotify" onPress={() => { setNotice(null); music.clearMessage(); }} />
-    </View>}
+  if (page.name === 'import') {
+    return (
+      <Screen gap={spacing.lg}>
+        <Header
+          title="Ajouter une playlist"
+          onBack={() => {
+            inputRevision.current++;
+            goBack();
+          }}
+        />
+        <Copy variant="caption" muted>
+          Dans Spotify, choisissez Partager puis Copier le lien.
+        </Copy>
+        <TextField
+          label="Lien de playlist Spotify"
+          value={input}
+          placeholder="https://open.spotify.com/playlist/…"
+          onChangeText={(value) => {
+            inputRevision.current++;
+            setInput(value);
+            setError(null);
+          }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          maxLength={2048}
+          editable={!state.busy}
+        />
+        <Button
+          title="Coller le lien"
+          icon="clipboard-outline"
+          variant="secondary"
+          onPress={() => void paste()}
+          disabled={state.busy}
+        />
+        <Button
+          title={state.busy ? 'Enregistrement…' : 'Importer la playlist'}
+          icon="add"
+          disabled={!input.trim() || state.busy || !state.ready}
+          onPress={() => void importPlaylist()}
+        />
+        {error && (
+          <Copy variant="caption" accessibilityRole="alert" style={{ color: colors.danger }}>
+            {error}
+          </Copy>
+        )}
+      </Screen>
+    );
+  }
 
-    {selected && <View style={{ gap: spacing.md }}>
-      <View style={s.row}><Kicker>POUR LA COURSE</Kicker><StatusBadge label={state.preferencesSaving ? 'ENREGISTREMENT…' : 'SÉLECTIONNÉE'} active={!state.preferencesSaving} /></View>
-      <Surface style={{ borderLeftWidth: 3, borderLeftColor: design.accent }} contentStyle={{ padding: spacing.lg, gap: spacing.lg }}>
-        <View style={{ flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }}>
-          <Artwork image={selected.image} size={64} />
-          <View style={{ flex: 1, gap: spacing.xs }}><BodyText numberOfLines={2} style={{ fontSize: fontSizes.body, lineHeight: 23, fontWeight: fontWeights.semibold, letterSpacing: -.3 }}>{playlistTitle(selected)}</BodyText>
-            <BodyText numberOfLines={1} style={{ fontSize: fontSizes.small, color: design.secondary }}>{[selected.owner, selected.count !== null ? selected.count + ' titres' : 'Playlist Spotify'].filter(Boolean).join(' · ')}</BodyText>
+  if (page.name === 'account') {
+    return (
+      <Screen gap={spacing.lg}>
+        <Header title="Compte Spotify" onBack={goBack} />
+        <ConnectionCard state={state} openExternal={openExternal} onMessage={setError} />
+        {(error || state.message) && (
+          <Copy variant="caption" accessibilityRole="alert" muted>
+            {error || state.message}
+          </Copy>
+        )}
+        {state.status === 'connected' && (
+          <View style={styles.row}>
+            <Copy variant="caption" style={{ flex: 1 }}>
+              Lancer ma playlist au départ
+            </Copy>
+            <Switch
+              accessibilityLabel="Lancer Spotify au départ"
+              value={state.preferences.autoPlay}
+              disabled={state.busy || state.preferencesSaving}
+              onValueChange={(value) => void music.setAutoPlay(value)}
+            />
+          </View>
+        )}
+      </Screen>
+    );
+  }
+
+  if (page.name === 'player') {
+    return (
+      <Screen gap={spacing.lg}>
+        <Header title="En écoute" onBack={goBack} />
+        <PlayerPanel state={state} openSpotify={openPlayerSource} />
+        {state.status !== 'connected' && music.platform.canAuthenticate && (
+          <Button
+            title="Connecter Spotify"
+            variant="secondary"
+            onPress={() => setPage({ name: 'account' })}
+          />
+        )}
+      </Screen>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Screen gap={spacing.lg}>
+        <View style={styles.row}>
+          <SpotifyBrand />
+          <View style={styles.actions}>
+            <IconButton
+              icon="person-outline"
+              label="Compte Spotify"
+              onPress={() => {
+                setError(null);
+                setPage({ name: 'account' });
+              }}
+            />
+            {onClose && <IconButton icon="close" label="Fermer la musique" onPress={onClose} />}
           </View>
         </View>
-        <ActionButton title={connected && !controlReason(state, 'play') ? 'Lancer la playlist' : 'Ouvrir dans Spotify'} icon="play" compact onPress={() => {
-          if (connected && !controlReason(state, 'play')) void music.playSelected();
-          else open(selected);
-        }} />
-        {connected && <View style={s.row}><BodyText style={{ flex: 1, fontSize: fontSizes.small, color: design.secondary }}>Lancer avec la course</BodyText>
-          <ToggleSwitch label="Lancer Spotify avec la course" value={state.preferences.autoPlay} disabled={state.busy || state.preferencesSaving}
-            onChange={value => void music.setAutoPlay(value)} /></View>}
-        <View style={s.row}>
-          {connected && <FeedbackPressable accessibilityRole="button" onPress={() => onTracks(selected)} style={{ minHeight: 44, justifyContent: 'center' }}><BodyText style={{ fontSize: fontSizes.small, color: design.accent }}>Voir les morceaux</BodyText></FeedbackPressable>}
-          <FeedbackPressable accessibilityRole="button" disabled={state.busy || state.preferencesSaving} onPress={() => void music.select(null)} style={{ minHeight: 44, justifyContent: 'center' }}><BodyText style={{ fontSize: fontSizes.small, color: design.secondary }}>Partir sans playlist</BodyText></FeedbackPressable>
-        </View>
-      </Surface>
-    </View>}
-
-    {connected && state.playback?.track && <Surface contentStyle={{ gap: spacing.lg }}>
-      <View style={s.row}><Kicker>EN ÉCOUTE</Kicker><ActionIcon icon="refresh-outline" label="Actualiser le lecteur Spotify" onPress={() => void music.refreshPlayback(true)} disabled={state.playerBusy} /></View>
-      <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}><Artwork image={state.playback.track.image} size={48} /><View style={{ flex: 1, gap: 2 }}>
-        <BodyText numberOfLines={1} style={{ fontSize: fontSizes.body, fontWeight: fontWeights.medium }}>{state.playback.track.title}</BodyText>
-        <BodyText numberOfLines={1} style={{ fontSize: fontSizes.small, color: design.secondary }}>{state.playback.track.artist}</BodyText>
-      </View></View>
-      <PlaybackControls state={state} />
-      <BodyText style={{ fontSize: fontSizes.small, color: playback.fresh ? design.accent : design.secondary, textAlign: 'center' }}>{playback.label}</BodyText>
-    </Surface>}
-
-    {connected && <View style={{ gap: spacing.md }}>
-      <FeedbackPressable accessibilityRole="button" accessibilityState={{ expanded: playerOptions }} onPress={() => { animateLayout(); setPlayerOptions(value => !value); }} style={{ ...s.row, minHeight: 44 }}>
-        <BodyText style={{ fontSize: fontSizes.small, color: design.secondary }}>Options du lecteur</BodyText><Icon name={playerOptions ? 'chevron-up' : 'chevron-down'} size={iconSizes.small} color={design.secondary} />
-      </FeedbackPressable>
-      {playerOptions && <PlayerPanel state={state} openSpotify={() => openTrack(state.playback?.track ?? undefined)} />}
-    </View>}
-
-    <View style={{ gap: spacing.md }}>
-      <View style={s.row}><SectionLabel title="VOS PLAYLISTS" meta={playlists.length > 0 ? String(playlists.length).padStart(2, '0') : undefined} />
-        {connected && <ActionIcon icon="refresh-outline" label="Actualiser mes playlists" onPress={() => void music.loadLibrary()} disabled={state.busy} />}
-      </View>
-      {!state.ready ? <ActivityIndicator color={design.accent} accessibilityLabel="Chargement des playlists" /> : playlists.length ? playlists.map(playlist => {
-        const chosen = selected?.id === playlist.id, saved = state.preferences.playlists.some(p => p.id === playlist.id);
-        return <Surface key={playlist.id} style={{ borderRadius: radii.control, borderLeftWidth: 3, borderLeftColor: chosen ? design.accent : design.line }} contentStyle={{ padding: spacing.md, flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={'Choisir ' + playlistTitle(playlist)} accessibilityState={{ selected: chosen, disabled: state.busy }} disabled={state.busy}
-            onPress={() => void music.select(playlist)} style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, opacity: pressed ? .7 : 1, minHeight: 54 })}>
-            <Artwork image={playlist.image} size={48} />
-            <View style={{ flex: 1, gap: 3 }}><BodyText numberOfLines={1} style={{ fontSize: fontSizes.caption, fontWeight: fontWeights.medium }}>{playlistTitle(playlist)}</BodyText><BodyText style={{ color: chosen ? design.accent : design.secondary, fontSize: fontSizes.micro }}>{chosen ? 'Pour la prochaine course' : playlist.owner ?? 'Enregistrée dans Sprinter'}</BodyText></View>
-            <Icon name={chosen ? 'checkmark-circle' : 'radio-button-off-outline'} color={chosen ? design.accent : design.muted} size={iconSizes.standard} />
-          </Pressable>
-          {connected && <ActionIcon icon="list-outline" label={'Voir les morceaux de ' + playlistTitle(playlist)} onPress={() => onTracks(playlist)} />}
-          {saved && <FeedbackPressable accessibilityRole="button" accessibilityLabel={'Retirer ' + playlistTitle(playlist) + ' de Sprinter'} disabled={state.busy} onPress={() => void music.remove(playlist.id)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Icon name="close" color={design.muted} size={iconSizes.small} /></FeedbackPressable>}
-        </Surface>;
-      }) : <Surface contentStyle={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center', paddingVertical: spacing.xxl }}>
-        <Icon name="albums-outline" size={iconSizes.large} color={design.secondary} />
-        <View style={{ flex: 1, gap: spacing.xs }}><BodyText style={{ fontSize: fontSizes.body, fontWeight: fontWeights.semibold }}>Aucune playlist pour le moment</BodyText>
-          <BodyText style={{ color: design.secondary, fontSize: fontSizes.small, lineHeight: 18 }}>Importez un lien ou retrouvez votre compte.</BodyText>
-        </View>
-      </Surface>}
-      {connected && state.nextOffset !== null && <ActionButton title={libraryBusy ? 'Chargement…' : 'Voir plus de playlists'} secondary disabled={libraryBusy} onPress={() => void loadMore()} />}
+        <Header
+          title="Ma bibliothèque"
+          right={
+            <IconButton
+              square
+              icon="add"
+              label="Ajouter une playlist"
+              onPress={() => {
+                setError(null);
+                setPage({ name: 'import' });
+              }}
+            />
+          }
+        />
+        {!!playlists.length && (
+          <View style={styles.row}>
+            <Copy variant="caption" muted>
+              {playlists.length} {playlists.length === 1 ? 'playlist enregistrée' : 'playlists enregistrées'}
+            </Copy>
+            <IconButton
+              quiet
+              icon="refresh-outline"
+              label={refreshing ? 'Actualisation en cours' : 'Actualiser les playlists'}
+              disabled={refreshing}
+              onPress={() => void refresh()}
+            />
+          </View>
+        )}
+        {playlists.map((playlist) => {
+          const chosen = playlist.id === state.preferences.selectedId;
+          const details = [playlist.owner, playlist.count === null ? null : `${playlist.count} titres`]
+            .filter(Boolean)
+            .join(' · ');
+          return (
+            <Card key={playlist.id} contentStyle={[styles.row, { padding: spacing.sm }]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Ouvrir ${playlistTitle(playlist)}`}
+                onPress={() => setPage({ name: 'playlist', id: playlist.id })}
+                style={styles.playlist}
+              >
+                <Artwork image={playlist.image} size={64} />
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Copy variant="emphasis" numberOfLines={2}>
+                    {playlistTitle(playlist)}
+                  </Copy>
+                  {!!details && (
+                    <Copy variant="small" muted numberOfLines={2}>
+                      {details}
+                    </Copy>
+                  )}
+                  {chosen && (
+                    <Copy variant="small" style={{ color: colors.accentText }}>
+                      Pour la prochaine course
+                    </Copy>
+                  )}
+                </View>
+                <Icon name="chevron-forward" size={16} color={colors.secondary} />
+              </Pressable>
+              <IconButton
+                quiet
+                icon="ellipsis-horizontal"
+                label={`Retirer ${playlistTitle(playlist)} de Sprinter`}
+                onPress={() =>
+                  confirm(
+                    'Retirer de Sprinter ?',
+                    'La playlist reste disponible dans Spotify.',
+                    'Retirer',
+                    () => void music.remove(playlist.id),
+                  )
+                }
+              />
+            </Card>
+          );
+        })}
+        {state.ready && !playlists.length && (
+          <Card contentStyle={{ gap: spacing.md }}>
+            <Icon name="albums-outline" color={colors.secondary} size={30} />
+            <Copy variant="emphasis">Aucune playlist enregistrée</Copy>
+            <Button title="Importer un lien Spotify" icon="add" onPress={() => setPage({ name: 'import' })} />
+          </Card>
+        )}
+        {state.message && (
+          <Copy variant="caption" muted accessibilityRole="alert">
+            {state.message}
+          </Copy>
+        )}
+      </Screen>
+      {onClose && <MusicDock onExpand={() => setPage({ name: 'player' })} />}
     </View>
-
-    <FeedbackPressable accessibilityRole="button" accessibilityLabel={connected ? 'Gérer le compte Spotify' : 'Connecter mon compte Spotify'} onPress={onAccount} style={{ minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, borderTopWidth: 1, borderTopColor: design.line }}>
-      <Image source={colors.dark ? require('../../assets/spotify/logo-white.png') : require('../../assets/spotify/logo-black.png')} resizeMode="contain" accessibilityLabel="Spotify" style={{ width: 84, height: 25, zIndex: 1 }} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}><BodyText style={{ color: design.secondary, fontSize: fontSizes.small }}>{connected ? state.profile?.name ?? 'Compte connecté' : 'Connecter mon compte'}</BodyText><Icon name="arrow-forward" color={design.secondary} size={iconSizes.small} /></View>
-    </FeedbackPressable>
-
-  </AppScreen>;
+  );
 }
 
-export function SpotifyAccount({ onBack, foregroundOnlyRun }: { onBack: () => void; foregroundOnlyRun: boolean }) {
-  const state = useMusic();
-  const [notice, setNotice] = useState<string | null>(null);
-  return <AppScreen><View style={s.row}><DisplayText accessibilityRole="header">VOTRE COMPTE</DisplayText>
-    <ActionIcon icon="close" label="Fermer les réglages Spotify" onPress={onBack} /></View>
-    <ConnectionCard state={state} openExternal={action => confirmSpotifySwitch(foregroundOnlyRun, action)} onMessage={setNotice} />
-    {notice && <BodyText accessibilityRole="alert">{notice}</BodyText>}
-  </AppScreen>;
-}
-
-export function SpotifyTracks({ playlist, onBack, foregroundOnlyRun }: { playlist: PlaylistReference; onBack: () => void; foregroundOnlyRun: boolean }) {
-  const state = useMusic();
-  useEffect(() => { if (state.status !== 'connected') onBack(); }, [onBack, state.status]);
-  return <TrackSheet playlist={playlist} onClose={onBack}
-    onOpenPlaylist={() => confirmSpotifySwitch(foregroundOnlyRun, () => void music.openPlaylist(playlist))}
-    onOpenTrack={track => confirmSpotifySwitch(foregroundOnlyRun, () => {
-      if (track.url) void music.platform.openSpotify('spotify:' + track.type + ':' + track.id, track.url).catch(() => music.openPlaylist(playlist));
-    })} />;
-}
-
-const s = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  actions: { flexDirection: 'row', gap: 6 },
+  playlist: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64 },
 });
