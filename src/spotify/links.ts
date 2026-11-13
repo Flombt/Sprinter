@@ -2,11 +2,19 @@ import { PlaylistReference } from './types';
 
 const ID = /^[A-Za-z0-9]{22}$/;
 export const validPlaylistId = (value: unknown): value is string => typeof value === 'string' && ID.test(value);
+export function playlistEmbedUrl(id: string): string {
+  if (!validPlaylistId(id)) throw new Error('Identifiant de playlist Spotify invalide.');
+  return `https://open.spotify.com/embed/playlist/${id}`;
+}
 const invalid = () => new Error('Collez un lien de playlist open.spotify.com ou une URI spotify:playlist valide.');
 export function playlistReference(id: string, savedAt = Date.now()): PlaylistReference {
   if (!validPlaylistId(id)) throw invalid();
   return { id, uri: `spotify:playlist:${id}`, url: `https://open.spotify.com/playlist/${id}`, savedAt,
     name: null, image: null, owner: null, count: null, fetchedAt: null, source: 'link' };
+}
+export function playlistFromAppLink(url: string | null | undefined): string | null {
+  const id = /^sprinter:\/\/playlist\/([A-Za-z0-9]{22})\/?$/.exec(url ?? '')?.[1];
+  return id ? playlistReference(id).url : null;
 }
 export type ParsedPlaylist = { kind: 'playlist'; playlist: PlaylistReference } | { kind: 'short'; url: string };
 export function parsePlaylistInput(input: string): ParsedPlaylist {

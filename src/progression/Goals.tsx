@@ -1,4 +1,3 @@
-import { spacing } from '../ui/tokens';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import type { RunRecord } from '../core/types';
@@ -19,8 +18,8 @@ export function Goals({ data, history, week, busy, now, onSaved }: { data: Progr
     if (monday(date) !== date) throw new Error('Choisissez la date du lundi de cette semaine.');
     if (await progression.saveGoal({ week: date, distanceMeters: distance.trim() ? numberValue(distance) * 1000 : null, outings: outings.trim() ? numberValue(outings) : null })) { setSaved(true); onSaved(date); }
   } catch (e) { setError(e instanceof Error ? e.message : 'Objectif invalide.'); } };
-  return <Panel style={{ gap: spacing.lg }}><Label>Objectif de la semaine du {dayLabel(week)}</Label>
-    {goal ? <View style={{ gap: spacing.sm }}>{goal.distanceMeters !== null && <Copy>{km(actual.meters)} / {km(goal.distanceMeters)} km · {Math.min(100, actual.meters / goal.distanceMeters * 100).toFixed(0)} %{actual.meters >= goal.distanceMeters ? ' · atteint' : ''}</Copy>}
+  return <Panel style={{ gap: 15 }}><Label>Objectif de la semaine du {dayLabel(week)}</Label>
+    {goal ? <View style={{ gap: 7 }}>{goal.distanceMeters !== null && <Copy>{km(actual.meters)} / {km(goal.distanceMeters)} km · {Math.min(100, actual.meters / goal.distanceMeters * 100).toFixed(0)} %{actual.meters >= goal.distanceMeters ? ' · atteint' : ''}</Copy>}
       {goal.outings !== null && <Copy>{actual.outings} / {goal.outings} sorties{actual.outings >= goal.outings ? ' · atteint' : ''}</Copy>}</View> : <Copy muted>Aucun objectif pour cette semaine. Les semaines sans objectif ne sont pas considérées comme des échecs.</Copy>}
     <Field label="Lundi de la semaine (AAAA-MM-JJ)" value={date} onChange={v => { setDate(v); setSaved(false); }} />
     <Field label="Distance visée (km, facultatif)" value={distance} numeric onChange={v => { setDistance(v); setSaved(false); }} />

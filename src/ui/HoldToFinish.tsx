@@ -1,63 +1,143 @@
 import { useEffect, useRef } from 'react';
-import { Animated, AppState, Easing, Platform, Pressable, StyleSheet } from 'react-native';
-import { Pressable as GesturePressable } from 'react-native-gesture-handler';
+import { Animated, AppState, Easing, Platform, Pressable, StyleSheet, type KeyDownEvent } from 'react-native';
 import { Copy, Icon } from './components';
+import { haptic } from './haptics';
 import { useTheme } from './theme';
-import { interaction, radii, spacing, iconSizes } from './tokens';
+import { interaction, radii, spacing } from './tokens';
+import { GlassSurface } from './GlassSurface';
 
 const holdDuration = 1000;
-const FinishPressable = Platform.OS === 'web' ? Pressable : GesturePressable;
+const finishAction = [{ name: 'activate', label: 'Confirmer la fin de la course' }];
 
-export function HoldToFinish({ disabled, onFinish }: { disabled: boolean; onFinish: (held?: boolean) => void }) {
+export function HoldToFinish({
+  disabled,
+  onFinish,
+  onConfirm,
+}: {
+  disabled: boolean;
+  onFinish: () => void;
+  onConfirm: () => void;
+}) {
   const { colors, reduceMotion } = useTheme();
-  const progress = useRef(new Animated.Value(0)).current;
-  const holding = useRef(false);
+  const fill = useRef(new Animated.Value(0)).current;
+  const pressed = useRef(false);
+  const finishIssued = useRef(false);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', state => {
-      if (state !== 'active') {
-        holding.current = false;
-        progress.setValue(0);
-      }
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') return;
+      pressed.current = false;
+      fill.setValue(0);
     });
-    return () => { subscription.remove(); progress.stopAnimation(); };
-  }, [progress]);
+    return () => {
+      subscription.remove();
+      fill.stopAnimation();
+    };
+  }, [fill]);
 
   useEffect(() => {
-    if (disabled) holding.current = false;
-    if (disabled || reduceMotion) progress.setValue(0);
-  }, [disabled, progress, reduceMotion]);
+    if (disabled || reduceMotion) {
+      pressed.current = false;
+      fill.setValue(0);
+    }
+    if (!disabled) finishIssued.current = false;
+  }, [disabled, reduceMotion, fill]);
 
-  return <FinishPressable accessibilityRole="button" accessibilityLabel="Terminer la course"
-    accessibilityHint="Maintenez une seconde pour enregistrer. Un appui simple ouvre la confirmation."
-    accessibilityState={{ disabled }} disabled={disabled} delayLongPress={holdDuration}
-    accessibilityActions={[{ name: 'activate', label: 'Confirmer la fin de la course' }]}
-    onAccessibilityAction={event => {
-      if (!disabled && event.nativeEvent.actionName === 'activate') onFinish();
-    }}
-    onPress={() => onFinish()}
-    onPressIn={() => {
-      holding.current = true;
-      if (!reduceMotion) Animated.timing(progress, { toValue: 1, duration: holdDuration, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }).start();
-    }}
-    onPressOut={() => { holding.current = false; progress.setValue(0); }}
-    onLongPress={() => {
-      if (!holding.current) return;
-      holding.current = false;
-      onFinish(true);
-    }}
-    style={({ pressed }) => [styles.button, { backgroundColor: colors.dangerSurface, borderColor: colors.danger,
-      opacity: disabled ? interaction.disabledOpacity : pressed && reduceMotion ? interaction.pressedOpacity : 1 }]}>
-    <Animated.View pointerEvents="none" accessible={false} style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
-      height: 5, backgroundColor: colors.danger, transformOrigin: 'left', transform: [{ scaleX: progress }] }} />
-    <Icon name="stop-circle-outline" size={iconSizes.standard} color={colors.danger} />
-    <Copy variant="emphasis" style={{ color: colors.danger, flexShrink: 1, textAlign: 'center' }}>Maintenir pour terminer</Copy>
-  </FinishPressable>;
+  const animate = (toValue: number, duration: number) => {
+    if (reduceMotion) {
+      fill.setValue(toValue);
+      return;
+    }
+    Animated.timing(fill, {
+      toValue,
+      duration,
+      easing: Easing.linear,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  };
+  const startHold = () => {
+    if (disabled || finishIssued.current) return;
+    pressed.current = true;
+    haptic.light();
+    if (!reduceMotion) animate(1, holdDuration);
+  };
+  const release = () => {
+    pressed.current = false;
+    if (!finishIssued.current) animate(0, 150);
+  };
+  const validate = () => {
+    if (disabled || !pressed.current || finishIssued.current) return;
+    finishIssued.current = true;
+    fill.setValue(1);
+    onFinish();
+  };
+  const keyboard =
+    Platform.OS === 'web'
+      ? {
+          onKeyDown: (event: KeyDownEvent) => {
+            if (event.nativeEvent.key !== 'Enter' && event.nativeEvent.key !== ' ') return;
+            event.preventDefault();
+            if (!disabled && !event.nativeEvent.repeat) onConfirm();
+          },
+        }
+      : {};
+
+  return (
+    <Pressable
+      {...keyboard}
+      accessibilityRole="button"
+      accessibilityLabel="Terminer la course"
+      accessibilityHint="Maintenez pour enregistrer votre sortie. Avec VoiceOver, activez pour confirmer."
+      accessibilityState={{ disabled }}
+      accessibilityActions={finishAction}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'activate' && !disabled) onConfirm();
+      }}
+      disabled={disabled}
+      delayLongPress={holdDuration}
+      onPressIn={startHold}
+      onLongPress={validate}
+      onPressOut={release}
+      style={[
+        styles.button,
+        {
+          backgroundColor: disabled ? colors.raised : 'transparent',
+          borderColor: colors.line,
+          opacity: disabled ? interaction.disabledOpacity : 1,
+        },
+      ]}
+    >
+      {!disabled && <GlassSurface radius={radii.button} color={colors.raised} />}
+      <Animated.View
+        pointerEvents="none"
+        accessible={false}
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: colors.line,
+            transformOrigin: 'left',
+            transform: [{ scaleX: fill }],
+          },
+        ]}
+      />
+      <Icon name="stop-outline" size={19} color={colors.text} />
+      <Copy variant="caption" style={{ flexShrink: 1 }}>
+        Maintenez pour terminer
+      </Copy>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.sm, padding: spacing.sm, borderRadius: radii.control, borderWidth: 1, overflow: 'hidden',
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radii.button,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
 });

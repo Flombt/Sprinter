@@ -195,7 +195,7 @@ export class RunRepository {
       const s: Partial<Settings> = JSON.parse(row.payload);
       return { config: sanitizeConfig(s.config ?? DEFAULT_SETTINGS.config),
         audioEnabled: s.audioEnabled === true, hapticsEnabled: s.hapticsEnabled !== false,
-        backgroundEnabled: s.backgroundEnabled === true,
+        backgroundEnabled: typeof s.backgroundEnabled === 'boolean' ? s.backgroundEnabled : DEFAULT_SETTINGS.backgroundEnabled,
         autoPauseEnabled: s.autoPauseEnabled === true,
         coaching: sanitizeCoaching(s.coaching),
         appearance: s.appearance === 'light' || s.appearance === 'dark' || s.appearance === 'system'

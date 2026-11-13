@@ -1,4 +1,3 @@
-import { fontWeights, fontSizes } from '../ui/tokens';
 import { Switch, Picker } from '../ui/controls';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Linking, Platform, View } from 'react-native';
@@ -32,7 +31,7 @@ export function RhythmTools({ compact = false }: { compact?: boolean }) {
 }
 export function SelectedRoute({ onChoose, running = false }: { onChoose: () => void; running?: boolean }) {
   const state = useTools(), route = state.routes.find(r => r.id === state.preferences.selectedRouteId);
-  return <Panel style={{ gap: 10 }}><Label>Parcours de référence</Label><Copy style={{ fontWeight: fontWeights.semibold }}>{route?.name ?? 'Sans tracé de référence'}</Copy>
+  return <Panel style={{ gap: 10 }}><Label>Parcours de référence</Label><Copy style={{ fontWeight: '600' }}>{route?.name ?? 'Sans tracé de référence'}</Copy>
     {route && <Copy muted variant="caption">{km(route.distanceMeters)} km de géométrie · avertissement à partir de {state.preferences.departureMeters} m d’écart confirmé. Les mesures de course restent calculées par le GPS.</Copy>}
     <Button title="Parcours favoris et import GPX" secondary icon="map-outline" disabled={running} onPress={onChoose} />
     {route && <Button title="Courir sans tracé" secondary disabled={state.busy || running} onPress={() => void toolsStore.update({ selectedRouteId: null })} />}
@@ -56,11 +55,11 @@ export function WeatherPanel({ route }: { route?: SavedRoute }) {
     {!configuredWeatherProvider && <Copy muted variant="caption">Service météo non configuré pour cette version. Vous pouvez partir sans météo.</Copy>}
     <Button title={busy ? 'Consultation de la météo…' : 'Consulter la météo de cette zone'} secondary icon="cloud-outline" disabled={busy || !configuredWeatherProvider} onPress={() => void load()} />
     {busy && <Button title="Annuler la consultation" secondary onPress={() => { request.current?.abort(); setBusy(false); }} />}
-    {value && <><Copy style={{ fontWeight: fontWeights.semibold }}>{weatherLabel(value.code)} · {Math.round(value.temperature)} °C</Copy><Copy>Précipitations : {value.precipitation} mm / {Math.round(value.intervalSeconds / 60)} min</Copy><Copy>Vent : {Math.round(value.wind)} km/h · rafales {Math.round(value.gusts)} km/h</Copy>
+    {value && <><Copy style={{ fontWeight: '600' }}>{weatherLabel(value.code)} · {Math.round(value.temperature)} °C</Copy><Copy>Précipitations : {value.precipitation} mm / {Math.round(value.intervalSeconds / 60)} min</Copy><Copy>Vent : {Math.round(value.wind)} km/h · rafales {Math.round(value.gusts)} km/h</Copy>
       <Copy muted variant="small">Modèle pour le {new Date(value.validAt).toLocaleString('fr-FR')} · consulté à {new Date(value.fetchedAt).toLocaleTimeString('fr-FR')}. {Date.now() - value.validAt > 1800000 ? 'Donnée ancienne : actualisez-la avant de partir.' : ''}</Copy>
-      {weatherAdvice(value).map(text => <Copy key={text} style={{ color: colors.orange, fontSize: fontSizes.small }}>{text}</Copy>)}
+      {weatherAdvice(value).map(text => <Copy key={text} style={{ color: colors.warning.text, fontSize: 12 }}>{text}</Copy>)}
       <Button title="Source et attribution : Open-Meteo" secondary onPress={() => { void Linking.openURL(value.attributionURL).catch(() => setMessage('Source : Open-Meteo, open-meteo.com.')); }} /></>}
-    {message && <Copy accessibilityRole="alert" style={{ color: colors.orange }}>{message} Vous pouvez partir sans météo.</Copy>}
+    {message && <Copy accessibilityRole="alert" style={{ color: colors.warning.text }}>{message} Vous pouvez partir sans météo.</Copy>}
     <Copy muted variant="small">Prévisions modélisées, locales et potentiellement incomplètes. Elles ne garantissent ni les conditions réelles ni la sécurité du parcours ; consultez les vigilances officielles.</Copy>
   </Panel>;
 }

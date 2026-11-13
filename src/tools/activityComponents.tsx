@@ -1,4 +1,3 @@
-import { fontWeights } from '../ui/tokens';
 import type { RunRecord } from '../core/types';
 import type { SessionState } from '../services/session';
 import { session } from '../services/session';
@@ -27,7 +26,7 @@ export function NavigationPanel({ state }: { state: SessionState }) {
   const status = !route ? 'Tracé indisponible sur cet appareil' : navigation.status === 'paused' ? 'Guidage en pause' : navigation.status === 'offRoute' ? 'Éloignement confirmé du tracé'
     : navigation.status === 'onRoute' ? navigation.distanceMeters !== null && navigation.distanceMeters > tools.preferences.departureMeters ? 'Écart en cours de vérification' : 'À proximité du tracé' : 'En attente d’une position GPS précise';
   return <Panel style={{ gap: 10 }}><Label>Parcours · {run.routeName ?? route?.name ?? 'Référence'}</Label>
-    <Copy style={{ color: navigation.status === 'offRoute' ? colors.orange : colors.text, fontWeight: fontWeights.semibold }} accessibilityLiveRegion="polite">{status}</Copy>
+    <Copy style={{ color: navigation.status === 'offRoute' ? colors.warning.text : colors.text, fontWeight: '600' }} accessibilityLiveRegion="polite">{status}</Copy>
     <Copy muted>Écart au tracé : {navigation.distanceMeters === null ? '—' : `${Math.round(navigation.distanceMeters)} m`}</Copy>
     <Copy muted variant="small">Tracé bleu, course enregistrée en vert. Aucun calcul de route, instruction de virage ou suivi partagé en direct. Les alertes audio suivent vos réglages de coach ; les fonds de carte peuvent manquer hors ligne.</Copy>
   </Panel>;

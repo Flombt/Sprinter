@@ -1,65 +1,148 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, View } from 'react-native';
-import { pace } from '../core/format';
-import { STATE_LABELS, type PaceState, type PaceTarget, type RunRecord } from '../core/types';
-import { paceTargetAt } from '../pacing/goals';
-import { effectiveTarget } from '../workouts/definition';
-import { BodyText, DisplayText } from './design';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
+import {
+  QUALITY_LABELS,
+  STATE_LABELS,
+  type PaceState,
+  type PaceTarget,
+  type SignalQuality,
+} from '../core/types';
+import { Copy, Icon, type IconName } from './components';
 import { paceGaugePosition } from './paceGaugePosition';
 import { useTheme } from './theme';
-import { palettes, spacing, fontSizes, fontWeights } from './tokens';
+import { radii, spacing } from './tokens';
 
-const cursorSize = 22;
-const railHeight = 9;
+const icons: Record<PaceState, IconName> = {
+  onTarget: 'checkmark-circle-outline',
+  tooFast: 'arrow-down',
+  tooSlow: 'arrow-up',
+  acquiring: 'navigate-circle-outline',
+  unreliable: 'navigate-circle-outline',
+  paused: 'pause-circle-outline',
+  free: 'pulse-outline',
+};
+const cursorSize = 12;
+const paceZones = { onTarget: 'on', tooFast: 'fast', tooSlow: 'slow' } as const;
 
-export function paceGaugeTarget(run: RunRecord) {
-  const workout = run.workout;
-  const block = workout?.segments[workout.currentIndex];
-  return workout ? workout.status === 'running' && block ? effectiveTarget(block.planned) : null
-    : paceTargetAt(run.target, run.distanceMeters);
-}
-
-export function PaceGauge({ target, tolerance, value, status, paper = false, compact = false }: {
-  target: Pick<PaceTarget, 'fast' | 'slow'> | null; tolerance: number;
-  value: number | null; status: PaceState; paper?: boolean; compact?: boolean;
+export function PaceGauge({
+  value,
+  target,
+  tolerance,
+  state,
+  quality,
+  running,
+  autoPaused,
+  paper = false,
+}: {
+  value: number | null;
+  target: Pick<PaceTarget, 'fast' | 'slow'> | null;
+  tolerance: number;
+  state: PaceState;
+  quality: SignalQuality;
+  running: boolean;
+  autoPaused: boolean;
+  paper?: boolean;
 }) {
-  const { colors: theme, reduceMotion } = useTheme();
-  const colors = paper ? palettes.light : theme;
-  const zone = status === 'tooFast' ? colors.danger : status === 'tooSlow' ? colors.blue : status === 'onTarget' ? colors.paceInTarget : colors.text;
-  const text = pace(value);
-  const gauge = target ? paceGaugePosition(text === '—' ? null : value, target, tolerance) : null;
+  const { colors, lightColors, reduceMotion } = useTheme();
+  const palette = paper ? lightColors : colors;
   const [width, setWidth] = useState(0);
-  const usableWidth = Math.max(0, width - cursorSize);
-  const cursor = usableWidth && gauge?.cursor != null ? gauge.cursor * usableWidth : null;
-  const x = useRef(new Animated.Value(0)).current;
-  const previousWidth = useRef(0);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const positioned = useRef(false);
+  const status = !running ? 'paused' : quality === 'good' ? state : 'unreliable';
+  const label = autoPaused
+    ? 'Pause automatique'
+    : running && quality !== 'good'
+      ? QUALITY_LABELS[quality]
+      : STATE_LABELS[status];
+  const zone = status === 'onTarget' || status === 'tooFast' || status === 'tooSlow'
+    ? palette.zone[paceZones[status]]
+    : undefined;
+  const textColor = zone?.text ?? palette.secondary;
+  const model = target
+    ? paceGaugePosition(running && quality === 'good' ? value : null, target, tolerance)
+    : null;
+  const cursor = model?.cursor ?? null;
 
-  useLayoutEffect(() => {
-    const sameWidth = previousWidth.current === usableWidth;
-    previousWidth.current = cursor === null ? 0 : usableWidth;
-    if (cursor === null) return;
-    if (reduceMotion || !sameWidth) { x.setValue(cursor); return; }
-    const animation = Animated.timing(x, {
-      toValue: cursor, duration: 900, easing: Easing.linear,
-      useNativeDriver: Platform.OS !== 'web', isInteraction: false,
+  useEffect(() => {
+    if (cursor === null || width <= 0) {
+      positioned.current = false;
+      return;
+    }
+    const toValue = Math.max(0, width - cursorSize) * cursor;
+    if (reduceMotion || !positioned.current) {
+      positioned.current = true;
+      translateX.setValue(toValue);
+      return;
+    }
+    const animation = Animated.timing(translateX, {
+      toValue,
+      duration: 220,
+      easing: Easing.out(Easing.back(0.55)),
+      useNativeDriver: Platform.OS !== 'web',
     });
     animation.start();
     return () => animation.stop();
-  }, [cursor, reduceMotion, usableWidth, x]);
+  }, [cursor, width, reduceMotion, translateX]);
 
-  return <View accessible accessibilityLabel={`Allure actuelle : ${text === '—' ? 'indisponible' : text + ' par kilomètre'}. ${STATE_LABELS[status]}`}>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: spacing.sm }}>
-      <DisplayText numeric style={{ fontSize: compact ? fontSizes.metric : fontSizes.pace, lineHeight: compact ? 34 : 83, color: zone, letterSpacing: compact ? 0 : -1.5 }}>{text}</DisplayText>
-      <BodyText style={{ fontSize: fontSizes.small, color: colors.secondary }}>min / km</BodyText>
-      <BodyText style={{ fontSize: fontSizes.caption, color: zone, fontWeight: fontWeights.semibold }}>{STATE_LABELS[status]}</BodyText>
+  return (
+    <View style={styles.container}>
+      {model && (
+        <View
+          accessible={false}
+          onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+          style={styles.rail}
+        >
+          <View style={[styles.line, { backgroundColor: palette.line }]} />
+          {width > 0 && (
+            <View
+              style={[
+                styles.zone,
+                {
+                  left: cursorSize / 2 + (width - cursorSize) * model.start - 2,
+                  width: Math.max(4, (width - cursorSize) * (model.end - model.start) + 4),
+                  backgroundColor: palette.zone.on.color,
+                },
+              ]}
+            />
+          )}
+          {cursor !== null && width > 0 && (
+            <Animated.View
+              style={[
+                styles.cursor,
+                {
+                  backgroundColor: zone?.color ?? palette.secondary,
+                  borderColor: palette.background,
+                  transform: [{ translateX }],
+                },
+              ]}
+            />
+          )}
+        </View>
+      )}
+      <View style={[styles.status, zone && { backgroundColor: zone.soft }]}>
+        <Icon name={icons[status]} size={17} color={textColor} />
+        <Copy variant="caption" accessibilityLiveRegion="polite" style={{ color: textColor, flexShrink: 1 }}>
+          {label}
+        </Copy>
+      </View>
     </View>
-    {gauge && <View onLayout={event => setWidth(event.nativeEvent.layout.width)} style={{ height: cursorSize, justifyContent: 'center' }}>
-      <View style={{ height: railHeight, marginHorizontal: cursorSize / 2, borderRadius: railHeight / 2, backgroundColor: colors.controlLine }} />
-      {usableWidth > 0 && <View style={{ position: 'absolute', left: cursorSize / 2 + gauge.start * usableWidth - 2,
-        width: (gauge.end - gauge.start) * usableWidth + 4, height: railHeight, borderRadius: railHeight / 2, backgroundColor: colors.accentText }} />}
-      {cursor !== null && <Animated.View style={{ position: 'absolute', left: 0, width: cursorSize, height: cursorSize,
-        borderRadius: cursorSize / 2, backgroundColor: zone, borderWidth: 2, borderColor: paper ? colors.background : theme.background,
-        transform: [{ translateX: x }] }} />}
-    </View>}
-  </View>;
+  );
 }
+
+const styles = StyleSheet.create({
+  container: { gap: spacing.xs, paddingHorizontal: spacing.xl },
+  rail: { height: cursorSize, justifyContent: 'center', overflow: 'hidden' },
+  line: { height: spacing.xs, borderRadius: radii.pill },
+  zone: { position: 'absolute', height: spacing.xs, borderRadius: radii.pill },
+  cursor: {
+    position: 'absolute',
+    width: cursorSize,
+    height: cursorSize,
+    borderWidth: 2,
+    borderRadius: radii.pill,
+  },
+  status: {
+    flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radii.pill,
+  },
+});
