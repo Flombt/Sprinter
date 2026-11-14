@@ -1,6 +1,6 @@
 -- Phase 3 : tracés GPS (§8, §14 phase 3).
 begin;
-select plan(16);
+select plan(17);
 -- Depuis 0013, les écritures de synchronisation exigent les flags actifs côté serveur.
 update public.app_config set value = 'true' where key in ('accounts_enabled', 'sync_enabled');
 create temporary table ids (name text primary key, id uuid) on commit drop;
@@ -54,6 +54,7 @@ with deleted as (
 select is((select count(*)::int from deleted), 1, 'le titulaire supprime son fichier');
 select set_config('storage.allow_delete_query', 'false', true);
 select tests.logout();
+select is((select count(*)::int from storage.objects where name like '%dDE.json.gz'), 0, 'le fichier a bien disparu');
 select is((select count(*)::int from private.storage_purge_queue where path like '%dDE.json.gz'), 1, 'fichier mis en file de purge');
 select * from finish();
 rollback;
