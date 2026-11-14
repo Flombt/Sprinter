@@ -29,10 +29,44 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Lint, types and regression tests
+      - name: Lint, types, secret guard and regression tests
         run: npm run check
       - name: Expo dependency compatibility
         run: npx expo install --check
       - name: Bundle iOS and web
         run: npx expo export --platform ios --platform web --output-dir .expo/ci-export
         # JavaScript/assets verification; a signed iPhone build is a separate check.
+
+  # Base de données : migrations rejouées depuis zéro, lint SQL et tests pgTAP (§12.2).
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.1.0
+      - name: Start the local database
+        run: supabase db start
+      - name: Reset from migrations and synthetic seed
+        run: supabase db reset --local
+      - name: Lint SQL (plpgsql_check)
+        run: supabase db lint --local --level warning --fail-on error
+      - name: pgTAP tests
+        run: supabase test db --local
+
+  # Secrets : garde ciblée sur le bundle + gitleaks sur tout l'historique (§12.2, §13.5).
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Secret guard (app bundle and build configuration)
+        run: node scripts/check-no-secrets.cjs
+      - name: gitleaks (full history)
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --no-banner --verbose

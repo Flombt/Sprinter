@@ -1,0 +1,145 @@
+#:schema https://supabase.com/schemas/config/v1.json
+# Configuration de la pile LOCALE (supabase start / db reset / test db).
+# Staging et production se règlent dans le tableau de bord Supabase : secrets et
+# fournisseurs n'y sont JAMAIS copiés depuis ce fichier (voir docs/ACCOUNTS.md).
+# Référence : https://supabase.com/docs/guides/local-development/cli/config (CLI 3.x)
+project_id = "sprinter"
+
+[api]
+enabled = true
+port = 54321
+# Seul le schéma public est exposé (§5.1). private et authz ne le sont jamais.
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+health_timeout = "2m"
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = true
+# Données synthétiques uniquement (§0.2 règle 12).
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+# Plafond global ; chaque bucket fixe sa propre limite dans les migrations.
+file_size_limit = "10MiB"
+
+[storage.s3_protocol]
+enabled = false
+
+[auth]
+enabled = true
+# Site admin en local (next dev). En production : https://admin.<domaine>
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000", "http://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+# Liaison d'identités manuelle depuis Réglages › Compte (§6.4, décision 4).
+enable_manual_linking = true
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.rate_limit]
+email_sent = 30
+sms_sent = 0
+anonymous_users = 0
+token_refresh = 150
+sign_in_sign_ups = 30
+# Limite le nombre de vérifications de code par IP (le blocage après 5 essais est aussi appliqué par l'app, §6.1).
+token_verifications = 30
+web3 = 0
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# Un nouveau compte reçoit le modèle « Confirm signup », un compte existant « Magic Link » :
+# les deux affichent le code à 6 chiffres (supabase/templates, phase 1).
+enable_confirmations = true
+secure_password_change = true
+# Renvoi d'un code possible après 60 s (§6.1).
+max_frequency = "60s"
+otp_length = 6
+# Expiration courte : 10 minutes.
+otp_expiry = 600
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+template = "Your code is {{ `{{ .Code }}` }}"
+max_frequency = "5s"
+
+[auth.sms.twilio]
+enabled = false
+account_sid = ""
+message_service_sid = ""
+auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+
+[auth.mfa]
+max_enrolled_factors = 4
+
+# TOTP obligatoire pour Sprinter Admin (AAL2, §10.2). Inutilisé par l'app mobile.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+otp_length = 6
+template = "Your code is {{ `{{ .Code }}` }}"
+max_frequency = "5s"
+
+# Apple et Google se configurent dans le tableau de bord de staging/prod :
+# - Apple : Authorized Client IDs = app.sprinter.running ; clé .p8 dans les secrets.
+# - Google : client Web (pour Supabase) + clients iOS/Android dans Authorized Client IDs ;
+#   « Skip nonce check » seulement si le SDK iOS ne permet pas de fournir un nonce (§6.2).
+[auth.external.apple]
+enabled = false
+client_id = ""
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+inspector_port = 8083
+deno_version = 2
+
+[analytics]
+enabled = false
+port = 54327
+backend = "postgres"

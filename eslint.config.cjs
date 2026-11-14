@@ -11,7 +11,7 @@ const compilerRules = Object.fromEntries(compilerDiagnostics.map(name => ['react
 
 module.exports = defineConfig([
   expo,
-  { ignores: ['.expo/**', '.verification/**', 'dist/**', 'artifacts/**'] },
+  { ignores: ['.expo/**', '.verification/**', 'dist/**', 'artifacts/**', 'supabase/**', 'scripts/db-local/**'] },
   {
     files: ['**/*.{ts,tsx}'],
     rules: {
