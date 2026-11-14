@@ -43,6 +43,8 @@ export interface RunRecord {
   healthKit?: { uuid: string; sourceName: string; sourceBundle: string; importedAt: number; originalRunId: string | null };
   targetUnavailable?: boolean;
   plannedEntryId?: string; shoeId?: string;
+  /** Champs facultatifs de synchronisation (§7.3, sans changement de dataVersion) : fuseau IANA et meilleurs efforts calculés sur l'appareil. */
+  tz?: string; bestEfforts?: Record<string, number>;
   dataVersion?: 3;
   id: string; startedAt: number; endedAt: number | null; target: PaceTarget; config: CoachConfig;
   activeSeconds: number; distanceMeters: number; reliableSeconds: number; inTargetSeconds: number;
