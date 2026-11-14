@@ -57,7 +57,8 @@ scripts/db-local/       banc d’essai SQL sans Docker (PostgreSQL éphémère +
 | Clé | Défaut | Phase |
 |---|---|---|
 | `accounts_enabled` | `false` | 1 — affiche Réglages › Compte et le bandeau « Sauvegardez vos courses » |
-| `sync_enabled` | `false` | 2 |
+| `sync_enabled` | `false` | 2 — synchronisation des courses et des réglages |
+| `routes_sync_enabled` | `false` | 3 — tracés GPS (choix explicite en plus) |
 
 Une fonction dépendante n’est jamais active sans son socle (ex. `sync_enabled` ignoré si `accounts_enabled` est faux). Jusqu’à la page Config de l’admin (phase 4d), un flag se change dans l’éditeur SQL du projet, en tant que propriétaire :
 
@@ -125,7 +126,16 @@ Déclencheurs : retour au premier plan, fin de course (3 s), retour du réseau (
 
 Flag : `sync_enabled` (sans effet si `accounts_enabled` est faux). Retour arrière : le remettre à `false` arrête toute synchronisation, les données restent sur les appareils.
 
-## 7. Banc d’essai SQL sans Docker
+## 7. Tracés GPS (phase 3)
+
+- **Choix explicite** (§8.1) : demandé une fois quand la sauvegarde des courses est active et `routes_sync_enabled` vrai, deux boutons sans présélection ; modifiable dans Compte › Synchronisation. Arrêt : « Les conserver » ou « Supprimer aussi mes parcours en ligne ».
+- **Envoi** (`src/sync/routes.ts`, extension du moteur) : seulement pour les courses déjà synchronisées, au repos, 5 par passage ; points en JSON compressé gzip (`fflate`), ≤ 8 Mo, déposés dans `run-tracks/<uid>/<base64url(run_id)>.json.gz`, puis `sync_register_route`. Aperçu : polyline ≤ 300 points **sans les 300 premiers et derniers mètres**.
+- **Réception** : à la demande depuis le détail d’une course (`CloudRoutePanel`), préchargement des 5 dernières en Wi-Fi ; les points sont réintégrés localement sans rien renvoyer.
+- **Serveur** (`0010_routes.sql`) : bucket privé (8 Mio, `application/gzip`), policies Storage par opération (dossier du titulaire, compte actif, envoi et remplacement seulement avec les deux sauvegardes et le flag, suppression toujours possible), `sync_register_route` (objet présent exigé), `sync_delete_routes`, file de purge + Edge Function `purge-storage` (quotidienne, `x-cron-secret`), `private.recompute_validity` pour les changements de `rules_version`.
+- **Meilleurs efforts** : calculés à la fin de la course sur l’appareil (`records.ts`) ; le serveur ne conserve que les valeurs plausibles.
+- Aucun accès admin aux tracés, aucun aperçu exposé ailleurs que pour le titulaire.
+
+## 8. Banc d’essai SQL sans Docker
 
 `scripts/db-local/run.mjs` initialise un PostgreSQL 17 éphémère, applique `scripts/db-local/supabase-shim.sql` (rôles `anon`/`authenticated`/`service_role`, `auth.users`/`identities`/`sessions`, `auth.uid()`/`jwt()`, `storage.buckets`/`objects`), toutes les migrations, pgTAP, puis exécute `supabase/tests/database/*.sql` (une connexion par fichier, comme `pg_prove`).
 
@@ -133,7 +143,7 @@ Prérequis : `cd scripts/db-local && npm install`, puis `PG_BIN` (dossier conten
 
 Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent (les migrations qui l’utilisent le détectent). **La référence reste la CI** (`supabase test db`).
 
-## 8. Environnements et procédures
+## 9. Environnements et procédures
 
 | Env | Supabase | Données |
 |---|---|---|
@@ -145,7 +155,7 @@ Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent 
 
 **Secrets** : saisis directement dans les gestionnaires (Supabase › Edge Functions › Secrets, Vercel, EAS). Jamais dans un fichier du dépôt ni dans une conversation.
 
-## 9. Variables d’environnement (Annexe A)
+## 10. Variables d’environnement (Annexe A)
 
 | Variable | Où | Public |
 |---|---|---|
