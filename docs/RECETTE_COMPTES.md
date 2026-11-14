@@ -16,7 +16,7 @@ La CI de finalisation valide les migrations et pgTAP, le typage et les tests des
 
 [Résultats CI](https://github.com/Flombt/Sprinter/actions/runs/43636971825) · [Compilation IPA](https://github.com/Flombt/Sprinter/actions/runs/43636529556)
 
-Les observations des scénarios sur appareils, la configuration effective de Supabase, les fournisseurs Apple et Google, le SMTP, le domaine, les documents à compléter et la signature de Flo restent à consigner dans les sections correspondantes.
+Sur le projet Supabase à Paris, les vingt migrations sont appliquées et les dix fonctions refusent les appels protégés sans session ni secret. Le contrôle en base confirme la présence de RLS sur toutes les tables publiques, l’absence de bucket public et l’absence de fonction publique à privilèges élevés exécutable par le rôle anonyme. La recette sur appareils, les réglages Auth et SMTP, le domaine, les documents à compléter et la signature de Flo restent à consigner.
 
 ## Mode d'emploi
 

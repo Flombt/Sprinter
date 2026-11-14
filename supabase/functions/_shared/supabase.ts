@@ -1,5 +1,5 @@
 // Clients Supabase des Edge Functions. La clé serveur ne quitte jamais cet environnement.
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { DeletionDeps } from './deletion.ts';
 import { decryptSecret } from './crypto.ts';
 import { appleConfigFromEnv, revokeRefreshToken } from './apple.ts';
