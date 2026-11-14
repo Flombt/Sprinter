@@ -32,6 +32,7 @@ import { startAppConfig } from './src/account/config';
 import { startAccount } from './src/account/account';
 import { onAccountSheetRequest } from './src/account/ui/bus';
 import { startSync } from './src/sync/sync';
+import { UpdateRequiredGate } from './src/account/ui/UpdateRequired';
 
 function KeepScreenAwake() {
   useKeepAwake('sprinter-active-screen');
@@ -206,6 +207,7 @@ function AppContent() {
         />
         {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
         <SessionToast covered={modalVisible} />
+        <UpdateRequiredGate />
       </View>
     </View>
   );
