@@ -45,7 +45,7 @@ create table auth.identities (
   user_id uuid not null references auth.users(id) on delete cascade,
   identity_data jsonb not null default '{}'::jsonb,
   provider text not null,
-  email text,
+  email text generated always as (lower(identity_data ->> 'email')) stored,
   last_sign_in_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

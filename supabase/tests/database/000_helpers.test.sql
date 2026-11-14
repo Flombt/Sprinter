@@ -12,9 +12,9 @@ declare v_id uuid := gen_random_uuid();
 begin
   insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
   values (v_id, p_email, jsonb_build_object('provider', p_provider, 'providers', jsonb_build_array(p_provider)), p_meta, now(), now());
-  insert into auth.identities (provider_id, user_id, provider, identity_data, email)
+  insert into auth.identities (provider_id, user_id, provider, identity_data)
   values (case when p_provider = 'email' then v_id::text else p_provider || '-' || v_id::text end, v_id, p_provider,
-          jsonb_build_object('sub', v_id::text, 'email', p_email), p_email);
+          jsonb_build_object('sub', v_id::text, 'email', p_email));
   return v_id;
 end $$;
 
