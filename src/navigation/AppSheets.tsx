@@ -20,6 +20,7 @@ export const AppSheets = memo(function AppSheets({
   onPrepare,
   onTools,
   onAccount,
+  profileToken,
 }: {
   sheet: Sheet | null;
   onClose: () => void;
@@ -29,6 +30,7 @@ export const AppSheets = memo(function AppSheets({
   onPrepare: () => void;
   onTools: () => void;
   onAccount: () => void;
+  profileToken?: string | null;
 }) {
   const { colors, reduceMotion } = useTheme();
   const state = useSessionStructure();
@@ -59,7 +61,7 @@ export const AppSheets = memo(function AppSheets({
             onAccount={onAccount}
           />
         )}
-        {sheet === 'account' && <AccountSheet onClose={onClose} />}
+        {sheet === 'account' && <AccountSheet onClose={onClose} profileToken={profileToken} />}
         {sheet === 'workouts' && <Workouts onClose={onClose} onSelected={onClose} onDetail={onDetail} />}
         {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
       </View>

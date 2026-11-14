@@ -43,6 +43,23 @@ function decode(polyline: string) {
 }
 
 describe('tracés GPS (§8)', () => {
+  it('refuse un téléchargement manuel pendant une course', async () => {
+    const { local } = await setup();
+    let calls = 0;
+    const transport = { async download() { calls++; return compressPoints([]); } } as unknown as RouteTransport;
+    const sync = new RouteSync(local, transport, { userId: () => 'A', enabled: () => true, runActive: () => true, wifi: () => false, historyChanged: async () => undefined });
+    await expect(sync.download('remote')).rejects.toThrow('après la course');
+    expect(calls).toBe(0);
+  });
+
+  it('refuse les points si le compte change pendant le téléchargement', async () => {
+    const { local } = await setup();
+    let userId = 'A';
+    const transport = { async download() { userId = 'B'; return compressPoints([]); } } as unknown as RouteTransport;
+    const sync = new RouteSync(local, transport, { userId: () => userId, enabled: () => true, runActive: () => false, wifi: () => false, historyChanged: async () => undefined });
+    await expect(sync.download('remote')).rejects.toThrow('compte a changé');
+  });
+
   it('nomme le fichier <uid>/<base64url(run_id)>.json.gz, conforme à la policy Storage', () => {
     for (const id of ['1800000000000-abc', 'healthkit:0f1e2d3c-4b5a-4968-8776-655443322110', 'é/ü?']) {
       expect(base64Url(id)).toBe(Buffer.from(id, 'utf8').toString('base64url'));

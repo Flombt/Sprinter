@@ -2,6 +2,8 @@
 import { useSyncExternalStore } from 'react';
 import { AppState, Platform } from 'react-native';
 import { randomUUID } from 'expo-crypto';
+import { File, Paths } from 'expo-file-system';
+import { createDownloadResumable } from 'expo-file-system/legacy';
 import { backend } from '../account/env';
 import { appConfig } from '../account/config';
 import { account } from '../account/account';
@@ -16,7 +18,7 @@ import { SyncLocalStore } from './localStore';
 import { supabaseDocumentRemote, supabaseSyncRemote, syncRpc } from './remote';
 import { DocumentSync } from './documents';
 import { documentAdapters } from './documentAdapters';
-import { RouteSync, type RouteTransport } from './routes';
+import { RouteSync, type RouteProgress, type RouteTransport } from './routes';
 import type { SyncStatus } from './types';
 
 type ClientModule = typeof import('../account/supabaseClient');
@@ -74,12 +76,21 @@ const routeTransport: RouteTransport = {
     const { error } = await bucket().upload(path, body, { contentType: 'application/gzip', upsert: true });
     if (error) throw new Error(error.message);
   },
-  async download(path) {
+  async download(path, onProgress) {
     const { data, error } = await bucket().createSignedUrl(path, 60);
     if (error || !data) throw new Error('Parcours introuvable en ligne.');
-    const response = await fetch(data.signedUrl);
-    if (!response.ok) throw new Error('Téléchargement du parcours impossible.');
-    return new Uint8Array(await response.arrayBuffer());
+    const file = new File(Paths.cache, `sprinter-route-${randomUUID()}.gz`);
+    try {
+      const transfer = createDownloadResumable(data.signedUrl, file.uri, {}, (progress) => onProgress?.({
+        received: progress.totalBytesWritten,
+        total: progress.totalBytesExpectedToWrite > 0 ? progress.totalBytesExpectedToWrite : null,
+      }));
+      const result = await transfer.downloadAsync();
+      if (!result || result.status !== 200) throw new Error('Téléchargement du parcours impossible.');
+      return await file.bytes();
+    } finally {
+      if (file.exists) file.delete();
+    }
   },
   async remove(paths) { const { error } = await bucket().remove(paths); if (error) throw new Error(error.message); },
   async register(runId, path, pointsCount, bytes, preview) {
@@ -182,8 +193,11 @@ export async function chooseRouteBackup(on: boolean, deleteOnline = false) {
 }
 
 /** Téléchargement à la demande depuis le détail d'une course (§8.4). */
-export async function downloadRoute(runId: string) {
-  const count = await routeSync.download(runId);
+export async function downloadRoute(runId: string, onProgress?: (progress: RouteProgress) => void) {
+  if (!syncEnabled()) throw new Error('Connectez-vous pour récupérer ce parcours.');
+  const count = await routeSync.download(runId, undefined, () => {
+    if (!syncEnabled()) throw new Error('La synchronisation est indisponible.');
+  }, onProgress);
   await session.reloadHistory();
   return count;
 }

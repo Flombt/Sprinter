@@ -332,6 +332,30 @@ describe('synchronisation · scénarios §7.6', () => {
 });
 
 describe('synchronisation · robustesse', () => {
+  it('expose le compte de la passe aux extensions et isole les erreurs des observateurs', async () => {
+    const server = new FakeServer();
+    server.recordBackup('A', true, '2026-11-01T00:00:00Z');
+    const phone = await device(server, 'A');
+    let notices = 0;
+    let extensionCalls = 0;
+    const unsubscribe = phone.engine.subscribe(() => { notices++; throw new Error('observateur interrompu'); });
+    phone.engine.addExtension({ name: 'test', async run({ guard }) {
+      guard();
+      expect(phone.engine.activeUser()).toBe('A');
+      expect(phone.engine.getSnapshot().phase).toBe('running');
+      extensionCalls++;
+    } });
+    await phone.engine.sync('manual');
+    expect(extensionCalls).toBe(1);
+    expect(notices).toBeGreaterThan(0);
+    expect(phone.engine.activeUser()).toBeNull();
+    expect(phone.engine.getSnapshot().phase).toBe('idle');
+    unsubscribe();
+    const before = notices;
+    await phone.engine.requestReconciliation();
+    expect(notices).toBe(before);
+  });
+
   it('jeton expiré : un seul rafraîchissement puis invitation à se reconnecter, sans perte', async () => {
     const server = new FakeServer();
     server.recordBackup('A', true, '2026-11-01T00:00:00Z');

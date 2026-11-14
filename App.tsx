@@ -28,12 +28,13 @@ import { workouts } from './src/workouts/store';
 import { progression } from './src/progression/store';
 import { connectAppleIntegrations } from './src/apple/connect';
 import { connectRunningTools } from './src/tools/connect';
-import { startAppConfig } from './src/account/config';
+import { startAppConfig, useAppConfig } from './src/account/config';
 import { startAccount } from './src/account/account';
 import { onAccountSheetRequest } from './src/account/ui/bus';
 import { startSync } from './src/sync/sync';
 import { startProfile } from './src/profile/profile';
 import { UpdateRequiredGate } from './src/account/ui/UpdateRequired';
+import { profileTokenFromAppLink } from './src/profile/sharingModel';
 
 function KeepScreenAwake() {
   useKeepAwake('sprinter-active-screen');
@@ -73,6 +74,11 @@ function AppContent() {
   const clearPlaylistImport = useCallback(() => setPlaylistImport(undefined), []);
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [profileToken, setProfileToken] = useState<string | null>(null);
+  const config = useAppConfig();
+  useEffect(() => {
+    if (profileToken && config.flags.accounts_enabled && config.flags.profile_sharing_enabled) setSheet('account');
+  }, [profileToken, config.flags.accounts_enabled, config.flags.profile_sharing_enabled]);
 
   useEffect(() => {
     void Promise.all([session.initialize(), progression.initialize()]).then(() =>
@@ -98,6 +104,8 @@ function AppContent() {
 
   useEffect(() => {
     const open = (url: string | null | undefined) => {
+      const token = profileTokenFromAppLink(url);
+      if (token && Platform.OS !== 'web') setProfileToken(token);
       if (url === 'sprinter://run') void session.initialize().then(openHome);
       const playlist = playlistFromAppLink(url);
       if (playlist) {
@@ -187,7 +195,8 @@ function AppContent() {
         </View>
         <AppSheets
           sheet={sheet}
-          onClose={() => setSheet(null)}
+          profileToken={profileToken}
+          onClose={() => { setSheet(null); setProfileToken(null); }}
           onDetail={(run) => {
             setSheet(null);
             navigation.dispatch(StackActions.push('Detail', { runId: run.id }));

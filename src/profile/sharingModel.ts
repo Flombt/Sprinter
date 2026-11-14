@@ -6,6 +6,16 @@ export type SharingMode = 'private' | 'link' | 'members';
 export type Withdrawal = { type: 'private' } | { type: 'hide'; key: string } | { type: 'revoke' } | { type: 'unsearchable'; mode: SharingMode; handle: string | null; presence: 'nobody' | 'audience' };
 
 export const linkFor = (token: string) => `sprinter://profil?t=${token}`;
+/** Route native uniquement. Les autres liens Sprinter conservent leur destination. */
+export function profileTokenFromAppLink(input: string | null | undefined): string | null {
+  if (!input) return null;
+  try {
+    const url = new URL(input);
+    if (url.protocol !== 'sprinter:' || url.hostname !== 'profil' || (url.pathname && url.pathname !== '/')) return null;
+    const token = url.searchParams.get('t');
+    return token && /^[A-Za-z0-9_-]{16,64}$/.test(token) ? token : null;
+  } catch { return null; }
+}
 /** Accepte un lien complet ou le code seul. */
 export function parseLink(input: string): string | null {
   const match = /(?:[?&#]t=)?([A-Za-z0-9_-]{16,64})\s*$/.exec(input.trim());

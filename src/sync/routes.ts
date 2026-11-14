@@ -77,9 +77,10 @@ export function bestEfforts(run: RunRecord): Record<string, number> | undefined 
   return Object.keys(out).length ? out : undefined;
 }
 
+export interface RouteProgress { received: number; total: number | null }
 export interface RouteTransport {
   upload(path: string, bytes: Uint8Array): Promise<void>;
-  download(path: string): Promise<Uint8Array>;
+  download(path: string, onProgress?: (progress: RouteProgress) => void): Promise<Uint8Array>;
   remove(paths: string[]): Promise<void>;
   register(runId: string, path: string, pointsCount: number, bytes: number, preview: string | null): Promise<void>;
   deleteRoutes(runIds: string[] | null): Promise<string[]>;
@@ -121,13 +122,16 @@ export class RouteSync implements SyncExtension {
     }
   }
   /** Téléchargement à la demande (détail d'une course sans points locaux, §8.4). */
-  async download(runId: string, userId = this.deps.userId(), guard: () => void = () => {}) {
+  async download(runId: string, userId = this.deps.userId(), guard: () => void = () => {}, onProgress?: (progress: RouteProgress) => void) {
     if (!userId) throw new Error('Connectez-vous pour récupérer ce parcours.');
-    const points = decompressPoints(await this.transport.download(routeObjectName(userId, runId)));
-    guard();
-    if (this.deps.userId() !== userId) throw new Error('Le compte a changé.');
-    await this.local.attachPoints(runId, points);
-    await this.local.markRoute(runId, 'uploaded');
+    const assertCurrentAccount = () => {
+      guard();
+      if (this.deps.runActive()) throw new Error('Le parcours sera disponible après la course.');
+      if (this.deps.userId() !== userId) throw new Error('Le compte a changé.');
+    };
+    assertCurrentAccount();
+    const points = decompressPoints(await this.transport.download(routeObjectName(userId, runId), onProgress));
+    await this.local.attachPoints(runId, points, assertCurrentAccount);
     return points.length;
   }
   /** « Supprimer aussi mes parcours en ligne » (§8.5) : références, aperçus puis fichiers. */
