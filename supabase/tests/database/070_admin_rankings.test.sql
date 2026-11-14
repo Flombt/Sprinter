@@ -1,6 +1,8 @@
 -- Phase 4c : classements, analyses, k-anonymat (§9.2, §9.3, §10.4).
 begin;
 select plan(24);
+-- Les agrégats admin portent sur tous les comptes : la graine synthétique de la CI est effacée pour ce test.
+select tests.clear_seed();
 
 create temporary table ids (name text primary key, id uuid) on commit drop;
 grant select on ids to authenticated;
