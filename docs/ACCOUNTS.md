@@ -56,7 +56,7 @@ scripts/db-local/       banc d’essai SQL sans Docker (PostgreSQL éphémère +
 
 | Clé | Défaut | Phase |
 |---|---|---|
-| `accounts_enabled` | `false` | 1 |
+| `accounts_enabled` | `false` | 1 — affiche Réglages › Compte et le bandeau « Sauvegardez vos courses » |
 | `sync_enabled` | `false` | 2 |
 
 Une fonction dépendante n’est jamais active sans son socle (ex. `sync_enabled` ignoré si `accounts_enabled` est faux). Jusqu’à la page Config de l’admin (phase 4d), un flag se change dans l’éditeur SQL du projet, en tant que propriétaire :
@@ -67,7 +67,49 @@ update public.app_config set value = 'true'::jsonb where key = 'accounts_enabled
 
 **Retour arrière** : remettre le flag à `false` suffit ; aucune mise à jour de l’app n’est nécessaire.
 
-## 5. Banc d’essai SQL sans Docker
+## 5. Comptes (phase 1)
+
+### 5.1 Côté app
+
+| Élément | Fichier |
+|---|---|
+| Client Supabase unique, chargé à la demande | `src/account/supabaseClient.ts` |
+| Session chiffrée (clé AES-256 dans le trousseau, session chiffrée dans `sprinter-account-v1.db`) | `src/account/secureSession.ts` |
+| État du compte, connexion, liaison, export, suppression | `src/account/accountStore.ts` (logique testée) · `src/account/account.ts` (branchement) |
+| Apple (nonce brut → Supabase, SHA-256 → Apple) et Google natifs | `src/account/providers.ts` |
+| Garde-fous du code e-mail (renvoi 60 s, 5 essais puis 15 min) | `src/account/otpGuard.ts` |
+| Écrans | `src/account/ui/` (feuille Compte ouverte depuis Réglages) |
+
+Points d’accroche dans l’existant : une section « Compte » dans `Settings.tsx` (visible seulement si le backend est configuré **et** `accounts_enabled` est vrai), la feuille `account` dans `AppSheets.tsx`, deux `useEffect` dans `App.tsx`, le bandeau dans `RunSummary.tsx`, et `purgeLocalRuns` (effacement local explicite) dans le dépôt de courses.
+
+**Démarrage** : la bibliothèque Supabase et les modules natifs de connexion ne sont jamais importés statiquement (test `tests/account-startup.test.ts`). Le bundle iOS passe de 4 054 832 à 4 871 309 octets de bytecode Hermes (+816 Ko, +20 %) ; ces modules ne sont pas évalués au démarrage. Mesure du temps de démarrage sur iPhone à faire en recette (avant/après, compte absent).
+
+### 5.2 Côté serveur
+
+| Edge Function | Rôle | JWT |
+|---|---|---|
+| `delete-account` | POST : suppression avec authentification réelle < 5 min (claim `amr`) · GET `?operation=` : statut | vérifié dans la fonction (CORS de la page web) |
+| `process-deletions` | reprise planifiée des suppressions interrompues | en-tête `x-cron-secret` |
+| `apple-link` | échange du code d’autorisation Apple, jeton de rafraîchissement chiffré (AES-GCM) | oui |
+| `export-my-data` | archive ZIP lue avec le JWT de l’utilisateur (RLS) | oui |
+
+RPC ajoutées (`0006_accounts.sql`) : `record_consent` (idempotent par `client_event_id`, rejet des décisions obsolètes), `my_consents`, `register_device` (session liée à l’appareil), `disconnect_device` (révoque la session de l’appareil), `touch_activity` (jour local borné à [hier, demain]), `my_data_summary`, et les fonctions `service_*` réservées aux Edge Functions.
+
+**Secrets des Edge Functions** (Supabase › Edge Functions › Secrets, jamais dans le dépôt) : `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_BUNDLE_ID` (= `app.sprinter.running`), `APPLE_PRIVATE_KEY` (contenu de la clé `.p8`), `APPLE_TOKEN_KEY` (32 octets aléatoires en base64 : `openssl rand -base64 32`), `CRON_SECRET`, `PUBLIC_WEB_ORIGINS` (ex. `https://<domaine>`).
+
+**Tâche planifiée** : Supabase › Integrations › Cron, toutes les 15 minutes, requête HTTP POST vers `/functions/v1/process-deletions` avec l’en-tête `x-cron-secret` (valeur stockée dans Vault).
+
+### 5.3 Fournisseurs (staging puis production)
+
+1. **E-mail** : SMTP personnalisé (Authentication › SMTP), longueur du code 6, expiration 600 s, renvoi 60 s ; recopier les modèles `supabase/templates/magic_link.html` et `confirmation.html` (ils affichent `{{ .Token }}`).
+2. **Apple** : activer « Sign in with Apple » sur `app.sprinter.running` ; dans Supabase › Auth › Apple, ajouter `app.sprinter.running` aux Authorized Client IDs.
+3. **Google** : clients OAuth Web (renseigné dans Supabase), iOS et Android ; ajouter les identifiants iOS/Android aux Authorized Client IDs ; activer « Skip nonce checks » (la bibliothèque native gratuite ne transmet pas de nonce, §6.2).
+4. **App** (variables EAS) : `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME` (active le plugin Google au build), `EXPO_PUBLIC_SITE_URL` (liens CGU, confidentialité, suppression).
+5. **Page web** : `web/supprimer-mon-compte/` (voir `web/README.md`).
+
+Limite connue : le blocage après 5 codes faux est appliqué par l’app ; côté serveur, seule la limite par IP de Supabase (`token_verifications`) s’applique.
+
+## 6. Banc d’essai SQL sans Docker
 
 `scripts/db-local/run.mjs` initialise un PostgreSQL 17 éphémère, applique `scripts/db-local/supabase-shim.sql` (rôles `anon`/`authenticated`/`service_role`, `auth.users`/`identities`/`sessions`, `auth.uid()`/`jwt()`, `storage.buckets`/`objects`), toutes les migrations, pgTAP, puis exécute `supabase/tests/database/*.sql` (une connexion par fichier, comme `pg_prove`).
 
@@ -75,7 +117,7 @@ Prérequis : `cd scripts/db-local && npm install`, puis `PG_BIN` (dossier conten
 
 Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent (les migrations qui l’utilisent le détectent). **La référence reste la CI** (`supabase test db`).
 
-## 6. Environnements et procédures
+## 7. Environnements et procédures
 
 | Env | Supabase | Données |
 |---|---|---|
@@ -87,10 +129,12 @@ Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent 
 
 **Secrets** : saisis directement dans les gestionnaires (Supabase › Edge Functions › Secrets, Vercel, EAS). Jamais dans un fichier du dépôt ni dans une conversation.
 
-## 7. Variables d’environnement (Annexe A)
+## 8. Variables d’environnement (Annexe A)
 
 | Variable | Où | Public |
 |---|---|---|
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | App (EAS env / `.env.local` non versionné) | oui |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`, `EXPO_PUBLIC_SITE_URL` | App | oui |
+| `APPLE_*`, `APPLE_TOKEN_KEY`, `CRON_SECRET`, `PUBLIC_WEB_ORIGINS` | Secrets des Edge Functions | **non** |
 
 Sans ces deux variables, aucune fonction en ligne n’existe dans l’app. L’URL doit être en HTTPS (HTTP accepté uniquement pour `localhost`/`127.0.0.1`).

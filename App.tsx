@@ -29,6 +29,8 @@ import { progression } from './src/progression/store';
 import { connectAppleIntegrations } from './src/apple/connect';
 import { connectRunningTools } from './src/tools/connect';
 import { startAppConfig } from './src/account/config';
+import { startAccount } from './src/account/account';
+import { onAccountSheetRequest } from './src/account/ui/bus';
 
 function KeepScreenAwake() {
   useKeepAwake('sprinter-active-screen');
@@ -80,6 +82,8 @@ function AppContent() {
   useEffect(connectRunningTools, []);
   // Configuration distante facultative : sans backend configuré, aucun appel réseau.
   useEffect(startAppConfig, []);
+  useEffect(startAccount, []);
+  useEffect(() => onAccountSheetRequest(() => setSheet('account')), []);
 
   const openHome = useCallback(() => {
     setTab('home');
@@ -196,6 +200,7 @@ function AppContent() {
             if (!session.getSnapshot().run) navigation.navigate('Preparation');
           }}
           onTools={() => setSheet('tools')}
+          onAccount={() => setSheet('account')}
         />
         {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
         <SessionToast covered={modalVisible} />

@@ -13,6 +13,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.sprinter.running",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "spotify"
@@ -75,6 +76,7 @@
         }
       ],
       "expo-sharing",
+      "expo-apple-authentication",
       "./plugins/with-sprinter-apple",
       [
         "expo-widgets",

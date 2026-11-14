@@ -5,10 +5,11 @@ import Music from '../screens/Music';
 import RunningTools from '../screens/RunningTools';
 import Settings from '../screens/Settings';
 import Workouts from '../screens/Workouts';
+import { AccountSheet } from '../account/ui/AccountSheet';
 import { useSessionStructure } from '../services/useSessionSelector';
 import { useTheme } from '../ui/theme';
 
-export type Sheet = 'music' | 'player' | 'settings' | 'workouts' | 'tools';
+export type Sheet = 'music' | 'player' | 'settings' | 'workouts' | 'tools' | 'account';
 
 export const AppSheets = memo(function AppSheets({
   sheet,
@@ -18,6 +19,7 @@ export const AppSheets = memo(function AppSheets({
   onApple,
   onPrepare,
   onTools,
+  onAccount,
 }: {
   sheet: Sheet | null;
   onClose: () => void;
@@ -26,6 +28,7 @@ export const AppSheets = memo(function AppSheets({
   onApple: () => void;
   onPrepare: () => void;
   onTools: () => void;
+  onAccount: () => void;
 }) {
   const { colors, reduceMotion } = useTheme();
   const state = useSessionStructure();
@@ -53,8 +56,10 @@ export const AppSheets = memo(function AppSheets({
             onRecovery={onRecovery}
             onApple={onApple}
             onTools={onTools}
+            onAccount={onAccount}
           />
         )}
+        {sheet === 'account' && <AccountSheet onClose={onClose} />}
         {sheet === 'workouts' && <Workouts onClose={onClose} onSelected={onClose} onDetail={onDetail} />}
         {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
       </View>

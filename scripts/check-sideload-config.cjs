@@ -13,4 +13,7 @@ assert(!plugins.includes('expo-widgets'));
 assert(!plugins.includes('./plugins/with-sprinter-apple'));
 assert(plugins.includes('./plugins/with-sprinter-sideload'));
 assert.equal(variant.ios.bundleIdentifier, config.ios.bundleIdentifier);
+assert(!plugins.includes('expo-apple-authentication'));
+assert.equal(variant.ios.usesAppleSignIn, undefined);
+assert.equal(config.ios.usesAppleSignIn, true, 'Normal builds keep Sign in with Apple');
 console.log('Normal build preserved; sideload variant configured without HealthKit/widgets.');
