@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Button, Copy, Panel } from '../../ui/components';
 import { TextField } from '../../ui/controls';
 import { spacing } from '../../ui/tokens';
@@ -102,6 +102,11 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
         <Button title="Continuer avec Google" icon="logo-google" disabled={gate} secondary={appleSupported} onPress={() => void account.signInWithGoogle().then(done)} />
       )}
       <Button title="Continuer avec une adresse e-mail" icon="mail-outline" secondary disabled={gate} onPress={() => { account.clearNotice(); setStep('email'); }} />
+      {Platform.OS === 'android' && (
+        <Copy variant="caption" muted>
+          Compte créé avec Apple sur un iPhone ? La connexion Apple n’est pas disponible sur Android : depuis l’iPhone, ajoutez Google ou une adresse e-mail dans Réglages › Compte › Méthodes de connexion, puis utilisez cette méthode ici.
+        </Copy>
+      )}
       {!adult && <Copy variant="caption" muted>Cochez la case pour continuer.</Copy>}
       <FormError message={state.error} />
     </View>

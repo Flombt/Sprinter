@@ -1,6 +1,6 @@
 import { CloudRoutePanel } from '../sync/ui/CloudRoutePanel';
 import { useCallback, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import type { SeriesPoint } from '../analysis/types';
 import type { RunRecord, TrackPoint } from '../core/types';
 import { duration, km, pace, runDate, targetLabel } from '../core/format';
@@ -275,7 +275,7 @@ export default function Detail({
           {onRecords && (
             <Button title="Tous mes records personnels" secondary icon="trophy-outline" onPress={onRecords} />
           )}
-          <HealthSyncPanel run={run} onOpen={onApple} />
+          {(Platform.OS === 'ios' || run.healthKit) && <HealthSyncPanel run={run} onOpen={onApple} />}
           <ActivitySharing run={run} />
           <ActivityJournal run={run} />
           <Button title="Supprimer cette sortie" secondary danger icon="trash-outline" onPress={remove} />
