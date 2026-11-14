@@ -1,6 +1,8 @@
 -- Phase 4b : recherche, fiche et actions (§10.4, §14 4b).
 begin;
 select plan(27);
+-- Les agrégats admin portent sur tous les comptes : la graine synthétique de la CI est effacée pour ce test.
+select tests.clear_seed();
 
 create temporary table ids (name text primary key, id uuid) on commit drop;
 grant select on ids to authenticated, anon;
