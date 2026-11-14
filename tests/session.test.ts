@@ -42,6 +42,27 @@ function nativeFix(epoch: number, t: number, meters: number, speed = 3): Locatio
     accuracy: 4, speed, heading: 0, altitude: 100, altitudeAccuracy: 3 } };
 }
 describe('session lifecycle (simulated platform services)', () => {
+  it('does not start GPS without authorization or after losing it during the permission prompt', async () => {
+    await store.initialize();
+    let authenticated = false;
+    const canStart = () => authenticated;
+    expect(await store.start(DEFAULT_TARGET, null, {}, canStart)).toBe(false);
+    expect(mocks.foreground).not.toHaveBeenCalled();
+
+    authenticated = true;
+    mocks.foreground.mockImplementationOnce(async () => {
+      authenticated = false;
+      return { granted: true };
+    });
+    expect(await store.start(DEFAULT_TARGET, null, {}, canStart)).toBe(false);
+    expect(mocks.watch).not.toHaveBeenCalled();
+    expect(store.getSnapshot()).toMatchObject({ running: false, run: null, busy: false });
+
+    authenticated = true;
+    expect(await store.start(DEFAULT_TARGET, null, {}, canStart)).toBe(true);
+    expect(mocks.watch).toHaveBeenCalledOnce();
+  });
+
   it('unblocks a corrupt recovery only after its archive has been committed', async () => {
     mocks.loadDraft.mockRejectedValueOnce(new Error('Invalid JSON'));
     await store.initialize(); expect(store.getSnapshot().recoveryBlocked).toBe(true);

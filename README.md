@@ -2,6 +2,8 @@
 
 Application iPhone de running en français, développée **sous Windows avec React Native et Expo**, conformément au choix Expo Go. Ce projet remplace l’amorce SwiftUI initiale. Il ne contient pas de faux parcours ni d’activités de démonstration.
 
+Sprinter demande un compte au lancement. Configurez `EXPO_PUBLIC_SUPABASE_URL` et `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` avant de lancer ou compiler l’application, puis activez une méthode de connexion sur le projet Supabase. Voir [la configuration des comptes](docs/ACCOUNTS.md#5-comptes-phase-1).
+
 ## Ouvrir sur votre iPhone maintenant
 
 1. Installer **Expo Go** depuis l’App Store.

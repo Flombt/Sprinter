@@ -4,7 +4,7 @@ import type { RunRecord } from '../../core/types';
 import { Button, Copy, Panel } from '../../ui/components';
 import { spacing } from '../../ui/tokens';
 import { useTheme } from '../../ui/theme';
-import { useAccountsEnabled } from '../../account/account';
+import { useFlag } from '../../account/config';
 import { downloadRoute, syncLocal } from '../sync';
 import type { RouteProgress } from '../routes';
 
@@ -18,7 +18,7 @@ const REASONS: Record<string, string> = {
  * validité calculée par le serveur, affichée à titre d'information (§9.1).
  */
 export function CloudRoutePanel({ run }: { run: RunRecord }) {
-  const enabled = useAccountsEnabled();
+  const enabled = useFlag('accounts_enabled');
   const { colors } = useTheme();
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [progress, setProgress] = useState<RouteProgress | null>(null);

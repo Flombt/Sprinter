@@ -1,7 +1,7 @@
 /**
  * Configuration publique du backend, embarquée au build par Expo (EXPO_PUBLIC_*).
  * Ces valeurs sont publiques par construction : uniquement l'URL du projet et sa clé
- * publique. Sans elles, l'app fonctionne exactement comme avant (aucun appel réseau).
+ * publique. Sans elles, la connexion est indisponible.
  */
 export interface BackendConfig {
   url: string;

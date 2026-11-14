@@ -26,7 +26,7 @@ import { CoachingSettings } from '../coaching/SettingsPanel';
 import { coachingSummary } from '../coaching/presentation';
 import { PrecisionPanel } from '../settings/PrecisionPanel';
 import { TrackingPanel } from '../settings/TrackingPanel';
-import { useAccount, useAccountsEnabled } from '../account/account';
+import { useAccount } from '../account/account';
 
 type SettingsPage = 'main' | 'coach' | 'tracking' | 'precision' | 'privacy';
 const PAGE_TITLE = {
@@ -86,14 +86,12 @@ function AccountEntry({ onAccount }: { onAccount: () => void }) {
     <View style={{ gap: spacing.md }}>
       <SectionHeading title="Compte" />
       <ListRow
-        title={account.status === 'signedIn' ? 'Compte et sauvegarde' : 'Compte facultatif'}
+        title="Compte et sauvegarde"
         icon="person-circle-outline"
         onPress={onAccount}
         subtitle={
           <Copy muted variant="caption">
-            {account.status === 'signedIn'
-              ? (account.email ?? 'Connecté') + ' · méthodes de connexion, mes données.'
-              : 'Sauvegarder vos courses et les retrouver sur un autre appareil.'}
+            {(account.email ?? 'Connecté') + ' · méthodes de connexion, mes données.'}
           </Copy>
         }
       />
@@ -116,7 +114,6 @@ export default function Settings({
   onClose?: () => void;
   onAccount?: () => void;
 }) {
-  const accountsEnabled = useAccountsEnabled();
   const { colors, devPalette } = useTheme();
   const { largeText } = useAdaptiveLayout();
   const [page, setPage] = useState<SettingsPage>('main');
@@ -191,7 +188,7 @@ export default function Settings({
     <Screen key="settings-main">
       <Header title="Réglages" subtitle="Sprinter" right={close} />
       <Copy muted>Un coach à votre mesure, des réglages faciles à retrouver.</Copy>
-      {accountsEnabled && onAccount && <AccountEntry onAccount={onAccount} />}
+      {onAccount && <AccountEntry onAccount={onAccount} />}
       <View style={{ gap: spacing.md }}>
         <SectionHeading title="Coach de course" />
         <Panel variant="setting" style={{ gap: spacing.lg }}>

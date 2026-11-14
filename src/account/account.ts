@@ -1,15 +1,14 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- chargement paresseux volontaire : aucun module de compte au démarrage (§0.1). */
+/* eslint-disable @typescript-eslint/no-require-imports -- le client Supabase est chargé seulement si le backend est configuré. */
 import { useSyncExternalStore } from 'react';
 import { randomUUID } from 'expo-crypto';
 import { backend } from './env';
 import { accountKv } from './kv';
-import { appConfig } from './config';
-import { AccountStore, type AccountSnapshot } from './accountStore';
+import { AccountStore, isSignedIn, type AccountSnapshot } from './accountStore';
 import { appVersion, deviceId, devicePlatform, localDay, osVersion } from './device';
 import { appleCredential, appleSupported, googleIdToken, googleSupported } from './providers';
 
 type ClientModule = typeof import('./supabaseClient');
-// Chargement paresseux : la bibliothèque Supabase n'est évaluée qu'au premier usage du compte.
+// Chargement paresseux pour les builds sans configuration backend.
 const clientModule = (): ClientModule => require('./supabaseClient') as ClientModule;
 
 export const account = new AccountStore({
@@ -43,20 +42,10 @@ export const account = new AccountStore({
   uuid: randomUUID,
 });
 
-let unsubscribe: (() => void) | null = null;
-/** Démarre le module compte dès que `accounts_enabled` est actif ; sinon rien n'est chargé. */
+/** Restaure le compte avant l'accès à l'application, indépendamment des options cloud. */
 export function startAccount() {
-  if (!backend || unsubscribe) return;
-  const evaluate = () => {
-    if (appConfig.getSnapshot().flags.accounts_enabled) {
-      void account.start(() => clientModule().sessionStorage.getItem('sprinter-auth'));
-    }
-  };
-  unsubscribe = appConfig.subscribe(evaluate);
-  evaluate();
+  if (backend) void account.start(() => clientModule().sessionStorage.getItem('sprinter-auth'));
 }
 
 export const useAccount = (): AccountSnapshot => useSyncExternalStore(account.subscribe, account.getSnapshot, account.getSnapshot);
-/** Le compte n'est proposé que si le backend est configuré ET le flag actif (§14 phase 1). */
-export const useAccountsEnabled = (): boolean =>
-  useSyncExternalStore(appConfig.subscribe, () => !!backend && appConfig.getSnapshot().flags.accounts_enabled, () => false);
+export const hasSignedInAccount = () => isSignedIn(account.getSnapshot());

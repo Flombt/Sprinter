@@ -29,8 +29,9 @@ import { progression } from './src/progression/store';
 import { connectAppleIntegrations } from './src/apple/connect';
 import { connectRunningTools } from './src/tools/connect';
 import { startAppConfig, useAppConfig } from './src/account/config';
-import { startAccount } from './src/account/account';
-import { onAccountSheetRequest } from './src/account/ui/bus';
+import { startAccount, useAccount } from './src/account/account';
+import { isSignedIn } from './src/account/accountStore';
+import { AccountGate } from './src/account/ui/AccountGate';
 import { startSync } from './src/sync/sync';
 import { startProfile } from './src/profile/profile';
 import { UpdateRequiredGate } from './src/account/ui/UpdateRequired';
@@ -75,10 +76,11 @@ function AppContent() {
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [profileToken, setProfileToken] = useState<string | null>(null);
+  const authenticated = isSignedIn(useAccount());
   const config = useAppConfig();
   useEffect(() => {
-    if (profileToken && config.flags.accounts_enabled && config.flags.profile_sharing_enabled) setSheet('account');
-  }, [profileToken, config.flags.accounts_enabled, config.flags.profile_sharing_enabled]);
+    if (authenticated && profileToken && config.flags.profile_sharing_enabled) setSheet('account');
+  }, [authenticated, profileToken, config.flags.profile_sharing_enabled]);
 
   useEffect(() => {
     void Promise.all([session.initialize(), progression.initialize()]).then(() =>
@@ -94,7 +96,6 @@ function AppContent() {
   useEffect(startAccount, []);
   useEffect(startSync, []);
   useEffect(startProfile, []);
-  useEffect(() => onAccountSheetRequest((entry) => setSheet(entry === 'signIn' ? 'signIn' : 'account')), []);
 
   const openHome = useCallback(() => {
     setTab('home');
@@ -125,18 +126,24 @@ function AppContent() {
 
   const openRecovery = useCallback(() => navigation.navigate('Recovery'), [navigation]);
   const runStart = useRunStart(openHome, openRecovery);
+  const cancelStart = runStart.cancel;
+  useEffect(() => {
+    if (authenticated) return;
+    cancelStart();
+    setSheet(null);
+  }, [authenticated, cancelStart]);
 
   const finish = () => {
     void session.finish().then((run) => {
       if (!run) return;
       haptic.success();
       openHome();
-      navigation.navigate('RunSummary', { runId: run.id });
+      if (navigation.isReady()) navigation.navigate('RunSummary', { runId: run.id });
     });
   };
   const confirmFinish = () =>
     confirm('Terminer la course ?', 'Votre sortie sera enregistrée.', 'Enregistrer', finish);
-  const modalVisible = sheet !== null || runStart.countdown;
+  const modalVisible = authenticated && (sheet !== null || runStart.countdown);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -157,7 +164,13 @@ function AppContent() {
           accessibilityElementsHidden={modalVisible}
           importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
         >
-          {startup.ready ? (
+          {!authenticated ? (
+            <AccountGate
+              onSignedIn={(first) => {
+                if (first && !profileToken) setSheet('accountSetup');
+              }}
+            />
+          ) : startup.ready ? (
             <RootStack
               navigationRef={navigation}
               onReady={() => {
@@ -193,30 +206,37 @@ function AppContent() {
             </Screen>
           )}
         </View>
-        <AppSheets
-          sheet={sheet}
-          profileToken={profileToken}
-          onClose={() => { setSheet(null); setProfileToken(null); }}
-          onDetail={(run) => {
-            setSheet(null);
-            navigation.dispatch(StackActions.push('Detail', { runId: run.id }));
-          }}
-          onRecovery={() => {
-            setSheet(null);
-            navigation.navigate('Recovery');
-          }}
-          onApple={() => {
-            setSheet(null);
-            navigation.navigate('Apple');
-          }}
-          onPrepare={() => {
-            setSheet(null);
-            if (!session.getSnapshot().run) navigation.navigate('Preparation');
-          }}
-          onTools={() => setSheet('tools')}
-          onAccount={() => setSheet('account')}
-        />
-        {runStart.countdown && <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />}
+        {authenticated && startup.ready && (
+          <AppSheets
+            sheet={sheet}
+            profileToken={profileToken}
+            onClose={() => {
+              setSheet(null);
+              setProfileToken(null);
+            }}
+            onDetail={(run) => {
+              setSheet(null);
+              navigation.dispatch(StackActions.push('Detail', { runId: run.id }));
+            }}
+            onRecovery={() => {
+              setSheet(null);
+              navigation.navigate('Recovery');
+            }}
+            onApple={() => {
+              setSheet(null);
+              navigation.navigate('Apple');
+            }}
+            onPrepare={() => {
+              setSheet(null);
+              if (!session.getSnapshot().run) navigation.navigate('Preparation');
+            }}
+            onTools={() => setSheet('tools')}
+            onAccount={() => setSheet('account')}
+          />
+        )}
+        {authenticated && runStart.countdown && (
+          <RunCountdown onCancel={runStart.cancel} onComplete={runStart.begin} />
+        )}
         <SessionToast covered={modalVisible} />
         <UpdateRequiredGate />
       </View>

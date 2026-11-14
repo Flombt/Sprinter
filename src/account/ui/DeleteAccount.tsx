@@ -31,7 +31,7 @@ export function DeleteAccount({ onDone }: { onDone: () => void }) {
       <SettingsNotice icon="warning-outline" title="Action irréversible"
         body="Votre compte et toutes vos données stockées en ligne seront supprimés définitivement. Vos courses restent sur cet appareil. Cette action est irréversible." />
       <Panel variant="setting">
-        <Toggle title="Effacer aussi les courses de cet appareil" body="Désactivé par défaut : vos courses restent disponibles sans compte." value={wipe} onChange={setWipe} />
+        <Toggle title="Effacer aussi les courses de cet appareil" body="Désactivé par défaut. Vos courses restent enregistrées sur cet appareil." value={wipe} onChange={setWipe} />
       </Panel>
       {!confirmed ? (
         <Reauthenticate reason="La suppression exige une connexion de moins de 5 minutes." onConfirmed={() => setConfirmed(true)} />

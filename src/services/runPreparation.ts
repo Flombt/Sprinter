@@ -4,15 +4,17 @@ import { workouts } from '../workouts/store';
 import { progression } from '../progression/store';
 import { toolsStore } from '../tools/store';
 import { resolveRunSetup } from './runSetup';
+import { hasSignedInAccount } from '../account/account';
 
 export async function startPreparedRun(target: PaceTarget) {
+  if (!hasSignedInAccount()) return false;
   await Promise.all([session.initialize(), workouts.initialize(), progression.initialize(), toolsStore.initialize()]);
   const state = session.getSnapshot(), library = workouts.getSnapshot(), progress = progression.getSnapshot(), tools = toolsStore.getSnapshot();
   if (library.busy || progress.busy || tools.busy) { session.reportMessage('Vos options de course sont en cours d’enregistrement. Réessayez dans un instant.'); return false; }
   const setup = resolveRunSetup({ target, history: state.history, data: progress.data, workout: library.preferences.selected,
     routes: tools.routes, routeId: tools.preferences.selectedRouteId, maximumSpeed: state.settings.config.maximumSpeed });
   if (setup.error) { session.reportMessage(setup.error); return false; }
-  const started = await session.start(setup.target, setup.definition, setup.metadata);
+  const started = await session.start(setup.target, setup.definition, setup.metadata, hasSignedInAccount);
   if (started && (!library.ready || !progress.ready || !tools.ready)) session.reportMessage('Course démarrée. Certaines options locales indisponibles n’ont pas pu être appliquées.');
   return started;
 }

@@ -1,4 +1,3 @@
-import { SaveRunsNudge } from '../account/ui/SaveRunsNudge';
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Platform, View, useWindowDimensions } from 'react-native';
 import { activityAnalysis } from '../analysis/cache';
@@ -104,7 +103,6 @@ export default function RunSummary({
   return (
     <Screen>
       <Header title="Course enregistrée" onBack={onBack} />
-      <SaveRunsNudge runs={history.length} />
       <Panel variant="metric" style={{ gap: spacing.lg }}>
         <SummaryMetric label="Distance · km" value={run.distanceMeters} format={km} />
         <MetricGrid>

@@ -2,9 +2,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// « Aucune régression au démarrage » (§0.1, §14 phase 1) : la bibliothèque Supabase et les
-// modules natifs de connexion ne sont jamais importés statiquement ; ils sont chargés au
-// premier usage du compte, et seulement si le flag accounts_enabled est actif.
+// Supabase est chargé au démarrage uniquement avec un backend configuré.
+// Les SDK natifs Apple et Google sont toujours chargés au moment de la connexion.
 const root = join(__dirname, '..');
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -18,7 +17,7 @@ const sources = [join(root, 'App.tsx'), ...files(join(root, 'src'))].map((path) 
 }));
 const staticImport = (module: string) => new RegExp(`^import\\s+(?!type\\b)[^;]*?from\\s+['"]${module.replace(/[/@.-]/g, (c) => `\\${c}`)}['"]`, 'm');
 
-describe('démarrage sans compte', () => {
+describe('chargement du module compte', () => {
   it('ne charge Supabase que dans le module client, lui-même chargé à la demande', () => {
     const importers = sources.filter((file) => staticImport('@supabase/supabase-js').test(file.text)).map((file) => file.path);
     expect(importers).toEqual(['src/account/supabaseClient.ts']);

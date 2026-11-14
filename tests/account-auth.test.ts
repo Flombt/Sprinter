@@ -6,7 +6,7 @@ import { createMemoryKeyValueStore } from '../src/account/kvStore';
 import {
   codeFailed, codeSent, EMPTY_OTP_GUARD, isLocked, OTP_LOCK_MS, OTP_RESEND_MS, secondsUntilResend, validCode, validEmail,
 } from '../src/account/otpGuard';
-import { AccountStore, lastAuthenticationAt, parseStoredSession, REAUTH_WINDOW_MS, type AccountDependencies } from '../src/account/accountStore';
+import { AccountStore, isSignedIn, lastAuthenticationAt, parseStoredSession, REAUTH_WINDOW_MS, type AccountDependencies } from '../src/account/accountStore';
 
 const secrets = () => {
   const map = new Map<string, string>();
@@ -74,7 +74,7 @@ function fakeClient(userId: string) {
     if (name === 'record_consent') return { data: { status: 'applied', effective: null }, error: null };
     return { data: { ok: true }, error: null };
   });
-  const session = (id: string, ago = 0) => ({ access_token: accessToken(id, ago), user: { id, email: 'c@example.test', app_metadata: { providers: ['email'] } } });
+  const session = (id: string, ago = 0) => ({ access_token: accessToken(id, ago), refresh_token: 'test-refresh-token', user: { id, email: 'c@example.test', app_metadata: { providers: ['email'] } } });
   const auth = {
     verifyOtp: vi.fn(async ({ token }: { token: string }) => token === '123456'
       ? { data: { session: session(userId) }, error: null } : { data: { session: null }, error: { message: 'invalid' } }),
@@ -106,7 +106,7 @@ function store(options: { client: Fake; ephemeral?: Fake; now?: () => number }) 
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
-describe('compte facultatif', () => {
+describe('compte Sprinter', () => {
   it('explique un envoi e-mail refusé sans afficher le champ de code ni démarrer le délai de renvoi', async () => {
     const client = fakeClient(randomUUID());
     client.auth.signInWithOtp.mockResolvedValueOnce({ error: { code: 'email_address_not_authorized' } });
@@ -118,13 +118,34 @@ describe('compte facultatif', () => {
 
   it('restaure l’état connecté sans réseau à partir de la session conservée', async () => {
     const id = randomUUID();
-    const { account } = store({ client: fakeClient(id) });
-    await account.start(async () => JSON.stringify({ user: { id, email: 'c@example.test', app_metadata: { providers: ['apple'] } } }));
-    expect(account.getSnapshot()).toMatchObject({ status: 'signedIn', userId: id, providers: ['apple'] });
+    const client = fakeClient(id);
+    const { account } = store({ client });
+    expect(isSignedIn(account.getSnapshot())).toBe(false);
+    await account.start(async () => JSON.stringify(client.session(id)));
+    expect(account.getSnapshot()).toMatchObject({ status: 'signedIn', userId: id, providers: ['email'] });
+    expect(isSignedIn(account.getSnapshot())).toBe(true);
     expect(parseStoredSession('{broken')).toBeNull();
-    const { account: guest } = store({ client: fakeClient(id) });
-    await guest.start(async () => null);
-    expect(guest.getSnapshot().status).toBe('signedOut');
+    expect(parseStoredSession(JSON.stringify({ user: { id } }))).toBeNull();
+    await account.signOut();
+    expect(isSignedIn(account.getSnapshot())).toBe(false);
+  });
+
+  it('n’autorise l’accès qu’après la validation du code, sans créer de compte lors d’une connexion', async () => {
+    const client = fakeClient(randomUUID());
+    const { account } = store({ client });
+    await account.start(async () => null);
+    expect(account.getSnapshot().status).toBe('signedOut');
+    expect(await account.requestEmailCode('c@example.test', false)).toBe(true);
+    expect(client.auth.signInWithOtp).toHaveBeenLastCalledWith({ email: 'c@example.test', options: { shouldCreateUser: false } });
+    expect(isSignedIn(account.getSnapshot())).toBe(false);
+    expect(await account.verifyEmailCode('c@example.test', '000000')).toBe(false);
+    expect(isSignedIn(account.getSnapshot())).toBe(false);
+    expect(await account.verifyEmailCode('c@example.test', '123456')).toBe(true);
+    expect(isSignedIn(account.getSnapshot())).toBe(true);
+    await account.signOut();
+    expect(await account.requestEmailCode('nouveau@example.test', true)).toBe(true);
+    expect(client.auth.signInWithOtp).toHaveBeenLastCalledWith({ email: 'nouveau@example.test', options: { shouldCreateUser: true } });
+    expect(isSignedIn(account.getSnapshot())).toBe(false);
   });
 
   it('bloque après 5 codes faux et enregistre CGU + confidentialité à la première connexion', async () => {
@@ -153,13 +174,14 @@ describe('compte facultatif', () => {
     const id = randomUUID();
     const intruder = fakeClient(randomUUID());
     const { account } = store({ client: fakeClient(id), ephemeral: intruder, now: () => now });
-    await account.start(async () => JSON.stringify({ user: { id } }));
+    await account.start(async () => JSON.stringify(fakeClient(id).session(id)));
     expect(await account.reauthenticate('email', 'c@example.test', '123456')).toBe(false);
     expect(account.getSnapshot().error).toMatch(/autre compte/);
     expect(intruder.auth.signOut).toHaveBeenCalled();
 
-    const same = store({ client: fakeClient(id), now: () => now });
-    await same.account.start(async () => JSON.stringify({ user: { id } }));
+    const sameClient = fakeClient(id);
+    const same = store({ client: sameClient, now: () => now });
+    await same.account.start(async () => JSON.stringify(sameClient.session(id)));
     expect(await same.account.reauthenticate('email', 'c@example.test', '123456')).toBe(true);
     expect(same.account.recentlyAuthenticated()).toBe(true);
     now += REAUTH_WINDOW_MS + 1000;
@@ -170,7 +192,7 @@ describe('compte facultatif', () => {
     const id = randomUUID();
     const client = fakeClient(id);
     const { account } = store({ client });
-    await account.start(async () => JSON.stringify({ user: { id } }));
+    await account.start(async () => JSON.stringify(client.session(id)));
     await account.reauthenticate('email', 'c@example.test', '123456');
     expect(await account.unlink({ provider: 'email' } as never)).toBeNull();
     expect(account.getSnapshot().error).toMatch(/au moins une méthode/);
@@ -179,8 +201,9 @@ describe('compte facultatif', () => {
 
   it('suppression : exige une ré-authentification, suit le nettoyage jusqu’à la fin', async () => {
     const id = randomUUID();
-    const { account, kv, clearSession } = store({ client: fakeClient(id) });
-    await account.start(async () => JSON.stringify({ user: { id } }));
+    const client = fakeClient(id);
+    const { account, kv, clearSession } = store({ client });
+    await account.start(async () => JSON.stringify(client.session(id)));
     const fetchMock = vi.fn(async (url: string) => url.includes('?operation=')
       ? new Response(JSON.stringify({ status: 'done' }))
       : new Response(JSON.stringify({ status: 'pending', operation_id: 'op-1' }), { status: 202 }));
