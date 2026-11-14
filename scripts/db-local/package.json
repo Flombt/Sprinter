@@ -1,0 +1,8 @@
+{
+  "name": "sprinter-db-local",
+  "private": true,
+  "description": "Banc d'essai SQL local sans Docker (PostgreSQL éphémère + émulation Supabase + pgTAP).",
+  "type": "module",
+  "scripts": { "test": "node run.mjs" },
+  "dependencies": { "pg": "8.23.1" }
+}
