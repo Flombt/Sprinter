@@ -191,3 +191,15 @@ Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent 
 | `GOOGLE_MAPS_ANDROID_API_KEY` | Build EAS Android (clé restreinte) | non versionnée |
 
 Sans ces deux variables, aucune fonction en ligne n’existe dans l’app. L’URL doit être en HTTPS (HTTP accepté uniquement pour `localhost`/`127.0.0.1`).
+
+## 12. Profil personnalisé (phase 8, §17)
+
+Surface distincte du profil de compte (§6.5), entièrement facultative, pilotée par `profiles_enabled` (puis `profile_studio_enabled`, `profile_sharing_enabled`, `theme_library_enabled`, `profile_cards_enabled`, tous dépendants de `profiles_enabled` côté app et côté serveur).
+
+**8a · Profil privé**
+
+- **Serveur** (`0015_profiles.sql`) : `public.profile_elements` — un enregistrement par élément (`identity`, `appearance`, `avatar`, `banner`, `about`, `status`, `layout`, `widget:<uuid>`), lecture du seul titulaire (RLS), écriture uniquement par `profile_save` (lot ≤ 40, `op_id` rejouable, `base_revision` : conflit si l’élément a changé entre-temps, `prev_op_id` pour éviter un faux conflit après une réponse perdue). Contenus validés par `private.profile_payload_error` (clés en liste blanche, textes bornés, aucun caractère de contrôle, identifiants de catalogue par motif). `profile_pull` relit la version privée. Coupure serveur : `feature_disabled` (pause de 30 min côté app, comme `sync_disabled`).
+- **Médias** : bucket privé `profile-media`, chemin `<uid>/<media_id>.<ext>`. `profile_media_begin` réserve (id choisi par l’app, idempotent, ≤ 5 Mio, 20 médias actifs au plus) ; le dépôt n’est permis que pour une réservation en attente du titulaire ; la fonction `profile-media-commit` lit le fichier (rôle service), vérifie le type réel (octets magiques), les dimensions, l’animation et l’absence d’EXIF GPS, puis valide ou purge. Un élément qui cite un média non validé reste « deferred ». L’ancien média n’est libéré qu’après l’enregistrement de son remplaçant ; le job quotidien `profile-media` purge les réservations abandonnées (> 24 h) et les médias inutilisés (> 7 jours).
+- **App** : base locale séparée `sprinter-profile-v1.db` (ouverte au premier usage, absente du web) avec `profile_saved`, `profile_draft` (brouillon écrit à chaque geste), `profile_outbox` (file transactionnelle), `profile_media` ; chaque ligne est rattachée au titulaire (`owner`). `ProfileSync` a son propre état et ne dépend pas de la sauvegarde des courses ; aucun appel pendant une course. Images : `expo-image-picker` puis réencodage JPEG par `expo-image-manipulator` (orientation corrigée, métadonnées retirées, 1 024 px pour l’avatar, 1 800 px pour la bannière).
+- **Export / suppression** : `profile-page.json`, `profile-media.json` et `profile-media/` dans l’export ; suppression du compte → cascade SQL + purge du dossier `profile-media/<uid>` + effacement local du titulaire.
+- **Entrée** : Réglages › Compte › Mon profil (flag `profiles_enabled`).
