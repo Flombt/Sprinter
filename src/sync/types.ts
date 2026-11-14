@@ -44,6 +44,8 @@ export type BackupState = 'unset' | 'on' | 'off' | 'pending_on' | 'pending_off';
 export interface SyncStatus {
   phase: 'disabled' | 'idle' | 'running' | 'offline' | 'paused' | 'reauth' | 'bound_other' | 'error';
   backup: BackupState;
+  /** Sauvegarde des parcours GPS confirmée par le serveur (§8.1). */
+  routes: 'unset' | 'on' | 'off';
   lastSuccessAt: number | null;
   pending: number;
   blocked: number;

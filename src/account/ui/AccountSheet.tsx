@@ -15,10 +15,11 @@ import { SignInMethods } from './SignInMethods';
 import { useFlag } from '../config';
 import { resetDeviceForCurrentAccount, syncEngine, useSyncStatus } from '../../sync/sync';
 import { BackupChoice, SyncScreen } from '../../sync/ui/SyncScreen';
+import { RouteChoice } from '../../sync/ui/RouteChoice';
 
-type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'sync' | 'methods' | 'data' | 'delete';
+type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete';
 const TITLES: Record<Route, string> = {
-  home: 'Compte', signIn: 'Se connecter', profile: 'Votre profil', backup: 'Sauvegarde', sync: 'Synchronisation',
+  home: 'Compte', signIn: 'Se connecter', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
   methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte',
 };
 
@@ -47,6 +48,7 @@ function signOut(pending: number) {
 export function AccountSheet({ onClose }: { onClose: () => void }) {
   const state = useAccount();
   const syncFlag = useFlag('sync_enabled');
+  const routesFlag = useFlag('routes_sync_enabled');
   const sync = useSyncStatus();
   const [route, setRoute] = useState<Route>('home');
   const [firstTime, setFirstTime] = useState(false);
@@ -58,7 +60,8 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
       <Header title={TITLES[route]} subtitle="Réglages" onBack={route === 'home' ? undefined : back} right={close} />
       {route === 'signIn' && <SignIn onSignedIn={(first) => { setFirstTime(first); setRoute(first ? 'profile' : 'home'); }} />}
       {route === 'profile' && <ProfileForm firstTime={firstTime} onDone={() => { setFirstTime(false); setRoute(firstTime && syncFlag ? 'backup' : 'home'); }} />}
-      {route === 'backup' && <BackupChoice onChosen={() => setRoute('home')} />}
+      {route === 'backup' && <BackupChoice onChosen={() => setRoute(routesFlag && syncEngine.getSnapshot().backup !== 'off' && syncEngine.getSnapshot().backup !== 'pending_off' ? 'routes' : 'home')} />}
+      {route === 'routes' && <RouteChoice onChosen={() => setRoute('home')} />}
       {route === 'sync' && <SyncScreen />}
       {route === 'methods' && <SignInMethods />}
       {route === 'data' && <MyData onDelete={() => setRoute('delete')} />}

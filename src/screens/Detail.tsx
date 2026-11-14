@@ -1,3 +1,4 @@
+import { CloudRoutePanel } from '../sync/ui/CloudRoutePanel';
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import type { SeriesPoint } from '../analysis/types';
@@ -101,6 +102,7 @@ export default function Detail({
   return (
     <Screen bottom={40}>
       <Header title="Votre sortie" onBack={onBack} />
+      <CloudRoutePanel run={run} />
       <View style={{ gap: spacing.sm }}>
         <View style={[styles.row, { gap: spacing.sm, flexWrap: 'wrap' }]}>
           <RunnerGlyph size={18} color={colors.secondary} />

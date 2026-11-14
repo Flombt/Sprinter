@@ -17,6 +17,7 @@ import { ProgressAnnouncements } from '../coaching/progress';
 import { progression } from '../progression/store';
 import { forgetActivityAnalysis } from '../analysis/cache';
 import { recentMapFix } from './sessionView';
+import { bestEfforts } from '../sync/routes';
 
 export interface SessionState {
   ready: boolean; loading: boolean; busy: boolean; error: string | null; message: string | null;
@@ -275,6 +276,8 @@ export class RunningStore {
     this.engine.pause(mono()); this.engine.drainEvents(); this.stopTimer(); coaching.stop(); this.emit({ busy: true });
     try {
       const result = this.engine.finish(Date.now());
+      // Meilleurs efforts calculés sur l'appareil, après l'arrêt du GPS (§8.3).
+      if (!result.bestEfforts) { try { const efforts = bestEfforts(result); if (efforts) result.bestEfforts = efforts; } catch { /* facultatif */ } }
       // Fuseau de l'appareil pour le jour local des statistiques (§7.3), sans effet sur la course.
       if (!result.tz) { try { const zone = Intl.DateTimeFormat().resolvedOptions().timeZone; if (zone) result.tz = zone; } catch { /* facultatif */ } }
       // Commit the user's Health-export intent with the run itself, before any

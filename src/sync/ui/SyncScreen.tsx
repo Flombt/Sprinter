@@ -8,6 +8,8 @@ import { session } from '../../services/session';
 import { useSessionStructure } from '../../services/useSessionSelector';
 import { probableDuplicates } from '../duplicates';
 import { syncEngine, syncLocal, useSyncStatus } from '../sync';
+import { useFlag } from '../../account/config';
+import { RouteSettings } from './RouteChoice';
 
 const date = (value: number | null) => (value ? new Date(value).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : 'jamais');
 const km = (meters: number) => `${(meters / 1000).toFixed(2).replace('.', ',')} km`;
@@ -48,6 +50,7 @@ export function SyncScreen() {
     void syncLocal.setState('duplicates_dismissed', JSON.stringify([...next]));
   };
   const backupOn = status.backup === 'on' || status.backup === 'pending_on';
+  const routesFlag = useFlag('routes_sync_enabled');
 
   return (
     <View style={{ gap: spacing.lg }}>
@@ -76,6 +79,8 @@ export function SyncScreen() {
           )}
         </Panel>
       )}
+
+      {backupOn && routesFlag && <RouteSettings />}
 
       {status.deletedElsewhere.length > 0 && (
         <SettingsNotice icon="trash-outline" title={`${status.deletedElsewhere.length} courses supprimées depuis un autre appareil`}
