@@ -1,6 +1,6 @@
 -- Phase 3 : tracés GPS (§8, §14 phase 3).
 begin;
-select plan(16);
+select plan(17);
 create temporary table ids (name text primary key, id uuid) on commit drop;
 grant select on ids to authenticated;
 insert into ids values ('a', tests.create_user('a@example.test')), ('b', tests.create_user('b@example.test'));
@@ -42,8 +42,11 @@ select is((select n from changed), 0, 'remplacement refusé après retrait (aucu
 select throws_ok(format($$select public.sync_register_route('t1', '%s/dDE.json.gz', 1, 1, null)$$, (select id from ids where name = 'a')), '42501', null, 'enregistrement refusé après retrait');
 select is((public.sync_delete_routes() ->> 'deleted')::int, 1, 'supprimer mes parcours en ligne');
 select is((select count(*)::int from public.run_routes), 0, 'références supprimées');
+-- Comme l'API Storage : la suppression SQL directe n'est permise qu'avec storage.allow_delete_query (la RLS s'applique toujours).
+select set_config('storage.allow_delete_query', 'true', true);
 select lives_ok(format($$delete from storage.objects where name = '%s/dDE.json.gz'$$, (select id from ids where name = 'a')), 'le titulaire supprime son fichier');
 select tests.logout();
+select is((select count(*)::int from storage.objects where name like '%dDE.json.gz'), 0, 'le fichier a bien disparu');
 select is((select count(*)::int from private.storage_purge_queue where path like '%dDE.json.gz'), 1, 'fichier mis en file de purge');
 select * from finish();
 rollback;
