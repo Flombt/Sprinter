@@ -154,6 +154,9 @@ verify_jwt = false
 [functions.purge-storage]
 verify_jwt = false
 
+[functions.admin-user-action]
+verify_jwt = true
+
 [functions.apple-link]
 verify_jwt = true
 
