@@ -114,3 +114,66 @@ export function resolveTheme(themeId: string | undefined, accentId: string | und
   const usable = contrastRatio(color, base.surface) >= 3 ? color : base.accent;
   return { ...base, accent: usable, accentInk: readableOn(usable, base.dark ? '#101011' : '#FFFFFF') };
 }
+
+// ---------------------------------------------------------------------------------------
+// Studio avancé (8b) : typographies lisibles, décorations, humeurs, badges officiels.
+// ---------------------------------------------------------------------------------------
+export const FONTS: { id: 'system' | 'serif' | 'mono' | 'rounded'; label: string; ios?: string; android?: string }[] = [
+  { id: 'system', label: 'Système' },
+  { id: 'serif', label: 'Avec empattements', ios: 'Georgia', android: 'serif' },
+  { id: 'mono', label: 'Machine à écrire', ios: 'Menlo', android: 'monospace' },
+  { id: 'rounded', label: 'Douce', ios: 'Avenir Next', android: 'sans-serif-medium' },
+];
+export const CARD_STYLES = [{ id: 'flat', label: 'Unie' }, { id: 'outlined', label: 'Contour' }, { id: 'raised', label: 'En relief' }] as const;
+export const BUTTON_STYLES = [{ id: 'pill', label: 'Pilule' }, { id: 'rounded', label: 'Arrondi' }, { id: 'square', label: 'Carré' }] as const;
+export const AVATAR_SHAPES = [{ id: 'circle', label: 'Rond' }, { id: 'rounded', label: 'Carré arrondi' }, { id: 'square', label: 'Carré' }] as const;
+export const AVATAR_FRAMES = [{ id: 'none', label: 'Sans cadre' }, { id: 'thin', label: 'Fin' }, { id: 'thick', label: 'Épais' }, { id: 'double', label: 'Double' }, { id: 'gradient', label: 'Dégradé' }] as const;
+/** Plaques de nom : décoratives uniquement, jamais le traitement d'une distinction officielle. */
+export const PLATES: { id: string; label: string; colors: [string, string] }[] = [
+  { id: 'aurore', label: 'Aurore', colors: ['#F4A259', '#8E4FA8'] }, { id: 'onde', label: 'Onde', colors: ['#00639E', '#5BC0FF'] },
+  { id: 'pixel', label: 'Pixel', colors: ['#5B6EE1', '#7CE38B'] }, { id: 'kraft', label: 'Kraft', colors: ['#C9A27E', '#8A6545'] },
+  { id: 'neon', label: 'Néon', colors: ['#FF2E97', '#00C2D1'] },
+];
+export const DECORATION_ICONS: { id: string; label: string; icon: IconName }[] = [
+  { id: 'eclair', label: 'Éclair', icon: 'flash' }, { id: 'feuille', label: 'Feuille', icon: 'leaf' }, { id: 'etoile', label: 'Étoile', icon: 'star' },
+  { id: 'flamme', label: 'Flamme', icon: 'flame' }, { id: 'lune', label: 'Lune', icon: 'moon' }, { id: 'sentier', label: 'Sentier', icon: 'trail-sign' },
+  { id: 'coeur', label: 'Cœur', icon: 'heart' }, { id: 'musique', label: 'Musique', icon: 'musical-notes' },
+];
+export const CARD_BACKGROUNDS = [{ id: 'uni', label: 'Uni' }, { id: 'teinte', label: 'Teinté' }, { id: 'degrade', label: 'Dégradé' }] as const;
+export const ENTRY_EFFECTS = [{ id: 'none', label: 'Aucun' }, { id: 'fade', label: 'Fondu' }, { id: 'slide', label: 'Glissement' }] as const;
+export const MOODS: { emoji: string; label: string }[] = [
+  { emoji: '💪', label: 'Motivation au top' }, { emoji: '😴', label: 'Besoin de repos' }, { emoji: '🤕', label: 'En récupération' },
+  { emoji: '🏁', label: 'En préparation' }, { emoji: '🛋️', label: 'Jour de repos' }, { emoji: '😄', label: 'Bonne humeur' },
+  { emoji: '🎯', label: 'Concentration' }, { emoji: '🌧️', label: 'Sous la pluie' },
+];
+/** Badges officiels (§17.3) : libellés et critères viennent du serveur ; seul le style est ici. */
+export const OFFICIAL_BADGE_ICON: IconName = 'shield-checkmark';
+
+export interface ResolvedAppearance extends ProfileTheme {
+  secondary: string; fontFamily?: string; cards: 'flat' | 'outlined' | 'raised'; buttons: 'pill' | 'rounded' | 'square'; frame: boolean;
+}
+interface AppearanceLike {
+  theme?: string; accent?: string; colors?: { accent?: string; secondary?: string; background?: string; surface?: string };
+  font?: string; cards?: string; buttons?: string; frame?: boolean;
+}
+/** Apparence complète, corrigée pour rester lisible : 4,5:1 pour le texte, 3:1 pour les accents (§17.8). */
+export function resolveAppearance(appearance: AppearanceLike | null | undefined, appDark: boolean, platform: string): ResolvedAppearance {
+  const base = resolveTheme(appearance?.theme, appearance?.accent, appDark);
+  const custom = appearance?.colors ?? {};
+  let background = custom.background ?? base.background;
+  let surface = custom.surface ?? base.surface;
+  let text = readableOn(surface, base.text);
+  if (contrastRatio(text, background) < 4.5) { background = base.background; surface = custom.surface && contrastRatio(base.text, custom.surface) >= 4.5 ? custom.surface : base.surface; text = base.text; }
+  const muted = contrastRatio(base.muted, surface) >= 4.5 && contrastRatio(base.muted, background) >= 4.5 ? base.muted : text;
+  const accent = custom.accent && contrastRatio(custom.accent, surface) >= 3 ? custom.accent : base.accent;
+  const secondary = custom.secondary && contrastRatio(custom.secondary, surface) >= 3 ? custom.secondary : accent;
+  const font = FONTS.find((item) => item.id === appearance?.font);
+  return {
+    ...base, background, surface, text, muted, accent, accentInk: readableOn(accent, base.accentInk), secondary,
+    dark: contrastRatio(background, '#000000') < contrastRatio(background, '#FFFFFF'),
+    fontFamily: platform === 'ios' ? font?.ios : platform === 'android' ? font?.android : undefined,
+    cards: (['flat', 'outlined', 'raised'] as const).find((value) => value === appearance?.cards) ?? 'outlined',
+    buttons: (['pill', 'rounded', 'square'] as const).find((value) => value === appearance?.buttons) ?? 'pill',
+    frame: appearance?.frame === true,
+  };
+}

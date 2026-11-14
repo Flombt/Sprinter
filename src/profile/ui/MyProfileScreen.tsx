@@ -6,7 +6,7 @@ import { SettingsNotice } from '../../ui/settings';
 import { spacing } from '../../ui/tokens';
 import { session } from '../../services/session';
 import { FormNotice, formatDate } from '../../account/ui/parts';
-import { computeStats, type StatId } from '../model';
+import { computeStats, goalProgress, type StatId, type WidgetPayload } from '../model';
 import { clearProfileNotice, profileSync, syncProfileNow, useProfile, useProfileSyncStatus } from '../profile';
 import type { ProfileSyncStatus } from '../sync';
 import { ProfileView } from './ProfileView';
@@ -28,10 +28,11 @@ export function MyProfileScreen({ onEdit }: { onEdit: () => void }) {
   const status = useProfileSyncStatus();
   const history = useSyncExternalStore(session.subscribe, () => session.getSnapshot().history, () => session.getSnapshot().history);
   const stats = useCallback((ids: StatId[]) => computeStats(history, ids, Date.now()), [history]);
+  const goal = useCallback((widget: WidgetPayload) => goalProgress(widget, history, Date.now()), [history]);
   useEffect(() => { void profileSync.refreshCounts().catch(() => undefined); void profileSync.sync('foreground'); }, []);
   return (
     <View style={{ gap: spacing.lg }}>
-      <ProfileView doc={profile.saved} media={profile.media} stats={stats} />
+      <ProfileView doc={profile.saved} media={profile.media} stats={stats} goal={goal} badges={profile.badges} />
       {profile.notice ? (
         <View style={{ gap: spacing.xs }}>
           <FormNotice message={profile.notice} />

@@ -10,7 +10,7 @@ import { account } from '../account/account';
 import { session } from '../services/session';
 import { profileDatabase } from './database';
 import { ProfileLocalStore, type DraftElement, type LocalMedia } from './localStore';
-import { ProfileSync, type ProfileSyncStatus } from './sync';
+import { ProfileSync, type OfficialBadge, type ProfileSyncStatus } from './sync';
 import { supabaseProfileRemote, type ProfileFiles } from './remote';
 import type { Payload, ProfileDoc } from './model';
 
@@ -99,15 +99,15 @@ export function startProfile() {
 export const useProfileSyncStatus = (): ProfileSyncStatus =>
   useSyncExternalStore(profileSync.subscribe, profileSync.getSnapshot, profileSync.getSnapshot);
 
-export interface MediaRef { uri: string; width: number; height: number }
+export interface MediaRef { uri: string; width: number; height: number; animated?: boolean }
 export interface ProfileState {
   loading: boolean; saved: ProfileDoc; working: ProfileDoc; drafts: DraftElement[]; media: Record<string, MediaRef>;
-  notice: string | null; reload(): void;
+  badges: OfficialBadge[]; notice: string | null; reload(): void;
 }
 
 /** Version enregistrée, version de travail et adresses locales des médias du titulaire connecté. */
 export function useProfile(): ProfileState {
-  const [state, setState] = useState<Omit<ProfileState, 'reload'>>({ loading: true, saved: {}, working: {}, drafts: [], media: {}, notice: null });
+  const [state, setState] = useState<Omit<ProfileState, 'reload'>>({ loading: true, saved: {}, working: {}, drafts: [], media: {}, badges: [], notice: null });
   const [tick, setTick] = useState(0);
   const reload = useCallback(() => setTick((value) => value + 1), []);
   useEffect(() => {
@@ -117,12 +117,14 @@ export function useProfile(): ProfileState {
   useEffect(() => {
     let alive = true;
     const userId = account.getSnapshot().userId;
-    if (!userId) { setState({ loading: false, saved: {}, working: {}, drafts: [], media: {}, notice }); return; }
-    void Promise.all([profileStore.documents(userId), profileStore.media(userId)]).then(([docs, media]) => {
+    if (!userId) { setState({ loading: false, saved: {}, working: {}, drafts: [], media: {}, badges: [], notice }); return; }
+    void Promise.all([profileStore.documents(userId), profileStore.media(userId), profileStore.getMeta(userId, 'badges')]).then(([docs, media, badges]) => {
       if (!alive) return;
       const uris: Record<string, MediaRef> = {};
-      for (const item of media) if (item.uri && item.state !== 'rejected') uris[item.id] = { uri: item.uri, width: item.width, height: item.height };
-      setState({ loading: false, saved: docs.saved, working: docs.working, drafts: docs.drafts, media: uris, notice });
+      for (const item of media) if (item.uri && item.state !== 'rejected') uris[item.id] = { uri: item.uri, width: item.width, height: item.height, animated: item.animated };
+      let earned: OfficialBadge[] = [];
+      try { earned = badges ? JSON.parse(badges) as OfficialBadge[] : []; } catch { earned = []; }
+      setState({ loading: false, saved: docs.saved, working: docs.working, drafts: docs.drafts, media: uris, badges: earned, notice });
     }).catch(() => { if (alive) setState((current) => ({ ...current, loading: false })); });
     return () => { alive = false; };
   }, [tick]);
@@ -147,16 +149,29 @@ export async function saveProfile() {
 export const syncProfileNow = () => profileSync.sync('manual').then(changed);
 export function clearProfileNotice() { notice = null; changed(); }
 
-/** Importe une image pour l'avatar ou la bannière et la place dans le brouillon. */
-export async function importProfileImage(usage: 'avatar' | 'banner'): Promise<string | null> {
+/** Importe une image pour l'avatar ou la bannière (GIF animé possible avec le studio) et la place dans le brouillon. */
+export async function importProfileImage(usage: 'avatar' | 'banner', options: { animated?: boolean; current?: Payload | null } = {}): Promise<string | null> {
   const userId = owner();
-  const result = await media().pickProfileImage(userId, randomUUID(), usage, Date.now());
+  const result = await media().pickProfileImage(userId, randomUUID(), usage, Date.now(), { animated: options.animated, posterId: randomUUID() });
   if (!result) return null;
   if ('error' in result) return result.error;
   await profileStore.addMedia(userId, result.media);
-  await profileStore.editDraft(userId, usage, { source: 'media', mediaId: result.media.id, crop: { x: 0, y: 0, zoom: 1 } }, Date.now());
+  if (result.poster) await profileStore.addMedia(userId, result.poster);
+  // Les réglages de style (forme, cadre, voile…) sont conservés ; seul le recadrage repart du centre.
+  const keep = Object.fromEntries(Object.entries(options.current ?? {}).filter(([key]) => !['source', 'libraryId', 'presetId', 'colors', 'mediaId', 'posterId', 'crop'].includes(key)));
+  await profileStore.editDraft(userId, usage, { ...keep, source: 'media', mediaId: result.media.id, ...(result.poster ? { posterId: result.poster.id } : {}), crop: { x: 0, y: 0, zoom: 1 } }, Date.now());
   changed();
   return null;
+}
+
+/** Ajoute une image fixe à la galerie : renvoie son identifiant (le widget est mis à jour par le studio). */
+export async function importGalleryImage(): Promise<{ id: string } | { error: string } | null> {
+  const userId = owner();
+  const result = await media().pickProfileImage(userId, randomUUID(), 'gallery', Date.now());
+  if (!result) return null;
+  if ('error' in result) return result;
+  await profileStore.addMedia(userId, result.media);
+  return { id: result.media.id };
 }
 
 /** Supprime les fichiers locaux devenus inutiles (ni enregistrés, ni en brouillon, ni en attente d'envoi). */
