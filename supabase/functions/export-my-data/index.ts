@@ -38,6 +38,10 @@ Deno.serve(async (request) => {
         if (downloadError || !blob) throw new Error('download_track');
         return new Uint8Array(await blob.arrayBuffer());
       },
+      async downloadProfileMedia(path) {
+        const { data: blob, error: downloadError } = await client.storage.from('profile-media').download(path);
+        return downloadError || !blob ? null : new Uint8Array(await blob.arrayBuffer());
+      },
       now: () => new Date(),
     });
     const day = new Date().toISOString().slice(0, 10);

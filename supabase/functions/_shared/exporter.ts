@@ -6,7 +6,9 @@ export interface ExportDeps {
   select(table: string, columns: string): Promise<Record<string, unknown>[]>;
   listTracks(): Promise<string[]>;
   downloadTrack(path: string): Promise<Uint8Array>;
-  /** Contenus supplémentaires (profil personnalisé dès la phase 8). */
+  /** Médias du profil personnalisé (bucket privé profile-media), lus avec le jeton du titulaire. */
+  downloadProfileMedia?(path: string): Promise<Uint8Array | null>;
+  /** Contenus supplémentaires. */
   extras?(): Promise<Record<string, unknown>>;
   now(): Date;
 }
@@ -32,6 +34,12 @@ Ce dossier contient toutes les données associées à votre compte et conservée
 - support.json : vos demandes au support
 - runs/ : une fiche par course sauvegardée (sans les points GPS)
 - routes/ : vos parcours GPS sauvegardés en ligne, compressés (gzip, JSON)
+- profile-page.json : votre profil personnalisé (apparence, avatar, bannière, présentation,
+  statut, widgets et disposition) dans sa version enregistrée en ligne
+- profile-media.json et profile-media/ : les images de ce profil
+
+Les brouillons du profil qui n'ont pas été enregistrés restent uniquement sur l'appareil
+où vous les avez créés : ils ne figurent pas dans cet export.
 
 Pour un parcours au format GPX ou des statistiques au format CSV, utilisez l'export
 disponible dans le détail de chaque course, dans l'application.
@@ -68,6 +76,19 @@ export async function buildExport(deps: ExportDeps): Promise<Uint8Array> {
     routeFiles[name] = [await deps.downloadTrack(path), { level: 0 }];
   }
   files['routes'] = routeFiles;
+
+  files['profile-page.json'] = pretty(await deps.select('profile_elements', 'element_key,payload,deleted,revision,client_updated_at,server_updated_at'));
+  const media = await deps.select('profile_media', 'id,usage,mime,bytes,width,height,animated,duration_ms,status,storage_path,created_at,ready_at');
+  files['profile-media.json'] = pretty(media.filter((item) => item.status === 'ready').map(({ storage_path: _path, ...item }) => item));
+  const mediaFiles: Zippable = {};
+  if (deps.downloadProfileMedia) {
+    for (const item of media) {
+      if (item.status !== 'ready' || typeof item.storage_path !== 'string') continue;
+      const content = await deps.downloadProfileMedia(item.storage_path);
+      if (content) mediaFiles[item.storage_path.split('/').pop() ?? String(item.id)] = [content, { level: 0 }];
+    }
+  }
+  files['profile-media'] = mediaFiles;
   if (deps.extras) for (const [name, value] of Object.entries(await deps.extras())) files[name] = pretty(value);
   files['export.json'] = pretty({ generated_at: deps.now().toISOString(), format: 'sprinter-export-v1' });
   return zipSync(files, { level: 6 });
