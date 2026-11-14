@@ -1,3 +1,5 @@
 # Historical false positives: local storage identifiers, not credentials.
 27f1c80525d054b5b4b7760ad1964699593342fb:src/account/ui/SaveRunsNudge.tsx:generic-api-key:9
 cb097b733ae8f852561ac662be7dbaa69026e774:src/account/accountStore.ts:generic-api-key:56
+# Synthetic token used to test profile-link parsing.
+a3f1666850f6a17738c0ec87a9fd72ef00ebe681:tests/profile-sharing.test.ts:generic-api-key:11
