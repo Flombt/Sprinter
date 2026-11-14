@@ -56,6 +56,13 @@ jobs:
         run: supabase db lint --local --level warning --fail-on error
       - name: pgTAP tests
         run: supabase test db --local
+      - name: Admin search budget with 10,000 synthetic accounts
+        env:
+          PGPASSWORD: postgres
+        run: |
+          supabase db reset --local --no-seed
+          psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c 'set sprinter.seed_users = 10000' -f supabase/seed.sql -c 'analyze' -f scripts/db-local/perf-admin.sql
 
   # Edge Functions (Deno) : typage, lint et tests (§12.1).
   functions:
