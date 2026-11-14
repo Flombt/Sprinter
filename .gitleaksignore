@@ -1,0 +1,4 @@
+# Faux positifs de la règle generic-api-key : noms de clés de stockage local, pas des secrets.
+# 'nudge.save-runs.dismissed-at.v1' (src/account/ui/SaveRunsNudge.tsx) et 'deletion.operation.v1' (src/account/accountStore.ts).
+27f1c80525d054b5b4b7760ad1964699593342fb:src/account/ui/SaveRunsNudge.tsx:generic-api-key:9
+cb097b733ae8f852561ac662be7dbaa69026e774:src/account/accountStore.ts:generic-api-key:56
