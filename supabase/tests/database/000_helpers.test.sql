@@ -22,7 +22,7 @@ create or replace function tests.create_session(p_user uuid, p_aal text default 
 returns uuid language plpgsql security definer set search_path = '' as $$
 declare v_id uuid := gen_random_uuid();
 begin
-  insert into auth.sessions (id, user_id, aal) values (v_id, p_user, p_aal);
+  insert into auth.sessions (id, user_id, aal) values (v_id, p_user, p_aal::auth.aal_level);
   return v_id;
 end $$;
 

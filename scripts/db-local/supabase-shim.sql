@@ -52,10 +52,12 @@ create table auth.identities (
   unique (provider_id, provider)
 );
 
+create type auth.aal_level as enum ('aal1', 'aal2', 'aal3');
+
 create table auth.sessions (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
-  aal text,
+  aal auth.aal_level,
   not_after timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
