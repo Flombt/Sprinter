@@ -54,6 +54,21 @@ begin
   perform set_config('role', 'postgres', true);
 end $$;
 
+-- Élément d'envoi sync_push_runs conforme au contrat §7.3 (payload sans points).
+create or replace function tests.run_item(
+  p_id text, p_started timestamptz, p_distance numeric, p_active int, p_client timestamptz default now(),
+  p_reliable int default null, p_source text default 'sprinter', p_extra jsonb default '{}'::jsonb
+) returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object(
+    'id', p_id, 'source', p_source, 'client_updated_at', p_client, 'platform', 'ios', 'app_version', '1.0.0', 'tz', 'Europe/Paris',
+    'has_route', false,
+    'payload', jsonb_build_object('id', p_id, 'dataVersion', 3, 'startedAt', extract(epoch from p_started) * 1000,
+      'endedAt', extract(epoch from p_started) * 1000 + p_active * 1000 + 60000, 'activeSeconds', p_active,
+      'distanceMeters', p_distance, 'reliableSeconds', coalesce(p_reliable, p_active), 'inTargetSeconds', 0, 'bestPace', 280,
+      'splits', '[]'::jsonb)
+  ) || p_extra
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated, service_role;
 
 select plan(1);
