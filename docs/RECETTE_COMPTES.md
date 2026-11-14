@@ -10,6 +10,14 @@
 | Sources | §6, §7, §8, §9, §10, §11, §13.5, §14, §17.10 du cahier des charges v2.1 · `ADMIN_RPC_CONTRACT.md` v1 |
 | Documents liés | [Lancement](LANCEMENT.md) · [Procédure droits](rgpd/procedure-droits.md) · [Durées](rgpd/durees-conservation.md) |
 
+## Vérifications automatisées du 14 novembre 2026
+
+La CI de finalisation valide les migrations et pgTAP, le typage et les tests des Edge Functions, les exports Expo iOS, Android et web et la recherche de secrets dans l’historique. Les 310 tests de l’app passent et les fonctions du moteur de synchronisation atteignent 95,4 % de couverture. La compilation native iPhone de la variante personnelle a réussi avec Xcode 27.1.
+
+[Résultats CI](https://github.com/Flombt/Sprinter/actions/runs/43636971825) · [Compilation IPA](https://github.com/Flombt/Sprinter/actions/runs/43636529556)
+
+Les observations des scénarios sur appareils, la configuration effective de Supabase, les fournisseurs Apple et Google, le SMTP, le domaine, les documents à compléter et la signature de Flo restent à consigner dans les sections correspondantes.
+
 ## Mode d'emploi
 
 - Chaque scénario indique le **critère** repris du cahier des charges, son **type** (appareil, navigateur, preuve automatisée), les **préconditions**, les **étapes** et le **résultat attendu**.
