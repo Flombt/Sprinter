@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SyncError, type SyncRemote } from './types';
+import type { DocumentRemote } from './documents';
 
 /** Adaptateur RPC Supabase du moteur de synchronisation, avec classement des erreurs (§7.4). */
 export function classify(error: { message?: string; code?: string } | null, status: number): SyncError {
@@ -35,5 +36,21 @@ export function supabaseSyncRemote(client: () => SupabaseClient | null, deviceId
       const value = (purpose: string) => (consents?.[purpose] ? consents[purpose]!.granted : null);
       return { runs: value('cloud_sync_runs'), routes: value('cloud_sync_routes') };
     },
+  };
+}
+
+export function supabaseDocumentRemote(client: () => SupabaseClient | null): DocumentRemote {
+  const call = async <T>(name: string, args: Record<string, unknown>): Promise<T> => {
+    const supabase = client();
+    if (!supabase) throw new SyncError('auth', 'no_client', undefined, 'no_client');
+    let response;
+    try { response = await supabase.rpc(name, args); }
+    catch (error) { throw new SyncError('network', error instanceof Error ? error.message : 'network', undefined, 'network'); }
+    if (response.error) throw classify(response.error, response.status);
+    return response.data as T;
+  };
+  return {
+    push: (docs) => call('sync_push_documents', { p_docs: docs }),
+    pull: (cursor, limit) => call('sync_pull_documents', { p_after_ts: cursor.ts, p_after_kind: cursor.kind, p_after_id: cursor.id, p_limit: limit }),
   };
 }

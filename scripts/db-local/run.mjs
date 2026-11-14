@@ -40,6 +40,7 @@ const adapt = (sql) => sql.replace(/create\s+extension\s+if\s+not\s+exists\s+pgt
 async function connect(database = 'postgres') {
   for (let attempt = 0; attempt < 100; attempt++) {
     const client = new pg.Client({ host: work, port, user: 'postgres', database });
+    client.on('error', () => { /* arrêt du serveur en fin d'exécution */ });
     try { await client.connect(); return client; } catch { await new Promise((r) => setTimeout(r, 100)); }
   }
   throw new Error('PostgreSQL ne répond pas.');

@@ -10,7 +10,9 @@ import { appVersion, deviceId, devicePlatform, timeZone } from '../account/devic
 import { session } from '../services/session';
 import { SyncEngine } from './engine';
 import { SyncLocalStore } from './localStore';
-import { supabaseSyncRemote } from './remote';
+import { supabaseDocumentRemote, supabaseSyncRemote } from './remote';
+import { DocumentSync } from './documents';
+import { documentAdapters } from './documentAdapters';
 import type { SyncStatus } from './types';
 
 type ClientModule = typeof import('../account/supabaseClient');
@@ -51,6 +53,10 @@ export const syncEngine = new SyncEngine(syncLocal, supabaseSyncRemote(client, d
     if (idle) idle(() => resolve()); else setTimeout(resolve, 16);
   }),
 });
+
+// Phase 2b : séances, chaussures, plans et itinéraires, après les courses.
+const documentSync = new DocumentSync(syncLocal, supabaseDocumentRemote(client), documentAdapters, Date.now);
+syncEngine.addExtension({ name: 'documents', run: ({ routesOn }) => documentSync.run(routesOn) });
 
 let started = false;
 let debounce: ReturnType<typeof setTimeout> | null = null;
