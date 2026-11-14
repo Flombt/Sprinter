@@ -60,3 +60,10 @@ grant execute on all functions in schema tests to anon, authenticated, service_r
 select plan(1);
 select ok(to_regprocedure('tests.login_as(uuid,uuid,text,integer)') is not null, 'fonctions d''aide aux tests installées');
 select * from finish();
+
+-- Isole un test de la graine synthétique chargée par `supabase db reset` (CI) : comptes et données liées
+-- (courses, appareils, consentements, support…) sont effacés en cascade, dans la transaction du test, annulée à la fin.
+create or replace function tests.clear_seed() returns void language plpgsql security definer set search_path = '' as $$
+begin
+  delete from auth.users;
+end $$;
