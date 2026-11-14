@@ -83,6 +83,8 @@ update public.app_config set value = 'true'::jsonb where key = 'accounts_enabled
 
 Points d’accroche dans l’existant : une section « Compte » dans `Settings.tsx` (visible seulement si le backend est configuré **et** `accounts_enabled` est vrai), la feuille `account` dans `AppSheets.tsx`, deux `useEffect` dans `App.tsx`, le bandeau dans `RunSummary.tsx`, et `purgeLocalRuns` (effacement local explicite) dans le dépôt de courses.
 
+À l’accueil, « Se connecter ou créer un compte » ouvre directement le choix de connexion quand les comptes sont activés et qu’aucune session ni course n’est en cours. La variante iPhone à signature personnelle propose Google si les trois variables de build Google sont renseignées. Apple natif est disponible dans la variante normale signée avec la capacité Apple correspondante.
+
 **Démarrage** : la bibliothèque Supabase et les modules natifs de connexion ne sont jamais importés statiquement (test `tests/account-startup.test.ts`). Le bundle iOS passe de 4 054 832 à 4 871 309 octets de bytecode Hermes (+816 Ko, +20 %) ; ces modules ne sont pas évalués au démarrage. Mesure du temps de démarrage sur iPhone à faire en recette (avant/après, compte absent).
 
 ### 5.2 Côté serveur

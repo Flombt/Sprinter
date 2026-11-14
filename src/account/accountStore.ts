@@ -59,6 +59,9 @@ const ACTIVITY_KEY = 'activity.last-day.v1';
 const MESSAGES = {
   network: 'Connexion au service impossible. Vérifiez votre réseau puis réessayez.',
   generic: 'L’opération n’a pas abouti. Réessayez dans un instant.',
+  providerUnavailable: 'Cette méthode de connexion est indisponible. Choisissez une autre méthode.',
+  emailUnavailable: 'Sprinter ne peut pas envoyer de code à cette adresse pour le moment.',
+  emailRateLimited: 'Trop de codes ont été demandés. Patientez avant de réessayer.',
   cancelled: null,
   codeInvalid: (left: number) => `Code incorrect ou expiré. ${left > 1 ? `Il vous reste ${left} essais.` : 'Dernier essai avant une pause de 15 minutes.'}`,
   locked: 'Trop d’essais. Patientez 15 minutes avant de demander un nouveau code.',
@@ -128,7 +131,11 @@ export class AccountStore {
   }
   private fail(error: unknown) {
     if (error instanceof Cancelled) { this.emit({ busy: false }); return; }
+    const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
     const message = error instanceof Error && /network|fetch|timeout/i.test(error.message) ? MESSAGES.network
+      : code === 'provider_disabled' || code === 'oauth_provider_not_supported' || code === 'otp_disabled' ? MESSAGES.providerUnavailable
+      : code === 'email_address_not_authorized' ? MESSAGES.emailUnavailable
+      : code === 'over_email_send_rate_limit' ? MESSAGES.emailRateLimited
       : error instanceof Error && error.message === 'other_account' ? MESSAGES.otherAccount
       : error instanceof Error && error.message === 'last_method' ? MESSAGES.lastMethod
       : error instanceof Error && error.message === 'reauth_required' ? MESSAGES.reauth
@@ -175,7 +182,8 @@ export class AccountStore {
       if (!this.deps.apple) throw new Error('unavailable');
       const credential = await this.deps.apple();
       const { data, error } = await this.client().auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken, nonce: credential.rawNonce });
-      if (error || !data.session) throw new Error(error?.message ?? 'apple_sign_in');
+      if (error) throw error;
+      if (!data.session) throw new Error('apple_sign_in');
       await this.afterSignIn(data.session, { appleCode: credential.authorizationCode, proposedName: credential.fullName });
       return true;
     });
@@ -185,7 +193,8 @@ export class AccountStore {
       if (!this.deps.google) throw new Error('unavailable');
       const token = await this.deps.google();
       const { data, error } = await this.client().auth.signInWithIdToken({ provider: 'google', token });
-      if (error || !data.session) throw new Error(error?.message ?? 'google_sign_in');
+      if (error) throw error;
+      if (!data.session) throw new Error('google_sign_in');
       await this.afterSignIn(data.session, {});
       return true;
     });
@@ -200,7 +209,7 @@ export class AccountStore {
     }
     const sent = await this.run(async () => {
       const { error } = await this.client().auth.signInWithOtp({ email: normalizeEmail(email), options: { shouldCreateUser: createUser } });
-      if (error) throw new Error(error.message);
+      if (error) throw error;
       return true;
     });
     if (sent) await this.saveOtp(codeSent(this.value.otp, email, this.now()));

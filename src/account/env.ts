@@ -8,6 +8,21 @@ export interface BackendConfig {
   publishableKey: string;
 }
 
+export function nativeSignInSupport(platform: string, options: {
+  expoGo: boolean;
+  sideload: boolean;
+  googleWebClientId?: string;
+  googleIosClientId?: string;
+  googleIosUrlScheme?: string;
+}) {
+  const google = !options.expoGo && !!options.googleWebClientId?.trim();
+  return {
+    apple: platform === 'ios' && !options.expoGo && !options.sideload,
+    google: google && (platform === 'android'
+      || (platform === 'ios' && !!options.googleIosClientId?.trim() && !!options.googleIosUrlScheme?.trim())),
+  };
+}
+
 export function readBackendConfig(env: Record<string, string | undefined>): BackendConfig | null {
   const url = env.EXPO_PUBLIC_SUPABASE_URL?.trim();
   const publishableKey = env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();

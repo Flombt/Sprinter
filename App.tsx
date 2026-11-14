@@ -94,7 +94,7 @@ function AppContent() {
   useEffect(startAccount, []);
   useEffect(startSync, []);
   useEffect(startProfile, []);
-  useEffect(() => onAccountSheetRequest(() => setSheet('account')), []);
+  useEffect(() => onAccountSheetRequest((entry) => setSheet(entry === 'signIn' ? 'signIn' : 'account')), []);
 
   const openHome = useCallback(() => {
     setTab('home');
