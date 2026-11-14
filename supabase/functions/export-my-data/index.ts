@@ -42,6 +42,10 @@ Deno.serve(async (request) => {
         const { data: blob, error: downloadError } = await client.storage.from('profile-media').download(path);
         return downloadError || !blob ? null : new Uint8Array(await blob.arrayBuffer());
       },
+      async extras() {
+        const { data: blocks } = await client.rpc('profile_my_blocks');
+        return { 'profile-blocks.json': (blocks ?? []) as unknown };
+      },
       now: () => new Date(),
     });
     const day = new Date().toISOString().slice(0, 10);
