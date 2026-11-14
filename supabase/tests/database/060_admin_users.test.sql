@@ -32,7 +32,8 @@ insert into res values ('prefix', public.admin_search_users('zoe.'));
 insert into res values ('name', public.admin_search_users('zoé'));
 insert into res values ('short', public.admin_search_users(left(replace((select id from ids where name = 't3')::text, '-', ''), 8)));
 insert into res values ('combined', public.admin_search_users(null, jsonb_build_object('platform', jsonb_build_array('android'), 'runs_min', 5,
-  'signup_from', current_date - 1, 'signup_to', current_date)));
+  'signup_from', (now() at time zone 'Europe/Paris')::date - 1,
+  'signup_to', (now() at time zone 'Europe/Paris')::date)));
 insert into res values ('page1', public.admin_search_users(null, '{"country":["FR","BE"]}', 'display_name', null, 2));
 update res set v = public.admin_search_users(null, '{"country":["FR","BE"]}', 'display_name', (select v -> 'next_cursor' from res where k = 'page1'), 2) where k = 'page1';
 select tests.logout();
