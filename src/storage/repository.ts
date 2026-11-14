@@ -188,6 +188,8 @@ export class RunRepository {
     });
   }
   deleteRun(id: string) { return this.write(async () => { await this.db.runAsync('DELETE FROM runs WHERE id = ?', id); }); }
+  /** Efface l'historique de CET appareil seulement (déconnexion ou suppression de compte, choix explicite). */
+  purgeLocalRuns() { return this.write(async () => { await this.db.runAsync('DELETE FROM runs'); }); }
   async loadSettings(): Promise<Settings> {
     const row = await this.db.getFirstAsync<{ payload: string }>('SELECT payload FROM settings WHERE slot = 1');
     if (!row) return { ...DEFAULT_SETTINGS, config: { ...DEFAULT_SETTINGS.config } };
@@ -208,4 +210,4 @@ export class RunRepository {
   }
 }
 
-export type StorageRepository = Pick<RunRepository, 'initialize' | 'history' | 'loadDraft' | 'archiveDraft' | 'listDraftArchives' | 'loadDraftArchive' | 'saveDraft' | 'finish' | 'deleteRun' | 'loadSettings' | 'saveSettings' | 'unreadableCount'>;
+export type StorageRepository = Pick<RunRepository, 'initialize' | 'history' | 'loadDraft' | 'archiveDraft' | 'listDraftArchives' | 'loadDraftArchive' | 'saveDraft' | 'finish' | 'deleteRun' | 'purgeLocalRuns' | 'loadSettings' | 'saveSettings' | 'unreadableCount'>;

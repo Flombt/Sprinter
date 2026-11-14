@@ -314,6 +314,17 @@ export class RunningStore {
     }
     catch (error) { this.emit({ message: textError(error) }); return false; }
   };
+  /** Efface l'historique local sur choix explicite (déconnexion, suppression du compte). Jamais pendant une course. */
+  purgeLocalHistory = async (): Promise<boolean> => {
+    if (!this.repository || this.engine || this.operation) return false;
+    try {
+      await this.repository.purgeLocalRuns();
+      for (const run of this.value.history) forgetActivityAnalysis(run.id);
+      this.emit({ history: [] });
+      void progression.initialize().then(() => progression.reconcile([]));
+      return true;
+    } catch (error) { this.emit({ message: textError(error) }); return false; }
+  };
   importHealthActivity = async (input: RunRecord): Promise<boolean> => {
     if (this.importingHealth) return false;
     this.importingHealth = true;
