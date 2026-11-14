@@ -6,8 +6,16 @@ function withGoogleSignIn(config) {
   return { ...config, plugins: [...(config.plugins ?? []), ['@react-native-google-signin/google-signin', { iosUrlScheme: scheme }]] };
 }
 
+// Cartes Android (§11) : clé Google Maps restreinte (package + SHA-1), fournie par l'environnement
+// de build EAS, jamais versionnée. Sans elle, la configuration reste strictement inchangée.
+function withAndroidMaps(config) {
+  const apiKey = process.env.GOOGLE_MAPS_ANDROID_API_KEY;
+  if (!apiKey) return config;
+  return { ...config, android: { ...config.android, config: { ...config.android?.config, googleMaps: { apiKey } } } };
+}
+
 module.exports = ({ config: input }) => {
-  const config = withGoogleSignIn(input);
+  const config = withAndroidMaps(withGoogleSignIn(input));
   if (process.env.SPRINTER_SIDELOAD !== '1') return config;
   // Keep the normal App Store configuration intact; this is a separate build.
   const variant = JSON.parse(JSON.stringify(config));
