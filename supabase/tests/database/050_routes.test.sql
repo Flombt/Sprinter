@@ -44,7 +44,15 @@ select is((select n from changed), 0, 'remplacement refusé après retrait (aucu
 select throws_ok(format($$select public.sync_register_route('t1', '%s/dDE.json.gz', 1, 1, null)$$, (select id from ids where name = 'a')), '42501', null, 'enregistrement refusé après retrait');
 select is((public.sync_delete_routes() ->> 'deleted')::int, 1, 'supprimer mes parcours en ligne');
 select is((select count(*)::int from public.run_routes), 0, 'références supprimées');
-select lives_ok(format($$delete from storage.objects where name = '%s/dDE.json.gz'$$, (select id from ids where name = 'a')), 'le titulaire supprime son fichier');
+-- Comme l'API Storage, autoriser le DELETE des métadonnées pour ces objets de test.
+select set_config('storage.allow_delete_query', 'true', true);
+with deleted as (
+  delete from storage.objects
+   where bucket_id = 'run-tracks' and name = (select id::text || '/dDE.json.gz' from ids where name = 'a')
+  returning 1
+)
+select is((select count(*)::int from deleted), 1, 'le titulaire supprime son fichier');
+select set_config('storage.allow_delete_query', 'false', true);
 select tests.logout();
 select is((select count(*)::int from private.storage_purge_queue where path like '%dDE.json.gz'), 1, 'fichier mis en file de purge');
 select * from finish();

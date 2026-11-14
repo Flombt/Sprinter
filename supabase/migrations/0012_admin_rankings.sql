@@ -53,18 +53,52 @@ language sql immutable set search_path = '' as $$
                                 'best_effort_1k','best_effort_5k','best_effort_10k','best_effort_21k') then p_metric end
 $$;
 
+create or replace function private.leaderboard_values(
+  p_metric text, p_period text, p_platforms text[], p_countries text[]
+) returns table (user_id uuid, value numeric, achieved_at timestamptz)
+language sql stable set search_path = '' as $$
+  select s.user_id,
+    case p_metric
+      when 'runs_count' then s.runs_count
+      when 'distance_total' then s.distance_total
+      when 'longest_run' then s.longest_run
+      when 'active_days' then s.active_days
+      when 'active_weeks' then s.active_weeks
+      when 'best_effort_1k' then s.best_effort_1k
+      when 'best_effort_5k' then s.best_effort_5k
+      when 'best_effort_10k' then s.best_effort_10k
+      when 'best_effort_21k' then s.best_effort_21k
+    end,
+    case p_metric
+      when 'longest_run' then s.longest_at
+      when 'best_effort_1k' then s.best_1k_at
+      when 'best_effort_5k' then s.best_5k_at
+      when 'best_effort_10k' then s.best_10k_at
+      when 'best_effort_21k' then s.best_21k_at
+      else s.last_at
+    end
+  from private.leaderboard_stats s
+  left join public.profiles p on p.user_id = s.user_id
+  where s.period = p_period
+    and (p_platforms is null or exists (
+      select 1 from public.user_devices d where d.user_id = s.user_id and d.platform = any (p_platforms)
+    ))
+    and (p_countries is null or p.country_code = any (p_countries))
+$$;
+
 -- Classements (§9.3) : agrégé par défaut, nominatif sous capacité + motif + réauth + audit.
 create or replace function public.admin_leaderboard(
   p_metric text, p_period text, p_filters jsonb default '{}'::jsonb, p_mode text default 'aggregate',
   p_reason text default null, p_reason_note text default null
 ) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
-  v_filters jsonb := coalesce(p_filters, '{}'::jsonb); v_key text; v_column text := private.metric_column(p_metric);
+  v_filters jsonb := coalesce(p_filters, '{}'::jsonb); v_key text; v_platforms text[]; v_countries text[];
   v_lower boolean := p_metric like 'best_effort_%'; v_reason text; v_result jsonb; v_unit text;
-  v_values numeric[]; v_hist jsonb := '[]'::jsonb; v_suppressed int := 0; v_min numeric; v_max numeric; v_width numeric;
+  v_values numeric[]; v_percentiles double precision[]; v_count int;
+  v_hist jsonb := '[]'::jsonb; v_suppressed int := 0; v_min numeric; v_max numeric; v_width numeric;
   v_bucket record; v_carry_from numeric; v_carry int := 0; v_refreshed timestamptz;
 begin
-  if v_column is null then raise exception 'invalid_parameter:metric' using errcode = '22023'; end if;
+  if private.metric_column(p_metric) is null then raise exception 'invalid_parameter:metric' using errcode = '22023'; end if;
   if p_period not in ('week','month','year','all') then raise exception 'invalid_parameter:period' using errcode = '22023'; end if;
   if p_mode not in ('aggregate','nominative') then raise exception 'invalid_parameter:mode' using errcode = '22023'; end if;
   for v_key in select jsonb_object_keys(v_filters) loop
@@ -81,21 +115,8 @@ begin
   end if;
   v_unit := case when p_metric in ('distance_total','longest_run') then 'km' when v_lower then 's' when p_metric = 'active_weeks' then 'semaines'
                  when p_metric = 'active_days' then 'jours' else 'courses' end;
-  create temporary table if not exists lb_values (user_id uuid, value numeric, achieved_at timestamptz) on commit drop;
-  truncate lb_values;
-  execute format($q$
-    insert into lb_values
-    select s.user_id, s.%1$I, case %2$L when 'longest_run' then s.longest_at when 'best_effort_1k' then s.best_1k_at
-      when 'best_effort_5k' then s.best_5k_at when 'best_effort_10k' then s.best_10k_at when 'best_effort_21k' then s.best_21k_at else s.last_at end
-    from private.leaderboard_stats s
-    left join public.profiles p on p.user_id = s.user_id
-    where s.period = $1 and s.%1$I is not null
-      and ($2 is null or exists (select 1 from public.user_devices d where d.user_id = s.user_id and d.platform = any ($2)))
-      and ($3 is null or p.country_code = any ($3))
-  $q$, v_column, p_metric)
-  using p_period,
-    case when v_filters ? 'platform' then array(select jsonb_array_elements_text(v_filters -> 'platform')) end,
-    case when v_filters ? 'country' then array(select jsonb_array_elements_text(v_filters -> 'country')) end;
+  v_platforms := case when v_filters ? 'platform' then array(select jsonb_array_elements_text(v_filters -> 'platform')) end;
+  v_countries := case when v_filters ? 'country' then array(select jsonb_array_elements_text(v_filters -> 'country')) end;
   select max(refreshed_at) into v_refreshed from private.leaderboard_stats;
 
   if p_mode = 'nominative' then
@@ -105,17 +126,24 @@ begin
         'display_name', display_name, 'value', value, 'achieved_at', achieved_at) order by rank), '[]'::jsonb))
       into v_result
       from (select v.*, p.display_name, row_number() over (order by case when v_lower then v.value end asc, case when not v_lower then v.value end desc, v.achieved_at asc) as rank
-            from lb_values v left join public.profiles p on p.user_id = v.user_id) ranked
+            from private.leaderboard_values(p_metric, p_period, v_platforms, v_countries) v
+            left join public.profiles p on p.user_id = v.user_id
+            where v.value is not null) ranked
       where rank <= 50;
     return v_result;
   end if;
 
-  select array_agg(value order by value), min(value), max(value) into v_values, v_min, v_max from lb_values;
-  if coalesce(array_length(v_values, 1), 0) >= 10 then
+  select count(*)::int, array_agg(value), min(value), max(value),
+         percentile_cont(array[0.1, 0.25, 0.5, 0.75, 0.9]::double precision[]) within group (order by value)
+    into v_count, v_values, v_min, v_max, v_percentiles
+    from private.leaderboard_values(p_metric, p_period, v_platforms, v_countries)
+    where value is not null;
+  if v_count >= 10 then
     v_width := greatest((v_max - v_min) / 10, 0.000001);
     -- Classes successives ; une classe de moins de 10 comptes est fusionnée avec la suivante.
     for v_bucket in
-      select least(floor((value - v_min) / v_width), 9) as b, count(*) as users from lb_values group by 1 order by 1
+      select least(floor((value - v_min) / v_width), 9) as b, count(*) as users
+      from unnest(v_values) as t(value) group by 1 order by 1
     loop
       if v_carry = 0 then v_carry_from := v_min + v_bucket.b * v_width; end if;
       v_carry := v_carry + v_bucket.users;
@@ -131,18 +159,15 @@ begin
       else v_suppressed := 1; end if;
     end if;
   else
-    v_suppressed := case when coalesce(array_length(v_values, 1), 0) > 0 then 1 else 0 end;
+    v_suppressed := case when v_count > 0 then 1 else 0 end;
   end if;
   perform private.audit('leaderboard.view_aggregate', null, null, jsonb_build_object('metric', p_metric, 'period', p_period));
   return jsonb_build_object('mode', 'aggregate', 'metric', p_metric, 'period', p_period, 'unit', v_unit, 'lower_is_better', v_lower,
     'refreshed_at', v_refreshed,
-    'eligible_users', case when coalesce(array_length(v_values, 1), 0) >= 10 then array_length(v_values, 1) end,
-    'percentiles', case when coalesce(array_length(v_values, 1), 0) >= 10 then jsonb_build_object(
-      'p10', (select percentile_cont(0.1) within group (order by value) from lb_values),
-      'p25', (select percentile_cont(0.25) within group (order by value) from lb_values),
-      'p50', (select percentile_cont(0.5) within group (order by value) from lb_values),
-      'p75', (select percentile_cont(0.75) within group (order by value) from lb_values),
-      'p90', (select percentile_cont(0.9) within group (order by value) from lb_values)) end,
+    'eligible_users', case when v_count >= 10 then v_count end,
+    'percentiles', case when v_count >= 10 then jsonb_build_object(
+      'p10', v_percentiles[1], 'p25', v_percentiles[2], 'p50', v_percentiles[3],
+      'p75', v_percentiles[4], 'p90', v_percentiles[5]) end,
     'histogram', v_hist, 'suppressed_buckets', v_suppressed,
     'method', 'Courses éligibles (§9.2) : source Sprinter, validité « valide », au moins 1 000 m et 300 s, non supprimées. '
       || case when v_lower then 'Meilleur effort = plus petit temps mesuré sur l’appareil pour la distance. ' else '' end
@@ -172,6 +197,16 @@ begin
                             'other', v_other, 'suppressed', false);
 end $$;
 
+create or replace function private.analytics_users(p_platforms text[], p_providers text[])
+returns table (user_id uuid)
+language sql stable set search_path = '' as $$
+  select d.user_id from private.user_directory d
+  where (p_providers is null or d.providers && p_providers)
+    and (p_platforms is null or exists (
+      select 1 from public.user_devices u where u.user_id = d.user_id and u.platform = any (p_platforms)
+    ))
+$$;
+
 create or replace function public.admin_analytics(p_view text, p_from date, p_to date, p_filters jsonb default '{}'::jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -185,25 +220,21 @@ begin
   end loop;
   v_platforms := case when v_filters ? 'platform' then array(select jsonb_array_elements_text(v_filters -> 'platform')) end;
   v_providers := case when v_filters ? 'provider' then array(select jsonb_array_elements_text(v_filters -> 'provider')) end;
-  create temporary table if not exists an_users (user_id uuid primary key) on commit drop;
-  truncate an_users;
-  insert into an_users select d.user_id from private.user_directory d
-   where (v_providers is null or d.providers && v_providers)
-     and (v_platforms is null or exists (select 1 from public.user_devices u where u.user_id = d.user_id and u.platform = any (v_platforms)));
-
   if p_view = 'signups' then
-    v_out := jsonb_build_object('series', (select coalesce(jsonb_agg(jsonb_build_object('day', g::date, 'value',
+    with an_users as (select user_id from private.analytics_users(v_platforms, v_providers))
+    select jsonb_build_object('series', coalesce(jsonb_agg(jsonb_build_object('day', g::date, 'value',
       (select count(*) from private.user_directory d join an_users a using (user_id)
         where d.signed_up_at >= private.paris_start(g::date) and d.signed_up_at < private.paris_start(g::date + 1))) order by g), '[]'::jsonb)
-      from generate_series(p_from, p_to, interval '1 day') g));
+      ) into v_out from generate_series(p_from, p_to, interval '1 day') g;
   elsif p_view = 'activity' then
-    v_out := jsonb_build_object('series', (select coalesce(jsonb_agg(jsonb_build_object('day', g::date,
+    with an_users as (select user_id from private.analytics_users(v_platforms, v_providers))
+    select jsonb_build_object('series', coalesce(jsonb_agg(jsonb_build_object('day', g::date,
       'dau', (select count(distinct a.user_id) from public.activity_days a join an_users u using (user_id) where a.day = g::date),
       'wau', (select count(distinct a.user_id) from public.activity_days a join an_users u using (user_id) where a.day between g::date - 6 and g::date),
       'mau', (select count(distinct a.user_id) from public.activity_days a join an_users u using (user_id) where a.day between g::date - 29 and g::date)) order by g), '[]'::jsonb)
-      from generate_series(p_from, p_to, interval '1 day') g));
+      ) into v_out from generate_series(p_from, p_to, interval '1 day') g;
   elsif p_view in ('distance_histogram', 'duration_histogram', 'frequency_histogram') then
-    with values_ as (
+    with an_users as (select user_id from private.analytics_users(v_platforms, v_providers)), values_ as (
       select case p_view when 'distance_histogram' then r.distance_m / 1000 when 'duration_histogram' then r.active_s / 60.0 end as v
       from public.runs r join an_users u using (user_id)
       where p_view <> 'frequency_histogram' and r.deleted_at is null and r.validity <> 'invalid' and r.started_at >= v_start and r.started_at < v_end
@@ -223,7 +254,7 @@ begin
         'value', case when n < 10 then null else n end, 'suppressed', n < 10) order by b), '[]'::jsonb))
       into v_out from buckets;
   elsif p_view = 'retention' then
-    with cohorts as (
+    with an_users as (select user_id from private.analytics_users(v_platforms, v_providers)), cohorts as (
       select d.user_id, private.paris_day(d.signed_up_at) as day, date_trunc('week', d.signed_up_at at time zone 'Europe/Paris')::date as week
       from private.user_directory d join an_users u using (user_id)
       where d.signed_up_at >= v_start and d.signed_up_at < v_end
@@ -248,8 +279,9 @@ begin
       ) order by s.week), '[]'::jsonb))
       into v_out from sizes s join daily d using (week);
   elsif p_view = 'platform_compare' then
-    v_out := jsonb_build_object('rows', (select coalesce(jsonb_agg(jsonb_build_object('platform', platform, 'accounts', accounts, 'active', active, 'runs', runs, 'distance_km', km)), '[]'::jsonb)
-      from (select pl.platform,
+    with an_users as (select user_id from private.analytics_users(v_platforms, v_providers))
+    select jsonb_build_object('rows', coalesce(jsonb_agg(jsonb_build_object('platform', platform, 'accounts', accounts, 'active', active, 'runs', runs, 'distance_km', km)), '[]'::jsonb))
+      into v_out from (select pl.platform,
               (select count(distinct d.user_id) from public.user_devices d join an_users u using (user_id) where d.platform = pl.platform) as accounts,
               (select count(distinct a.user_id) from public.activity_days a join public.user_devices d using (user_id) join an_users u on u.user_id = a.user_id
                 where d.platform = pl.platform and a.day between p_from and p_to) as active,
@@ -257,9 +289,9 @@ begin
                 and r.started_at >= v_start and r.started_at < v_end) as runs,
               (select round(coalesce(sum(r.distance_m), 0) / 1000, 1) from public.runs r join an_users u using (user_id) where r.platform = pl.platform
                 and r.deleted_at is null and r.validity <> 'invalid' and r.started_at >= v_start and r.started_at < v_end) as km
-            from (values ('ios'), ('android')) pl(platform)) t));
+            from (values ('ios'), ('android')) pl(platform)) t;
   elsif p_view in ('breakdown_country', 'breakdown_city', 'breakdown_age_band') then
-    with keyed as (
+    with an_users as (select user_id from private.analytics_users(v_platforms, v_providers)), keyed as (
       select u.user_id, case p_view when 'breakdown_country' then p.country_code when 'breakdown_city' then p.city else p.age_band end as key
       from an_users u join public.profiles p using (user_id)
     ), rows_ as (
@@ -332,7 +364,8 @@ begin
   end if;
 end $cron$;
 
-revoke all on function private.period_start(text), private.refresh_rankings(), private.metric_column(text), private.k_anonymize(jsonb, int) from public, anon, authenticated;
+revoke all on function private.period_start(text), private.refresh_rankings(), private.metric_column(text), private.k_anonymize(jsonb, int),
+  private.leaderboard_values(text, text, text[], text[]), private.analytics_users(text[], text[]) from public, anon, authenticated;
 revoke all on function public.admin_leaderboard(text, text, jsonb, text, text, text), public.admin_analytics(text, date, date, jsonb),
   public.admin_runs_stats(date, date, jsonb) from public, anon;
 grant execute on function public.admin_leaderboard(text, text, jsonb, text, text, text), public.admin_analytics(text, date, date, jsonb),

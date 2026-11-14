@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // « Aucune régression au démarrage » (§0.1, §14 phase 1) : la bibliothèque Supabase et les
@@ -12,7 +12,10 @@ function files(dir: string): string[] {
     return statSync(path).isDirectory() ? files(path) : /\.(ts|tsx)$/.test(entry) ? [path] : [];
   });
 }
-const sources = [join(root, 'App.tsx'), ...files(join(root, 'src'))].map((path) => ({ path: relative(root, path), text: readFileSync(path, 'utf8') }));
+const sources = [join(root, 'App.tsx'), ...files(join(root, 'src'))].map((path) => ({
+  path: relative(root, path).split(sep).join('/'),
+  text: readFileSync(path, 'utf8'),
+}));
 const staticImport = (module: string) => new RegExp(`^import\\s+(?!type\\b)[^;]*?from\\s+['"]${module.replace(/[/@.-]/g, (c) => `\\${c}`)}['"]`, 'm');
 
 describe('démarrage sans compte', () => {
