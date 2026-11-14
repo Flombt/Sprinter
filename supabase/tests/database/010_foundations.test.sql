@@ -37,7 +37,8 @@ select is((select providers from private.user_directory where user_id = (select 
   array['apple'], 'annuaire alimenté par trigger avec le fournisseur');
 select is((select count(*)::int from public.profiles where user_id in (select id from ids)), 2, 'profil vide créé à l''inscription');
 insert into auth.identities (provider_id, user_id, provider, identity_data)
-values ('google-b', (select id from ids where name = 'b'), 'google', '{"email":"b@example.test"}');
+values ('google-b', (select id from ids where name = 'b'), 'google',
+        jsonb_build_object('sub', 'google-b', 'email', 'b@example.test'));
 select is((select providers from private.user_directory where user_id = (select id from ids where name = 'b')),
   array['apple', 'google'], 'ajout d''une méthode reflété dans l''annuaire');
 
