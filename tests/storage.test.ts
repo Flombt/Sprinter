@@ -48,7 +48,7 @@ describe('SQLite persistence using actual SQL', () => {
     const migrated = new RunRepository(db); await migrated.initialize();
     expect((await migrated.loadDraft())?.run.id).toBe('storage-test');
     expect(await migrated.listDraftArchives()).toEqual([]);
-    expect((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version).toBe(3);
+    expect((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version).toBe(4);
   });
   it('persists settings and restores a checkpoint in a new repository instance', async () => {
     const db = database(); const repo = new RunRepository(db); await repo.initialize();
@@ -83,7 +83,7 @@ describe('SQLite persistence using actual SQL', () => {
   });
   it('reports corrupt history rows without deleting them', async () => {
     const db = database(), repo = new RunRepository(db); await repo.initialize();
-    await db.runAsync('INSERT INTO runs VALUES (?, ?, ?)', 'bad', 0, '{bad');
+    await db.runAsync('INSERT INTO runs (id, started_at, payload) VALUES (?, ?, ?)', 'bad', 0, '{bad');
     expect(await repo.history()).toEqual([]); expect(repo.unreadableCount).toBe(1);
     expect(await db.getAllAsync('SELECT id FROM runs')).toHaveLength(1);
   });

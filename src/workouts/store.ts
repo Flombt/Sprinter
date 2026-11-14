@@ -53,6 +53,16 @@ class WorkoutLibrary {
       catch { this.emit({ message: 'Séance supprimée. Le nettoyage du favori n’a pas pu être enregistré et sera repris lors d’une prochaine sauvegarde.' }); }
     }
   });
+  clearForAccountSwitch = async () => {
+    await this.initialize();
+    return this.write(async () => {
+      if (!this.value.ready) throw new Error('Bibliothèque indisponible.');
+      const preferences = { ...this.value.preferences, selected: null,
+        favoriteKeys: this.value.preferences.favoriteKeys?.filter((key) => !key.startsWith('saved:')) };
+      await this.persistence!.clear(preferences);
+      this.emit({ definitions: [], preferences, unreadable: 0 });
+    });
+  };
   toggleFavorite = (key: string) => this.write(async () => {
     if (!validWorkoutFavoriteKey(key)) throw new Error('Cette référence de favori est invalide.');
     if (key.startsWith('saved:') && !this.value.definitions.some(d => savedFavoriteKey(d.id) === key)) throw new Error('Cette séance n’est plus disponible.');

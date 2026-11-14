@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index, follow">
+  <meta name="referrer" content="no-referrer">
+  <!-- connect-src : remplacer <projet> par l'identifiant du projet Supabase de production au déploiement. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://<projet>.supabase.co; img-src 'self'; form-action 'none'; base-uri 'none'">
+  <title>Supprimer mon compte Sprinter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-supabase-url="https://<projet>.supabase.co" data-publishable-key="<cle-publique>" data-support-email="support@<domaine>">
+  <main>
+    <p class="brand">SPRINTER</p>
+    <h1>Supprimer mon compte</h1>
+    <p>Cette page permet de demander la suppression de votre compte <strong>Sprinter</strong> (application de course à pied, éditeur <span class="placeholder">&lt;ÉDITEUR&gt;</span>), y compris si vous avez désinstallé l’application.</p>
+
+    <section aria-labelledby="ce-qui-est-supprime">
+      <h2 id="ce-qui-est-supprime">Ce qui est supprimé</h2>
+      <ul>
+        <li>votre compte et vos méthodes de connexion (Apple, Google, adresse e-mail) ;</li>
+        <li>toutes vos données stockées en ligne : profil, réglages, courses, parcours GPS sauvegardés, appareils, choix et demandes au support ;</li>
+        <li>votre profil personnalisé et ses médias, s’ils existent.</li>
+      </ul>
+      <p>Les courses enregistrées sur votre téléphone y restent tant que vous ne les effacez pas. Une trace technique minimale (date et identifiant d’opération, sans contenu) est conservée pour prouver le traitement. La suppression est <strong>irréversible</strong> et traitée au plus tard sous un mois.</p>
+    </section>
+
+    <section aria-labelledby="dans-app">
+      <h2 id="dans-app">Depuis l’application</h2>
+      <p>Réglages › Compte › Mes données › <strong>Supprimer mon compte</strong>. Une confirmation de votre identité vous est demandée.</p>
+    </section>
+
+    <section aria-labelledby="a-distance">
+      <h2 id="a-distance">À distance, avec un code reçu par e-mail</h2>
+      <form id="step-email" novalidate>
+        <label for="email">Adresse e-mail de votre compte</label>
+        <input id="email" name="email" type="email" autocomplete="email" required>
+        <button type="submit">Recevoir un code</button>
+      </form>
+      <form id="step-code" hidden novalidate>
+        <label for="code">Code à 6 chiffres reçu par e-mail</label>
+        <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+        <label for="confirm">Pour confirmer, saisissez <strong>SUPPRIMER</strong></label>
+        <input id="confirm" name="confirm" autocomplete="off" required>
+        <button type="submit" class="danger">Supprimer définitivement mon compte</button>
+      </form>
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="help">Compte créé avec Apple et adresse masquée ? Le code est transféré vers votre messagerie habituelle. Vous ne recevez rien ? Écrivez à <a id="support-link" href="#">l’adresse du support</a> depuis l’adresse liée à votre compte : nous vérifierons votre identité avant de traiter la demande.</p>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

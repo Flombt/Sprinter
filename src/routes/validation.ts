@@ -3,6 +3,7 @@ import { routeLength, validCoordinate } from './geometry';
 export function readRoute(value: unknown): SavedRoute {
   const route = value as SavedRoute;
   if (!route || route.version !== 1 || typeof route.id !== 'string' || !route.id || route.id.length > 200 || typeof route.name !== 'string' || route.name.length > 100 || !Number.isFinite(route.createdAt) ||
+    (route.updatedAt !== undefined && !Number.isFinite(route.updatedAt)) ||
     !['activity', 'gpx'].includes(route.source) || (route.sourceActivityId !== undefined && typeof route.sourceActivityId !== 'string') || !Array.isArray(route.warnings) || route.warnings.length > 20 || !route.warnings.every(s => typeof s === 'string' && s.length <= 500) ||
     !Array.isArray(route.segments) || route.segments.length > 10000 || !route.segments.every(s => Array.isArray(s) && s.length >= 2 && s.every(validCoordinate)) || route.segments.reduce((n, s) => n + s.length, 0) > 20000) throw new Error('Parcours local illisible. Données conservées.');
   const distanceMeters = routeLength(route.segments);

@@ -48,6 +48,8 @@ class BrowserRepository implements StorageRepository {
     this.save(data); this.closed.add(run.id);
   }
   async deleteRun(id: string) { const data = this.read(); data.history = data.history.filter(r => r.id !== id); this.save(data); }
+  async purgeLocalRuns() { const data = this.read(); data.history = []; this.save(data); }
+  serialized<T>(): Promise<T> { return Promise.reject(new Error('Synchronisation indisponible dans l’aperçu web.')); }
   async loadSettings() {
     const settings = this.read().settings ?? DEFAULT_SETTINGS;
     return { ...settings, appearance: settings.appearance ?? DEFAULT_SETTINGS.appearance };

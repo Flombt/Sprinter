@@ -17,6 +17,7 @@ import { ProgressAnnouncements } from '../coaching/progress';
 import { progression } from '../progression/store';
 import { forgetActivityAnalysis } from '../analysis/cache';
 import { recentMapFix } from './sessionView';
+import { bestEfforts } from '../sync/routes';
 
 export interface SessionState {
   ready: boolean; loading: boolean; busy: boolean; error: string | null; message: string | null;
@@ -41,6 +42,7 @@ export class RunningStore {
   private revision = 0;
   private checkpointInFlight: Promise<void> | null = null;
   private operation = false;
+  private resettingAccount = false;
   private importingHealth = false;
   private recoveryBlocked = false;
   private healthAutoWrite = false;
@@ -275,6 +277,10 @@ export class RunningStore {
     this.engine.pause(mono()); this.engine.drainEvents(); this.stopTimer(); coaching.stop(); this.emit({ busy: true });
     try {
       const result = this.engine.finish(Date.now());
+      // Meilleurs efforts calculés sur l'appareil, après l'arrêt du GPS (§8.3).
+      if (!result.bestEfforts) { try { const efforts = bestEfforts(result); if (efforts) result.bestEfforts = efforts; } catch { /* facultatif */ } }
+      // Fuseau de l'appareil pour le jour local des statistiques (§7.3), sans effet sur la course.
+      if (!result.tz) { try { const zone = Intl.DateTimeFormat().resolvedOptions().timeZone; if (zone) result.tz = zone; } catch { /* facultatif */ } }
       // Commit the user's Health-export intent with the run itself, before any
       // observer can enqueue a separate Apple database write.
       if (this.healthAutoWrite && !result.healthKit && result.activeSeconds > 0 && result.distanceMeters > 0) result.healthExportRequestedAt = Date.now();
@@ -296,6 +302,7 @@ export class RunningStore {
     finally { this.operation = false; this.emit({ busy: false }); }
   };
   updateSettings = async (patch: Partial<Settings>) => {
+    if (this.resettingAccount) return;
     if (this.engine && (patch.backgroundEnabled !== undefined || patch.autoPauseEnabled !== undefined)) { this.emit({ message: 'Modifiez le suivi en arrière-plan et la pause automatique entre deux courses.' }); return; }
     const settings = { ...this.value.settings, ...patch, coaching: sanitizeCoaching(patch.coaching ?? this.value.settings.coaching) };
     if (patch.audioEnabled === false || patch.hapticsEnabled === false || patch.coaching !== undefined) coaching.stop();
@@ -314,8 +321,54 @@ export class RunningStore {
     }
     catch (error) { this.emit({ message: textError(error) }); return false; }
   };
+  /** Accès sérialisé à la base des courses pour le moteur de synchronisation (même file d'écriture). */
+  withStorage = async <T>(operation: (db: import('../storage/repository').SqlDatabase) => Promise<T>): Promise<T> => {
+    await this.initialize();
+    if (!this.repository) throw new Error('Le stockage des activités est indisponible.');
+    return this.repository.serialized(operation);
+  };
+  /** Relit l'historique après une modification venue d'un autre appareil. */
+  reloadHistory = async () => {
+    if (!this.repository) return;
+    try {
+      const history = await this.repository.history();
+      this.emit({ history, unreadableCount: this.repository.unreadableCount });
+      void progression.initialize().then(() => progression.reconcile(history));
+    } catch { /* l'historique affiché reste celui en mémoire */ }
+  };
+  /** Efface l'historique local sur choix explicite (déconnexion, suppression du compte). Jamais pendant une course. */
+  purgeLocalHistory = async (): Promise<boolean> => {
+    if (!this.repository || this.engine || this.operation) return false;
+    try {
+      await this.repository.purgeLocalRuns();
+      for (const run of this.value.history) forgetActivityAnalysis(run.id);
+      this.emit({ history: [] });
+      void progression.initialize().then(() => progression.reconcile([]));
+      return true;
+    } catch (error) { this.emit({ message: textError(error) }); return false; }
+  };
+  resetAccountData = async (clear: (settings: Settings) => Promise<boolean>): Promise<boolean> => {
+    await this.initialize();
+    if (!this.repository || this.engine || this.operation || this.importingHealth) return false;
+    this.operation = true;
+    this.resettingAccount = true;
+    this.emit({ busy: true });
+    try {
+      const settings = { ...DEFAULT_SETTINGS, config: { ...DEFAULT_SETTINGS.config }, backgroundEnabled: this.value.settings.backgroundEnabled };
+      if (!await clear(settings)) return false;
+      for (const run of this.value.history) forgetActivityAnalysis(run.id);
+      this.recoveryBlocked = false;
+      coaching.stop();
+      this.emit({ settings, history: [], unreadableCount: 0, restored: false });
+      return true;
+    } finally {
+      this.resettingAccount = false;
+      this.operation = false;
+      this.emit({ busy: false });
+    }
+  };
   importHealthActivity = async (input: RunRecord): Promise<boolean> => {
-    if (this.importingHealth) return false;
+    if (this.importingHealth || this.resettingAccount) return false;
     this.importingHealth = true;
     try {
       await this.initialize();

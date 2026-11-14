@@ -33,8 +33,8 @@ jobs:
         run: npm run check
       - name: Expo dependency compatibility
         run: npx expo install --check
-      - name: Bundle iOS and web
-        run: npx expo export --platform ios --platform web --output-dir .expo/ci-export
+      - name: Bundle iOS, Android and web
+        run: npx expo export --platform ios --platform android --platform web --output-dir .expo/ci-export
         # JavaScript/assets verification; a signed iPhone build is a separate check.
 
   # Base de données : migrations rejouées depuis zéro, lint SQL et tests pgTAP (§12.2).
@@ -56,6 +56,24 @@ jobs:
         run: supabase db lint --local --level warning --fail-on error
       - name: pgTAP tests
         run: supabase test db --local
+
+  # Edge Functions (Deno) : typage, lint et tests (§12.1).
+  functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - run: deno lint --config deno.json
+      - run: deno check --config deno.json */index.ts
+      - run: deno test --config deno.json --allow-env tests/
 
   # Secrets : garde ciblée sur le bundle + gitleaks sur tout l'historique (§12.2, §13.5).
   secrets:

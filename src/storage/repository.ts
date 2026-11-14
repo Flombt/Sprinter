@@ -81,6 +81,16 @@ export function parseRun(payload: string): RunRecord {
   return { ...r, config: sanitizeConfig(r.config) };
 }
 
+/**
+ * Entrée d'outbox écrite dans la MÊME transaction que l'écriture métier (§7.1), seulement
+ * si l'appareil est lié à un compte. La dernière opération gagne et sa version augmente :
+ * le moteur ne retire que la version qu'il a envoyée.
+ */
+export const ENQUEUE_SQL = `INSERT INTO sync_outbox (entity, entity_id, op, created_at, attempts, next_attempt_at, version)
+  SELECT ?, ?, ?, ?, 0, 0, 1 WHERE EXISTS (SELECT 1 FROM sync_state WHERE key = 'bound_user_id')
+  ON CONFLICT(entity, entity_id) DO UPDATE SET op = excluded.op, created_at = excluded.created_at, attempts = 0,
+    next_attempt_at = 0, last_error = NULL, parked = 0, version = sync_outbox.version + 1`;
+
 /** One serialized writer. Finishing commits history + removes the checkpoint atomically. */
 export class RunRepository {
   private queue: Promise<unknown> = Promise.resolve();
@@ -93,7 +103,7 @@ export class RunRepository {
   }
   async initialize() {
     const version = await this.db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    if ((version?.user_version ?? 0) > 3) throw new Error('Cette base de courses provient d’une version plus récente. Aucune migration ni écriture n’a été effectuée.');
+    if ((version?.user_version ?? 0) > 4) throw new Error('Cette base de courses provient d’une version plus récente. Aucune migration ni écriture n’a été effectuée.');
     await this.db.execAsync(`PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
       CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, started_at REAL NOT NULL, payload TEXT NOT NULL);
@@ -102,9 +112,29 @@ export class RunRepository {
       CREATE TABLE IF NOT EXISTS settings (slot INTEGER PRIMARY KEY CHECK(slot = 1), payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS draft_points (session_id TEXT NOT NULL, point_id INTEGER NOT NULL, payload TEXT NOT NULL,
         PRIMARY KEY (session_id, point_id));
-      CREATE TABLE IF NOT EXISTS draft_archives (id TEXT PRIMARY KEY, archived_at REAL NOT NULL, payload TEXT NOT NULL);
-      PRAGMA user_version = 3;`);
+      CREATE TABLE IF NOT EXISTS draft_archives (id TEXT PRIMARY KEY, archived_at REAL NOT NULL, payload TEXT NOT NULL);`);
+    // Version 4 (§7.2) : horodatage local de modification et tables de synchronisation, en une transaction.
+    if ((version?.user_version ?? 0) < 4) {
+      await this.db.execAsync('BEGIN IMMEDIATE');
+      try {
+        const columns = await this.db.getAllAsync<{ name: string }>('PRAGMA table_info(runs)');
+        if (!columns.some(column => column.name === 'updated_at')) await this.db.execAsync('ALTER TABLE runs ADD COLUMN updated_at REAL');
+        await this.db.execAsync(`UPDATE runs SET updated_at = started_at WHERE updated_at IS NULL;
+          CREATE TABLE IF NOT EXISTS sync_outbox (seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity TEXT NOT NULL CHECK (entity IN ('run', 'settings', 'route')), entity_id TEXT NOT NULL,
+            op TEXT NOT NULL CHECK (op IN ('upsert', 'delete')), created_at REAL NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at REAL NOT NULL DEFAULT 0, last_error TEXT,
+            version INTEGER NOT NULL DEFAULT 1, parked INTEGER NOT NULL DEFAULT 0, UNIQUE (entity, entity_id));
+          CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS sync_meta (entity TEXT NOT NULL, entity_id TEXT NOT NULL, server_updated_at TEXT,
+            synced_at REAL, validity TEXT, validity_reasons TEXT, PRIMARY KEY (entity, entity_id));
+          PRAGMA user_version = 4;`);
+        await this.db.execAsync('COMMIT');
+      } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
+    }
   }
+  /** Exécute une opération dans la file d'écriture unique (utilisée par le moteur de synchronisation). */
+  serialized<T>(operation: (db: SqlDatabase) => Promise<T>): Promise<T> { return this.write(() => operation(this.db)); }
   async history(): Promise<RunRecord[]> {
     const rows = await this.db.getAllAsync<{ payload: string }>('SELECT payload FROM runs ORDER BY started_at DESC');
     this.unreadableCount = 0;
@@ -180,14 +210,35 @@ export class RunRepository {
       if (run.endedAt === null) throw new Error('La course doit être terminée avant son enregistrement.');
       await this.db.execAsync('BEGIN IMMEDIATE');
       try {
-        await this.db.runAsync('INSERT INTO runs (id, started_at, payload) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload', run.id, run.startedAt, payload);
+        const now = Date.now();
+        await this.db.runAsync('INSERT INTO runs (id, started_at, payload, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at', run.id, run.startedAt, payload, now);
+        await this.db.runAsync(ENQUEUE_SQL, 'run', run.id, 'upsert', now);
         await this.db.runAsync('DELETE FROM draft WHERE session_id = ?', run.id);
         await this.db.runAsync('DELETE FROM draft_points WHERE session_id = ?', run.id);
         await this.db.execAsync('COMMIT'); this.closedSessions.add(run.id); this.committedPoints.delete(run.id);
       } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
     });
   }
-  deleteRun(id: string) { return this.write(async () => { await this.db.runAsync('DELETE FROM runs WHERE id = ?', id); }); }
+  deleteRun(id: string) {
+    return this.write(async () => {
+      await this.db.execAsync('BEGIN IMMEDIATE');
+      try {
+        await this.db.runAsync('DELETE FROM runs WHERE id = ?', id);
+        await this.db.runAsync(ENQUEUE_SQL, 'run', id, 'delete', Date.now());
+        await this.db.execAsync('COMMIT');
+      } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
+    });
+  }
+  /** Efface l'historique de CET appareil seulement (déconnexion ou suppression de compte, choix explicite) : rien n'est supprimé en ligne. */
+  purgeLocalRuns() {
+    return this.write(async () => {
+      await this.db.execAsync('BEGIN IMMEDIATE');
+      try {
+        await this.db.execAsync("DELETE FROM runs; DELETE FROM sync_outbox WHERE entity IN ('run', 'route'); DELETE FROM sync_meta WHERE entity IN ('run', 'route');");
+        await this.db.execAsync('COMMIT');
+      } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
+    });
+  }
   async loadSettings(): Promise<Settings> {
     const row = await this.db.getFirstAsync<{ payload: string }>('SELECT payload FROM settings WHERE slot = 1');
     if (!row) return { ...DEFAULT_SETTINGS, config: { ...DEFAULT_SETTINGS.config } };
@@ -204,8 +255,15 @@ export class RunRepository {
   }
   saveSettings(settings: Settings) {
     const payload = JSON.stringify(settings);
-    return this.write(async () => { await this.db.runAsync('INSERT INTO settings VALUES (1, ?) ON CONFLICT(slot) DO UPDATE SET payload = excluded.payload', payload); });
+    return this.write(async () => {
+      await this.db.execAsync('BEGIN IMMEDIATE');
+      try {
+        await this.db.runAsync('INSERT INTO settings VALUES (1, ?) ON CONFLICT(slot) DO UPDATE SET payload = excluded.payload', payload);
+        await this.db.runAsync(ENQUEUE_SQL, 'settings', 'portable', 'upsert', Date.now());
+        await this.db.execAsync('COMMIT');
+      } catch (error) { await this.db.execAsync('ROLLBACK'); throw error; }
+    });
   }
 }
 
-export type StorageRepository = Pick<RunRepository, 'initialize' | 'history' | 'loadDraft' | 'archiveDraft' | 'listDraftArchives' | 'loadDraftArchive' | 'saveDraft' | 'finish' | 'deleteRun' | 'loadSettings' | 'saveSettings' | 'unreadableCount'>;
+export type StorageRepository = Pick<RunRepository, 'initialize' | 'history' | 'loadDraft' | 'archiveDraft' | 'listDraftArchives' | 'loadDraftArchive' | 'saveDraft' | 'finish' | 'deleteRun' | 'purgeLocalRuns' | 'loadSettings' | 'serialized' | 'saveSettings' | 'unreadableCount'>;

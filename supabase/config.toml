@@ -86,6 +86,16 @@ otp_length = 6
 # Expiration courte : 10 minutes.
 otp_expiry = 600
 
+# Modèles en français affichant le code à 6 chiffres (§6.2). À recopier dans le tableau de bord
+# de staging/prod (Authentication › Email Templates).
+[auth.email.template.magic_link]
+subject = "Votre code de connexion Sprinter"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Votre code pour créer votre compte Sprinter"
+content_path = "./supabase/templates/confirmation.html"
+
 [auth.sms]
 enable_signup = false
 enable_confirmations = false
@@ -133,6 +143,29 @@ redirect_uri = ""
 url = ""
 skip_nonce_check = false
 
+# Edge Functions. delete-account vérifie elle-même le JWT (auth.getUser) afin de répondre au
+# pré-contrôle CORS de la page web publique ; process-deletions exige l'en-tête x-cron-secret.
+[functions.delete-account]
+verify_jwt = false
+
+[functions.process-deletions]
+verify_jwt = false
+
+[functions.purge-storage]
+verify_jwt = false
+
+[functions.admin-user-action]
+verify_jwt = true
+
+[functions.inactive-accounts]
+verify_jwt = false
+
+[functions.apple-link]
+verify_jwt = true
+
+[functions.export-my-data]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 policy = "per_worker"
@@ -143,3 +176,9 @@ deno_version = 2
 enabled = false
 port = 54327
 backend = "postgres"
+
+[functions.profile-media-commit]
+verify_jwt = true
+
+[functions.profile-media]
+verify_jwt = true

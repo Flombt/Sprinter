@@ -40,6 +40,7 @@ const adapt = (sql) => sql.replace(/create\s+extension\s+if\s+not\s+exists\s+pgt
 async function connect(database = 'postgres') {
   for (let attempt = 0; attempt < 100; attempt++) {
     const client = new pg.Client({ host: work, port, user: 'postgres', database });
+    client.on('error', () => { /* arrêt du serveur en fin d'exécution */ });
     try { await client.connect(); return client; } catch { await new Promise((r) => setTimeout(r, 100)); }
   }
   throw new Error('PostgreSQL ne répond pas.');
@@ -70,7 +71,7 @@ async function main() {
   const migrations = readdirSync(join(root, 'supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
   for (const file of migrations) {
     try { await db.query(readFileSync(join(root, 'supabase/migrations', file), 'utf8')); }
-    catch (error) { throw new Error(`Migration ${file} : ${error.message}${error.where ? `\n  ${error.where}` : ''}`); }
+    catch (error) { const at = error.position ? ` (position ${error.position} : « ${readFileSync(join(root, 'supabase/migrations', file), 'utf8').slice(Math.max(0, Number(error.position) - 80), Number(error.position)).replace(/\s+/g, ' ')} »)` : ''; throw new Error(`Migration ${file} : ${error.message}${at}${error.where ? `\n  ${error.where}` : ''}`); }
   }
   console.log(`✓ ${migrations.length} migrations appliquées`);
   await db.query('set search_path = extensions'); await db.query(pgtapSql()); await db.query('set search_path = "$user", public, extensions');

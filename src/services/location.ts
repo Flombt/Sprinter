@@ -1,7 +1,12 @@
-import { AppState } from 'react-native';
+import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { GPSFix } from '../core/types';
 import { CAN_BACKGROUND, LOCATION_TASK } from './capabilities';
+
+/** Android 13+ uniquement ; sans effet si la plateforme est inconnue (tests, aperçu web). */
+function needsNotificationPermission() {
+  try { return Platform.OS === 'android' && Number(Platform.Version) >= 33; } catch { return false; }
+}
 
 export interface LocationService {
   readonly canBackground: boolean;
@@ -48,8 +53,12 @@ export class DeviceLocationService implements LocationService {
     if (generation !== this.generation) throw new Error('Démarrage de la localisation annulé.');
     if (backgroundAllowed) {
       if (AppState.currentState === 'background') throw new Error('Revenez dans Sprinter pour démarrer le suivi de votre course.');
+      // Android 13+ : la notification du service au premier plan exige cette autorisation (§11).
+      if (needsNotificationPermission()) await PermissionsAndroid.request('android.permission.POST_NOTIFICATIONS').catch(() => undefined);
       await Location.startLocationUpdatesAsync(LOCATION_TASK, { ...options, activityType: Location.ActivityType.Fitness,
-        deferredUpdatesInterval: 3000, pausesUpdatesAutomatically: false, showsBackgroundLocationIndicator: true });
+        deferredUpdatesInterval: 3000, pausesUpdatesAutomatically: false, showsBackgroundLocationIndicator: true,
+        // Android : service au premier plan avec notification persistante pendant la course.
+        foregroundService: { notificationTitle: 'Course en cours', notificationBody: 'Sprinter enregistre votre parcours.', notificationColor: '#19C7B0', killServiceOnDestroy: false } });
       if (generation !== this.generation) { await Location.stopLocationUpdatesAsync(LOCATION_TASK); throw new Error('Démarrage de la localisation annulé.'); }
       return true;
     }

@@ -16,5 +16,6 @@ export async function openWorkoutPersistence(): Promise<WorkoutPersistence> {
     async save(definition) { const value = read(); value.definitions = [definition, ...value.definitions.filter(d => d.id !== definition.id)]; localStorage.setItem(key, JSON.stringify(value)); },
     async remove(id) { const value = read(); value.definitions = value.definitions.filter(d => d.id !== id); localStorage.setItem(key, JSON.stringify(value)); },
     async preferences(preferences) { const value = read(); localStorage.setItem(key, JSON.stringify({ ...value, preferences })); },
+    async clear(preferences) { localStorage.setItem(key, JSON.stringify({ definitions: [], preferences })); },
   };
 }

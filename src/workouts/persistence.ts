@@ -8,6 +8,7 @@ export interface WorkoutPersistence {
   save(definition: WorkoutDefinition): Promise<void>;
   remove(id: string): Promise<void>;
   preferences(value: WorkoutPreferences): Promise<void>;
+  clear(preferences: WorkoutPreferences): Promise<void>;
 }
 export const defaultPreferences = (): WorkoutPreferences => ({ version: 1, selected: null, voiceEnabled: false });
 export async function openWorkoutPersistence(): Promise<WorkoutPersistence> {
@@ -30,5 +31,11 @@ export async function openWorkoutPersistence(): Promise<WorkoutPersistence> {
     async save(value) { await db.runAsync('INSERT OR REPLACE INTO workouts (id, updated_at, payload) VALUES (?, ?, ?)', value.id, value.updatedAt, JSON.stringify(value)); },
     async remove(id) { await db.runAsync('DELETE FROM workouts WHERE id = ?', id); },
     async preferences(value) { await db.runAsync('INSERT OR REPLACE INTO preferences (slot, payload) VALUES (1, ?)', JSON.stringify(value)); },
+    async clear(preferences) {
+      await db.withExclusiveTransactionAsync(async (tx) => {
+        await tx.runAsync('DELETE FROM workouts');
+        await tx.runAsync('INSERT OR REPLACE INTO preferences (slot, payload) VALUES (1, ?)', JSON.stringify(preferences));
+      });
+    },
   };
 }

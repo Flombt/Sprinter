@@ -85,6 +85,10 @@ class ProgressionStore {
     for (const e of data.entries) if (e.planId === id) e.planId = null;
     if (!data.entries.some(e => e.id === data.selectedEntryId)) data.selectedEntryId = null;
   });
+  clearForAccountSwitch = () => this.write((data) => {
+    delete data.profileName;
+    Object.assign(data, emptyProgression());
+  });
 }
 export const progression = new ProgressionStore();
 export { newEntry } from './entries';

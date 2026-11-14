@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.119.0",
+    "fflate": "npm:fflate@0.8.3"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "lint": {
+    "rules": { "exclude": ["no-explicit-any", "require-await"] }
+  },
+  "fmt": { "lineWidth": 120, "singleQuote": true }
+}

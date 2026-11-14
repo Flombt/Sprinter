@@ -14,5 +14,6 @@ export async function openTools(): Promise<ToolsPersistence> {
   return { async load() { return { routes: [...routes], preferences }; },
     async saveRoute(route) { persist([route, ...routes.filter(r => r.id !== route.id)], preferences); },
     async deleteRoute(id) { persist(routes.filter(r => r.id !== id), preferences); },
-    async savePreferences(value) { persist(routes, value); } };
+    async savePreferences(value) { persist(routes, value); },
+    async clearRoutes(value) { persist([], value); } };
 }
