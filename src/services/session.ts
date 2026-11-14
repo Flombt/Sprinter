@@ -275,6 +275,8 @@ export class RunningStore {
     this.engine.pause(mono()); this.engine.drainEvents(); this.stopTimer(); coaching.stop(); this.emit({ busy: true });
     try {
       const result = this.engine.finish(Date.now());
+      // Fuseau de l'appareil pour le jour local des statistiques (§7.3), sans effet sur la course.
+      if (!result.tz) { try { const zone = Intl.DateTimeFormat().resolvedOptions().timeZone; if (zone) result.tz = zone; } catch { /* facultatif */ } }
       // Commit the user's Health-export intent with the run itself, before any
       // observer can enqueue a separate Apple database write.
       if (this.healthAutoWrite && !result.healthKit && result.activeSeconds > 0 && result.distanceMeters > 0) result.healthExportRequestedAt = Date.now();
@@ -313,6 +315,21 @@ export class RunningStore {
       return true;
     }
     catch (error) { this.emit({ message: textError(error) }); return false; }
+  };
+  /** Accès sérialisé à la base des courses pour le moteur de synchronisation (même file d'écriture). */
+  withStorage = async <T>(operation: (db: import('../storage/repository').SqlDatabase) => Promise<T>): Promise<T> => {
+    await this.initialize();
+    if (!this.repository) throw new Error('Le stockage des activités est indisponible.');
+    return this.repository.serialized(operation);
+  };
+  /** Relit l'historique après une modification venue d'un autre appareil. */
+  reloadHistory = async () => {
+    if (!this.repository) return;
+    try {
+      const history = await this.repository.history();
+      this.emit({ history, unreadableCount: this.repository.unreadableCount });
+      void progression.initialize().then(() => progression.reconcile(history));
+    } catch { /* l'historique affiché reste celui en mémoire */ }
   };
   /** Efface l'historique local sur choix explicite (déconnexion, suppression du compte). Jamais pendant une course. */
   purgeLocalHistory = async (): Promise<boolean> => {

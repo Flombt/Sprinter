@@ -109,7 +109,23 @@ RPC ajoutées (`0006_accounts.sql`) : `record_consent` (idempotent par `client_e
 
 Limite connue : le blocage après 5 codes faux est appliqué par l’app ; côté serveur, seule la limite par IP de Supabase (`token_verifications`) s’applique.
 
-## 6. Banc d’essai SQL sans Docker
+## 6. Synchronisation (phase 2)
+
+**Local** (`sprinter-v1.db`, version 4) : `runs.updated_at`, `sync_outbox` (une entrée par élément, la dernière opération gagne, `version` incrémentée à chaque écriture, `parked` pour les écritures mises de côté), `sync_state` (`bound_user_id`, curseur, choix de sauvegarde, empreinte des réglages…), `sync_meta` (date serveur, validité). L’entrée d’outbox est écrite **dans la même transaction** que la course, la suppression ou les réglages, et seulement si l’appareil est lié à un compte.
+
+**Moteur** (`src/sync/engine.ts`, testé de bout en bout avec SQLite réel et un faux serveur dans `tests/sync-engine.test.ts`) :
+1. lie l’appareil au compte (un autre compte → « Appareil lié à un autre compte », scénario D) ;
+2. réglages portables (`config`, `audioEnabled`, `hapticsEnabled`, `appearance`, `autoPauseEnabled`, `coaching`) en dernier écrit gagne ; `backgroundEnabled` reste local ;
+3. si la sauvegarde des courses est confirmée : copie locale avant le premier import (`runs_backup`), mise en file des courses jamais synchronisées, réconciliation après 60 jours, envoi par lots de 20 (points GPS retirés par SQLite), puis réception par pages avec 5 minutes de chevauchement, page et curseur dans une même transaction ;
+4. `report_sync`.
+
+Déclencheurs : retour au premier plan, fin de course (3 s), retour du réseau (NetInfo), « Réessayer ». Aucun passage pendant une séance, même en pause. Erreurs : réseau → hors ligne ; 401 → un seul rafraîchissement puis « Reconnexion nécessaire » ; 429 → pause ; 5xx → reprise avec délai exponentiel (5 s → 15 min, gigue) ; après 5 échecs, l’élément est « bloqué » et visible dans Compte › Synchronisation.
+
+**Serveur** (`0007_sync.sql`) : `sync_push_runs`, `sync_delete_runs`, `sync_pull`, `sync_list_ids`, `sync_push_preferences`, `sync_get_preferences`, `report_sync`, trigger `runs_before_write` (identité immuable, horodatages serveur, validité §9.1, meilleurs efforts plausibles), `private.storage_purge_queue`.
+
+Flag : `sync_enabled` (sans effet si `accounts_enabled` est faux). Retour arrière : le remettre à `false` arrête toute synchronisation, les données restent sur les appareils.
+
+## 7. Banc d’essai SQL sans Docker
 
 `scripts/db-local/run.mjs` initialise un PostgreSQL 17 éphémère, applique `scripts/db-local/supabase-shim.sql` (rôles `anon`/`authenticated`/`service_role`, `auth.users`/`identities`/`sessions`, `auth.uid()`/`jwt()`, `storage.buckets`/`objects`), toutes les migrations, pgTAP, puis exécute `supabase/tests/database/*.sql` (une connexion par fichier, comme `pg_prove`).
 
@@ -117,7 +133,7 @@ Prérequis : `cd scripts/db-local && npm install`, puis `PG_BIN` (dossier conten
 
 Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent (les migrations qui l’utilisent le détectent). **La référence reste la CI** (`supabase test db`).
 
-## 7. Environnements et procédures
+## 8. Environnements et procédures
 
 | Env | Supabase | Données |
 |---|---|---|
@@ -129,7 +145,7 @@ Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent 
 
 **Secrets** : saisis directement dans les gestionnaires (Supabase › Edge Functions › Secrets, Vercel, EAS). Jamais dans un fichier du dépôt ni dans une conversation.
 
-## 8. Variables d’environnement (Annexe A)
+## 9. Variables d’environnement (Annexe A)
 
 | Variable | Où | Public |
 |---|---|---|
