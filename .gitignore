@@ -5,7 +5,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 *.xcarchive
-*.ipa
 __pycache__/
 .verification/
 node_modules/
