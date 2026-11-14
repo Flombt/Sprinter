@@ -37,6 +37,13 @@ export const THEMES: ProfileTheme[] = [
   theme('sombre', 'Sombre', true, '#000000', '#141414', '#EDEDED', '#A3A3A3', '#C9C9C9', '#000000', '#2A2A2A', ['#2B2B2B', '#5A5A5A']),
   theme('pastel', 'Pastel', false, '#FFF7FB', '#FFFFFF', '#2D2433', '#5F5468', '#8E4FA8', '#FFFFFF', '#F1E4EE', ['#FBC8D4', '#C5B8F0']),
 ];
+/** Thèmes de saison (8d) : proposés pendant leur période, éditables comme les autres. */
+export const SEASONAL_THEMES: ProfileTheme[] = [
+  theme('hiver', 'Hiver', true, '#0E1726', '#18243A', '#EEF4FF', '#A7B6CF', '#8FD3FF', '#0E1726', '#2A3A57', ['#1F3B66', '#8FD3FF']),
+  theme('printemps', 'Printemps', false, '#F6FBF2', '#FFFFFF', '#1E2B1A', '#4E5E48', '#2E7D32', '#FFFFFF', '#DDEBD5', ['#B9E4A8', '#F7C6D9']),
+  theme('ete', 'Été', false, '#FFF8EC', '#FFFFFF', '#2E2214', '#66543B', '#B4500C', '#FFFFFF', '#F3E2C4', ['#FFD27A', '#FF8A4C']),
+  theme('automne', 'Automne', true, '#1E140E', '#2B1E15', '#F7EEE6', '#C9B5A4', '#E8A15A', '#1E140E', '#45321F', ['#8A3B12', '#E8A15A']),
+];
 
 /** Couleurs d'accent du catalogue, déclinées pour fond sombre et fond clair (contraste vérifié en test). */
 export const ACCENTS: { id: string; label: string; onDark: string; onLight: string }[] = [
@@ -81,7 +88,7 @@ export const SWATCHES = ['#19C7B0', '#0E7164', '#C6F135', '#8D96FC', '#3B4BFF', 
 
 export function findTheme(id: string | undefined, dark: boolean): ProfileTheme {
   if (!id || id === 'sprinter') return dark ? SPRINTER_DARK : SPRINTER_LIGHT;
-  return THEMES.find((item) => item.id === id) ?? (dark ? SPRINTER_DARK : SPRINTER_LIGHT);
+  return THEMES.find((item) => item.id === id) ?? SEASONAL_THEMES.find((item) => item.id === id) ?? (dark ? SPRINTER_DARK : SPRINTER_LIGHT);
 }
 
 // ---------------------------------------------------------------------------------------

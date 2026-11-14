@@ -13,8 +13,9 @@ import { session } from '../../services/session';
 import { useFlag } from '../../account/config';
 import { FormError, FormNotice } from '../../account/ui/parts';
 import {
-  ACCENTS, AVATARS, AVATAR_FRAMES, AVATAR_SHAPES, BANNERS, BUTTON_STYLES, CARD_STYLES, FONTS, MOODS, SWATCHES, THEMES,
+  ACCENTS, AVATARS, AVATAR_FRAMES, AVATAR_SHAPES, BANNERS, BUTTON_STYLES, CARD_STYLES, FONTS, MOODS, SEASONAL_THEMES, SWATCHES, THEMES,
 } from '../catalog';
+import { currentSeason } from '../themeModel';
 import {
   DEFAULT_STYLE_SCOPE, ELEMENT_LABELS, ESSENTIAL_WIDGET_TYPES, EditHistory, LIMITS, STATUS_DURATIONS, STAT_IDS, STAT_LABELS, WIDGET_LABELS, computeStats,
   goalProgress, kindOf, moveInOrder, orderedWidgets, restoreDefaultStyle, statusExpiry, widgetKey, type AboutPayload, type AppearancePayload, type AvatarPayload,
@@ -142,9 +143,14 @@ function DraftState({ drafts }: { drafts: DraftElement[] }) {
 
 function TemplatesPanel({ doc, editMany }: PanelProps) {
   const current = (doc.appearance as AppearancePayload | null | undefined)?.theme ?? 'sprinter';
+  const season = SEASONAL_THEMES.find((theme) => theme.id === currentSeason(Date.now()).id)!;
   return (
     <>
       <PanelTitle title="Partir d’un modèle" body="Un univers complet en un geste : couleurs, cartes et bannière assorties. Chaque élément reste modifiable ensuite." />
+      <ChipRow label="Thème de saison">
+        <Chip label={`De saison : ${season.label}`} icon="leaf-outline" swatch={[season.background, season.accent, season.banner[1]]} selected={current === season.id}
+          onPress={() => editMany([{ key: 'appearance', payload: { theme: season.id } }, { key: 'banner', payload: null }])} />
+      </ChipRow>
       <ChipRow label="Modèles">
         {THEMES.map((theme) => (
           <Chip key={theme.id} label={theme.label} swatch={[theme.background, theme.accent, theme.banner[1]]} selected={current === theme.id}

@@ -25,12 +25,15 @@ import { ShareSettings } from '../../profile/ui/ShareSettings';
 import { ProfileSearch } from '../../profile/ui/ProfileSearch';
 import { ProfileVisit } from '../../profile/ui/ProfileVisit';
 import type { VisitTarget } from '../../profile/sharing';
+import { ThemeLibrary } from '../../profile/ui/ThemeLibrary';
+import { ProfileCard } from '../../profile/ui/ProfileCard';
 
-type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit';
+type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit' | 'themeLibrary' | 'profileCard';
 const TITLES: Record<Route, string> = {
   home: 'Compte', signIn: 'Se connecter', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
   methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte', support: 'Contacter le support', community: 'Classement communautaire',
   myProfile: 'Mon profil', profileEdit: 'Modifier mon profil', profileShare: 'Visibilité et partage', profileSearch: 'Profils partagés', profileVisit: 'Profil',
+  themeLibrary: 'Bibliothèque de thèmes', profileCard: 'Carte de profil',
 };
 
 function signOut(pending: number) {
@@ -69,7 +72,7 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
   const [visit, setVisit] = useState<VisitTarget>({});
   const back = () => {
     account.clearNotice();
-    setRoute(route === 'delete' ? 'data' : route === 'profileEdit' || route === 'profileShare' ? 'myProfile'
+    setRoute(route === 'delete' ? 'data' : route === 'profileEdit' || route === 'profileShare' || route === 'themeLibrary' || route === 'profileCard' ? 'myProfile'
       : route === 'profileSearch' ? 'profileShare' : route === 'profileVisit' ? (visit.handle || visit.token ? 'profileSearch' : 'profileShare') : 'home');
   };
   const close = <IconButton icon="close" label="Fermer" onPress={onClose} quiet />;
@@ -79,7 +82,10 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
       <MaintenanceNotice />
       {route === 'support' && <SupportForm />}
       {route === 'community' && <CommunityScreen />}
-      {route === 'myProfile' && <MyProfileScreen onEdit={() => setRoute('profileEdit')} onShare={() => setRoute('profileShare')} />}
+      {route === 'myProfile' && <MyProfileScreen onEdit={() => setRoute('profileEdit')} onShare={() => setRoute('profileShare')}
+        onLibrary={() => setRoute('themeLibrary')} onCard={() => setRoute('profileCard')} />}
+      {route === 'themeLibrary' && <ThemeLibrary />}
+      {route === 'profileCard' && <ProfileCard />}
       {route === 'profileShare' && <ShareSettings onVisit={() => { setVisit({}); setRoute('profileVisit'); }} onSearch={() => setRoute('profileSearch')} />}
       {route === 'profileSearch' && <ProfileSearch onOpen={(target) => { setVisit(target); setRoute('profileVisit'); }} />}
       {route === 'profileVisit' && <ProfileVisit target={visit} onSupport={() => setRoute(supportFlag ? 'support' : 'home')} onBlocked={() => setRoute('profileSearch')} />}
