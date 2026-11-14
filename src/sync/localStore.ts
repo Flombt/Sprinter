@@ -34,6 +34,10 @@ export class SyncLocalStore {
       else await db.runAsync('INSERT INTO sync_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
     });
   }
+  statesWithPrefix(prefix: string): Promise<[string, string][]> {
+    return this.serialize(async (db) => (await db.getAllAsync<{ key: string; value: string }>(
+      'SELECT key, value FROM sync_state WHERE substr(key, 1, length(?)) = ?', prefix, prefix)).map((row) => [row.key, row.value]));
+  }
   /** Lie l'appareil à un compte (§7.6 A). Refuse silencieusement un autre compte (scénario D). */
   bind(userId: string): Promise<'bound' | 'same' | 'other'> {
     return this.serialize(async (db) => {

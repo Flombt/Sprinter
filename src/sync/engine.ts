@@ -37,6 +37,9 @@ export function backoffMs(attempts: number, random = Math.random()) {
   return Math.round(Math.min(15 * 60_000, 5000 * 2 ** attempts) * (0.5 + random));
 }
 
+/** Synchronisations complémentaires exécutées après les courses quand la sauvegarde est active (2b, tracés…). */
+export interface SyncExtension { name: string; run(context: { routesOn: boolean }): Promise<void> }
+
 const INITIAL: SyncStatus = {
   phase: 'disabled', backup: 'unset', lastSuccessAt: null, pending: 0, blocked: 0, deletedElsewhere: [], importing: false, message: null,
 };
@@ -49,7 +52,8 @@ export class SyncEngine {
   private inFlight: Promise<SyncStatus> | null = null;
   private notBefore = 0;
   private reconcileRequested = false;
-  constructor(private local: SyncLocalStore, private remote: SyncRemote, private host: SyncHost) {}
+  constructor(private local: SyncLocalStore, private remote: SyncRemote, private host: SyncHost, private extensions: SyncExtension[] = []) {}
+  addExtension(extension: SyncExtension) { this.extensions.push(extension); }
 
   getSnapshot = () => this.value;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -133,6 +137,11 @@ export class SyncEngine {
         partial = await attempt(() => this.pushRuns());
         this.guard();
         await attempt(() => this.pull());
+        const routesOn = (await this.remote.backupChoices()).routes === true;
+        for (const extension of this.extensions) {
+          this.guard();
+          await attempt(() => extension.run({ routesOn }));
+        }
       }
       await this.local.setState('last_success_at', String(this.host.now()));
       await this.remote.reportSync(partial ? 'partial' : 'ok', partial ? 'rejected_items' : null).catch(() => undefined);
