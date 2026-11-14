@@ -41,7 +41,7 @@ export function backoffMs(attempts: number, random = Math.random()) {
 export interface SyncExtension { name: string; run(context: { routesOn: boolean }): Promise<void> }
 
 const INITIAL: SyncStatus = {
-  phase: 'disabled', backup: 'unset', lastSuccessAt: null, pending: 0, blocked: 0, deletedElsewhere: [], importing: false, message: null,
+  phase: 'disabled', backup: 'unset', routes: 'unset', lastSuccessAt: null, pending: 0, blocked: 0, deletedElsewhere: [], importing: false, message: null,
 };
 
 class Interrupted extends Error {}
@@ -137,7 +137,9 @@ export class SyncEngine {
         partial = await attempt(() => this.pushRuns());
         this.guard();
         await attempt(() => this.pull());
-        const routesOn = (await this.remote.backupChoices()).routes === true;
+        const routesChoice = (await this.remote.backupChoices()).routes;
+        this.emit({ routes: routesChoice === null ? 'unset' : routesChoice ? 'on' : 'off' });
+        const routesOn = routesChoice === true;
         for (const extension of this.extensions) {
           this.guard();
           await attempt(() => extension.run({ routesOn }));
@@ -252,6 +254,7 @@ export class SyncEngine {
   private toItem(run: LocalRunForPush): PushItem {
     const payload = { ...run.payload };
     delete payload.points;
+    delete payload.cloudRoute;
     const efforts = payload.bestEfforts;
     return {
       id: run.id,
@@ -261,6 +264,7 @@ export class SyncEngine {
       app_version: this.host.appVersion(),
       tz: typeof payload.tz === 'string' ? payload.tz : null,
       has_route: false,
+      // `cloudRoute` est un repère local : il ne part jamais dans le payload.
       best_efforts: efforts && typeof efforts === 'object' ? efforts as Record<string, number> : null,
       payload,
     };

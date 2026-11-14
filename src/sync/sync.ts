@@ -13,6 +13,7 @@ import { SyncLocalStore } from './localStore';
 import { supabaseDocumentRemote, supabaseSyncRemote } from './remote';
 import { DocumentSync } from './documents';
 import { documentAdapters } from './documentAdapters';
+import { RouteSync, type RouteTransport } from './routes';
 import type { SyncStatus } from './types';
 
 type ClientModule = typeof import('../account/supabaseClient');
@@ -58,6 +59,42 @@ export const syncEngine = new SyncEngine(syncLocal, supabaseSyncRemote(client, d
 const documentSync = new DocumentSync(syncLocal, supabaseDocumentRemote(client), documentAdapters, Date.now);
 syncEngine.addExtension({ name: 'documents', run: ({ routesOn }) => documentSync.run(routesOn) });
 
+// Phase 3 : tracés GPS, sur choix explicite et flag routes_sync_enabled.
+const bucket = () => client()!.storage.from('run-tracks');
+const routeTransport: RouteTransport = {
+  async upload(path, bytes) {
+    const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    const { error } = await bucket().upload(path, body, { contentType: 'application/gzip', upsert: true });
+    if (error) throw new Error(error.message);
+  },
+  async download(path) {
+    const { data, error } = await bucket().createSignedUrl(path, 60);
+    if (error || !data) throw new Error('Parcours introuvable en ligne.');
+    const response = await fetch(data.signedUrl);
+    if (!response.ok) throw new Error('Téléchargement du parcours impossible.');
+    return new Uint8Array(await response.arrayBuffer());
+  },
+  async remove(paths) { const { error } = await bucket().remove(paths); if (error) throw new Error(error.message); },
+  async register(runId, path, pointsCount, bytes, preview) {
+    const { error } = await client()!.rpc('sync_register_route', { p_run_id: runId, p_path: path, p_points_count: pointsCount, p_bytes: bytes, p_preview_polyline: preview });
+    if (error) throw new Error(error.message);
+  },
+  async deleteRoutes(runIds) {
+    const { data, error } = await client()!.rpc('sync_delete_routes', { p_run_ids: runIds });
+    if (error) throw new Error(error.message);
+    return ((data as { paths?: string[] })?.paths ?? []);
+  },
+};
+let onWifi = false;
+export const routeSync = new RouteSync(syncLocal, routeTransport, {
+  userId: () => account.getSnapshot().userId,
+  enabled: () => appConfig.getSnapshot().flags.routes_sync_enabled,
+  runActive: () => session.getSnapshot().run !== null,
+  wifi: () => onWifi,
+  async historyChanged() { applyingRemote = true; try { await session.reloadHistory(); } finally { applyingRemote = false; } },
+});
+syncEngine.addExtension(routeSync);
+
 let started = false;
 let debounce: ReturnType<typeof setTimeout> | null = null;
 let netInfoBound = false;
@@ -75,6 +112,7 @@ function bindNetwork() {
     const NetInfo = (require('@react-native-community/netinfo') as typeof import('@react-native-community/netinfo')).default;
     let connected = true;
     NetInfo.addEventListener((state) => {
+      onWifi = state.type === 'wifi' && state.isConnected === true;
       const now = state.isConnected !== false && state.isInternetReachable !== false;
       if (now && !connected) schedule('network');
       connected = now;
@@ -114,4 +152,19 @@ export async function resetDeviceForCurrentAccount() {
   await syncLocal.resetForAccount(userId);
   await session.reloadHistory();
   await syncEngine.sync('manual');
+}
+
+/** Choix de sauvegarde des parcours GPS (§8.1), enregistré puis appliqué à tous les appareils. */
+export async function chooseRouteBackup(on: boolean, deleteOnline = false) {
+  const result = await account.recordConsent('cloud_sync_routes', on, CHOICE_VERSION);
+  if (!on && deleteOnline) await routeSync.deleteOnline();
+  await syncEngine.sync('manual');
+  return result.status;
+}
+
+/** Téléchargement à la demande depuis le détail d'une course (§8.4). */
+export async function downloadRoute(runId: string) {
+  const count = await routeSync.download(runId);
+  await session.reloadHistory();
+  return count;
 }

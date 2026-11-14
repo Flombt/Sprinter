@@ -176,6 +176,8 @@ export class SyncLocalStore {
           "SELECT json_extract(payload, '$.points') AS points FROM runs WHERE id = ? AND json_valid(payload)", item.id);
         const payload = { ...(item.payload ?? {}), points: local?.points ? JSON.parse(local.points) : [] } as Record<string, unknown>;
         if (item.tz && payload.tz === undefined) payload.tz = item.tz;
+        // Tracé disponible en ligne mais pas ici : téléchargement à la demande (§8.4).
+        if (item.has_route && !(payload.points as unknown[]).length) payload.cloudRoute = true; else delete payload.cloudRoute;
         if (item.best_efforts && payload.bestEfforts === undefined) payload.bestEfforts = item.best_efforts;
         const startedAt = Number(payload.startedAt);
         if (!Number.isFinite(startedAt)) continue;
@@ -197,6 +199,41 @@ export class SyncLocalStore {
       }
       return { changed };
     }));
+  }
+
+  // ------------------------------------------------------------------ Tracés GPS (phase 3)
+  /** Courses déjà synchronisées, avec points locaux, dont le tracé n'est pas encore en ligne. */
+  routeCandidates(limit: number) {
+    return this.serialize(async (db) => (await db.getAllAsync<{ id: string }>(
+      `SELECT r.id FROM runs r
+       WHERE EXISTS (SELECT 1 FROM sync_meta m WHERE m.entity = 'run' AND m.entity_id = r.id)
+         AND NOT EXISTS (SELECT 1 FROM sync_meta x WHERE x.entity = 'route' AND x.entity_id = r.id)
+         AND json_valid(r.payload) AND COALESCE(json_array_length(r.payload, '$.points'), 0) > 0
+       ORDER BY r.started_at DESC LIMIT ?`, limit)).map((row) => row.id));
+  }
+  pointsOf(id: string) {
+    return this.serialize(async (db) => {
+      const row = await db.getFirstAsync<{ points: string | null }>("SELECT json_extract(payload, '$.points') AS points FROM runs WHERE id = ? AND json_valid(payload)", id);
+      return row?.points ? JSON.parse(row.points) as import('../core/types').TrackPoint[] : [];
+    });
+  }
+  markRoute(id: string, state: 'uploaded' | 'too_large') {
+    return this.serialize((db) => db.runAsync(
+      `INSERT INTO sync_meta (entity, entity_id, server_updated_at, synced_at, validity) VALUES ('route', ?, NULL, ?, ?)
+       ON CONFLICT(entity, entity_id) DO UPDATE SET synced_at = excluded.synced_at, validity = excluded.validity`, id, Date.now(), state));
+  }
+  clearRouteMeta() { return this.serialize((db) => db.runAsync("DELETE FROM sync_meta WHERE entity = 'route'")); }
+  /** Courses dont le tracé est en ligne mais absent de l'appareil (préchargement en Wi-Fi). */
+  cloudRouteRuns(limit: number) {
+    return this.serialize(async (db) => (await db.getAllAsync<{ id: string }>(
+      `SELECT id FROM runs WHERE json_valid(payload) AND json_extract(payload, '$.cloudRoute') = 1
+         AND COALESCE(json_array_length(payload, '$.points'), 0) = 0 ORDER BY started_at DESC LIMIT ?`, limit)).map((row) => row.id));
+  }
+  /** Réintègre les points téléchargés dans la course locale, sans rien renvoyer au serveur. */
+  attachPoints(id: string, points: import('../core/types').TrackPoint[]) {
+    return this.serialize((db) => db.runAsync(
+      "UPDATE runs SET payload = json_set(json_remove(payload, '$.cloudRoute'), '$.points', json(?)) WHERE id = ? AND json_valid(payload)",
+      JSON.stringify(points), id));
   }
 
   // ------------------------------------------------------------------ Sauvegarde locale et changement de compte
