@@ -266,10 +266,10 @@ export class AccountStore {
     if (error) throw new Error(error.message);
     return (data ?? {}) as Consents;
   }
-  async recordConsent(purpose: ConsentPurpose, value: boolean, version = CHOICE_VERSION, eventId?: string): Promise<ConsentResult> {
+  async recordConsent(purpose: ConsentPurpose, value: boolean, version = CHOICE_VERSION, eventId?: string, at?: string): Promise<ConsentResult> {
     const { data, error } = await this.client().rpc('record_consent', {
       p_purpose: purpose, p_version: version, p_granted: value,
-      p_client_event_id: eventId ?? this.deps.uuid(), p_client_at: new Date(this.now()).toISOString(),
+      p_client_event_id: eventId ?? this.deps.uuid(), p_client_at: at ?? new Date(this.now()).toISOString(),
     });
     if (error) throw new Error(error.message);
     return data as ConsentResult;

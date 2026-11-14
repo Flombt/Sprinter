@@ -31,6 +31,7 @@ import { connectRunningTools } from './src/tools/connect';
 import { startAppConfig } from './src/account/config';
 import { startAccount } from './src/account/account';
 import { onAccountSheetRequest } from './src/account/ui/bus';
+import { startSync } from './src/sync/sync';
 
 function KeepScreenAwake() {
   useKeepAwake('sprinter-active-screen');
@@ -83,6 +84,7 @@ function AppContent() {
   // Configuration distante facultative : sans backend configuré, aucun appel réseau.
   useEffect(startAppConfig, []);
   useEffect(startAccount, []);
+  useEffect(startSync, []);
   useEffect(() => onAccountSheetRequest(() => setSheet('account')), []);
 
   const openHome = useCallback(() => {
