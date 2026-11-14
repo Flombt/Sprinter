@@ -302,6 +302,12 @@ export class AccountStore {
       consents: { purpose: ConsentPurpose; granted: boolean; version: string; at: string }[];
     };
   }
+  /** Appel RPC générique pour les modules du compte (classement, profil). */
+  async rpc<T>(name: string, args: Record<string, unknown> = {}): Promise<T> {
+    const { data, error } = await this.client().rpc(name, args);
+    if (error) throw new Error(error.message);
+    return data as T;
+  }
   async submitSupport(id: string, category: string, message: string, platform: string, version: string) {
     const { data, error } = await this.client().rpc('submit_support_request', { p_id: id, p_category: category, p_message: message, p_platform: platform, p_app_version: version });
     if (error) throw new Error(error.message);
