@@ -73,6 +73,8 @@ select is((select (v -> 'sync_success' ->> 'value')::numeric from ov), 0.5, 'KPI
 select ok((select (v -> 'guest_conversion' ->> 'unavailable')::boolean from ov), 'conversion invité → compte : non disponible');
 
 -- Cohérence avec des requêtes de référence sur les 30 derniers jours (graine incluse si chargée) ----
+-- pgTAP exécute tout dans une transaction : on invalide le calcul du jour fait plus haut, avant les mises à jour.
+delete from private.daily_metrics where day >= current_date - 1;
 select tests.login_as((select id from ids where name = 'owner'), null, 'aal2');
 update ov set v = public.admin_overview(current_date - 29, current_date, false) -> 'kpis';
 select tests.logout();
