@@ -157,6 +157,9 @@ verify_jwt = false
 [functions.admin-user-action]
 verify_jwt = true
 
+[functions.inactive-accounts]
+verify_jwt = false
+
 [functions.apple-link]
 verify_jwt = true
 

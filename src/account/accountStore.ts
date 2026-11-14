@@ -302,6 +302,16 @@ export class AccountStore {
       consents: { purpose: ConsentPurpose; granted: boolean; version: string; at: string }[];
     };
   }
+  async submitSupport(id: string, category: string, message: string, platform: string, version: string) {
+    const { data, error } = await this.client().rpc('submit_support_request', { p_id: id, p_category: category, p_message: message, p_platform: platform, p_app_version: version });
+    if (error) throw new Error(error.message);
+    return data as { id: string; status: string; duplicate: boolean };
+  }
+  async ownSupportRequests() {
+    const { data, error } = await this.client().from('support_requests').select('id,category,status,created_at').order('created_at', { ascending: false }).limit(20);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as { id: string; category: string; status: string; created_at: string }[];
+  }
   disconnectDevice(id: string) {
     return this.run(async () => {
       const { error } = await this.client().rpc('disconnect_device', { p_device_id: id });

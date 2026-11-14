@@ -114,3 +114,15 @@ describe('configuration distante (échec ouvert)', () => {
     expect(store.getSnapshot()).toEqual(DEFAULT_APP_CONFIG);
   });
 });
+
+describe('coupure côté serveur (§13.5)', () => {
+  it('met la synchronisation en pause sans bloquer les éléments', async () => {
+    const { classify } = await import('../src/sync/remote');
+    const error = classify({ message: 'sync_disabled', code: 'P0001' }, 400);
+    expect(error.kind).toBe('rate');
+    expect(error.retryAfterMs).toBe(30 * 60_000);
+    expect(classify({ message: 'bad_batch', code: '22023' }, 400).kind).toBe('client');
+    expect(classify({ message: 'TypeError: Network request failed' }, 0).kind).toBe('network');
+    expect(classify({ message: 'JWT expired', code: 'PGRST301' }, 401).kind).toBe('auth');
+  });
+});

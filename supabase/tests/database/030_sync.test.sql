@@ -2,6 +2,8 @@
 begin;
 select plan(42);
 
+-- Depuis 0013, les écritures de synchronisation exigent les flags actifs côté serveur.
+update public.app_config set value = 'true' where key in ('accounts_enabled', 'sync_enabled');
 create temporary table ids (name text primary key, id uuid) on commit drop;
 grant select on ids to anon, authenticated;
 insert into ids values ('a', tests.create_user('a@example.test')), ('b', tests.create_user('b@example.test'));

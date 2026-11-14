@@ -10,7 +10,7 @@ Deno.serve(async (request) => {
     return json(401, { error: 'unauthorized' });
   }
   const client = serverClient();
-  const pending = await rpcOrThrow<{ user_id: string; operation_id: string; source: 'app' | 'web' | 'admin' }[]>(
+  const pending = await rpcOrThrow<{ user_id: string; operation_id: string; source: 'app' | 'web' | 'admin' | 'inactivity' }[]>(
     client, 'service_pending_deletions', { p_limit: 10 });
   const summary = { done: 0, pending: 0, not_found: 0 };
   for (const item of pending ?? []) {
