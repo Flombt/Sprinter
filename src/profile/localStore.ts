@@ -17,7 +17,7 @@ export interface OutboxItem {
 export type MediaState = 'local' | 'uploaded' | 'ready' | 'remote' | 'rejected';
 export interface LocalMedia {
   id: string; usage: 'avatar' | 'banner' | 'gallery'; mime: string; bytes: number; width: number; height: number;
-  uri: string | null; path: string | null; state: MediaState; createdAt: number;
+  uri: string | null; path: string | null; state: MediaState; createdAt: number; animated?: boolean;
 }
 export type SaveResult =
   | { key: string; status: 'applied'; revision: number }
@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS profile_outbox (owner TEXT NOT NULL, key TEXT NOT NUL
   deleted INTEGER NOT NULL DEFAULT 0, base_revision INTEGER NOT NULL, client_updated_at TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
   last_error TEXT, PRIMARY KEY (owner, key));
 CREATE TABLE IF NOT EXISTS profile_media (owner TEXT NOT NULL, id TEXT NOT NULL, usage TEXT NOT NULL, mime TEXT NOT NULL, bytes INTEGER NOT NULL,
-  width INTEGER NOT NULL, height INTEGER NOT NULL, uri TEXT, path TEXT, state TEXT NOT NULL, created_at REAL NOT NULL, PRIMARY KEY (owner, id));
+  width INTEGER NOT NULL, height INTEGER NOT NULL, uri TEXT, path TEXT, state TEXT NOT NULL, created_at REAL NOT NULL,
+  animated INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (owner, id));
 CREATE TABLE IF NOT EXISTS profile_meta (owner TEXT NOT NULL, key TEXT NOT NULL, value TEXT, PRIMARY KEY (owner, key));`;
 
 type Row = Record<string, SqlValue>;
@@ -51,7 +52,12 @@ export class ProfileLocalStore {
   constructor(private db: SqlDatabase) {}
 
   initialize() {
-    this.ready ??= this.db.execAsync(`PRAGMA journal_mode = WAL;${SCHEMA}`);
+    this.ready ??= (async () => {
+      await this.db.execAsync(`PRAGMA journal_mode = WAL;${SCHEMA}`);
+      // Base créée par une version 8a : colonne des médias animés (8b).
+      const columns = await this.db.getAllAsync<{ name: string }>('PRAGMA table_info(profile_media)');
+      if (!columns.some((column) => column.name === 'animated')) await this.db.execAsync('ALTER TABLE profile_media ADD COLUMN animated INTEGER NOT NULL DEFAULT 0');
+    })();
     return this.ready;
   }
   /** Un seul écrivain à la fois ; les changements liés passent dans une même transaction. */
@@ -220,9 +226,9 @@ export class ProfileLocalStore {
   // Médias
   // -------------------------------------------------------------------------------------
   addMedia(owner: string, media: LocalMedia) {
-    return this.run(() => this.db.runAsync(`INSERT INTO profile_media (owner, id, usage, mime, bytes, width, height, uri, path, state, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (owner, id) DO UPDATE SET uri = coalesce(excluded.uri, uri), path = coalesce(excluded.path, path), state = excluded.state`,
-      owner, media.id, media.usage, media.mime, media.bytes, media.width, media.height, media.uri, media.path, media.state, media.createdAt));
+    return this.run(() => this.db.runAsync(`INSERT INTO profile_media (owner, id, usage, mime, bytes, width, height, uri, path, state, created_at, animated)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (owner, id) DO UPDATE SET uri = coalesce(excluded.uri, uri), path = coalesce(excluded.path, path), state = excluded.state`,
+      owner, media.id, media.usage, media.mime, media.bytes, media.width, media.height, media.uri, media.path, media.state, media.createdAt, media.animated ? 1 : 0));
   }
   updateMedia(owner: string, id: string, patch: Partial<Pick<LocalMedia, 'state' | 'path' | 'uri'>>) {
     return this.run(async () => {
@@ -235,7 +241,7 @@ export class ProfileLocalStore {
     return this.run(async () => (await this.db.getAllAsync<Row>('SELECT * FROM profile_media WHERE owner = ? ORDER BY created_at', owner)).map((row) => ({
       id: String(row.id), usage: String(row.usage) as LocalMedia['usage'], mime: String(row.mime), bytes: Number(row.bytes), width: Number(row.width),
       height: Number(row.height), uri: row.uri === null ? null : String(row.uri), path: row.path === null ? null : String(row.path),
-      state: String(row.state) as MediaState, createdAt: Number(row.created_at),
+      state: String(row.state) as MediaState, createdAt: Number(row.created_at), animated: row.animated === 1,
     })));
   }
   /** Médias encore utilisés par la version enregistrée, le brouillon ou un envoi en attente. */

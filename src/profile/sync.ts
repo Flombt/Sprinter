@@ -7,7 +7,8 @@ import { classify } from '../sync/remote';
 import { payloadMedia, type Payload } from './model';
 import type { LocalMedia, OutboxItem, ProfileLocalStore, RemoteElement, SaveResult } from './localStore';
 
-export interface RemoteMedia { id: string; usage: LocalMedia['usage']; mime: string; bytes: number; width: number; height: number; path: string }
+export interface RemoteMedia { id: string; usage: LocalMedia['usage']; mime: string; bytes: number; width: number; height: number; path: string; animated?: boolean }
+export interface OfficialBadge { id: string; label: string; criteria: string }
 export interface ProfileRemote {
   save(items: OutboxItem[]): Promise<SaveResult[]>;
   pull(): Promise<{ elements: RemoteElement[]; media: RemoteMedia[] }>;
@@ -16,6 +17,8 @@ export interface ProfileRemote {
   commit(id: string): Promise<{ status: 'ready' | 'missing' | 'rejected'; reason?: string }>;
   /** Télécharge un média du titulaire et renvoie son adresse locale. */
   download(owner: string, media: RemoteMedia): Promise<string>;
+  /** Badges officiels mérités, recalculés par le serveur (8b). */
+  badges?(): Promise<OfficialBadge[]>;
 }
 export interface ProfileHost {
   enabled(): boolean;
@@ -162,6 +165,9 @@ export class ProfileSync {
   private async pull(owner: string) {
     const remote = await this.remote.pull();
     await this.store.applyRemote(owner, remote.elements, this.host.now());
+    if (this.remote.badges) {
+      try { await this.store.setMeta(owner, 'badges', JSON.stringify(await this.remote.badges())); } catch { /* le cache précédent reste affiché */ }
+    }
     // Médias de la version enregistrée absents de cet appareil (second appareil du titulaire).
     const local = new Map((await this.store.media(owner)).map((item) => [item.id, item]));
     const referenced = new Set((await this.store.saved(owner)).flatMap((element) => payloadMedia(element.payload as Payload | null)));
@@ -171,7 +177,7 @@ export class ProfileSync {
       if (known?.uri) continue;
       this.guard();
       const uri = await this.remote.download(owner, media);
-      await this.store.addMedia(owner, { ...media, uri, state: 'remote', createdAt: this.host.now() });
+      await this.store.addMedia(owner, { ...media, animated: media.animated ?? false, uri, state: 'remote', createdAt: this.host.now() });
     }
   }
 }

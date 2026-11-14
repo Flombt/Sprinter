@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { classify } from '../sync/remote';
 import { SyncError } from '../sync/types';
 import type { LocalMedia, OutboxItem, RemoteElement, SaveResult } from './localStore';
-import type { ProfileRemote, RemoteMedia } from './sync';
+import type { OfficialBadge, ProfileRemote, RemoteMedia } from './sync';
 
 export interface ProfileFiles {
   read(uri: string): Promise<Uint8Array>;
@@ -41,7 +41,9 @@ export function supabaseProfileRemote(client: () => SupabaseClient | null, files
     },
     mediaBegin: (media: LocalMedia) => call<{ path: string; status: string }>('profile_media_begin', {
       p_id: media.id, p_usage: media.usage, p_mime: media.mime, p_bytes: media.bytes, p_width: media.width, p_height: media.height,
+      p_animated: media.animated ?? false,
     }),
+    badges: () => call<OfficialBadge[]>('profile_badges'),
     async upload(path: string, media: LocalMedia) {
       if (!media.uri) throw new SyncError('client', 'missing_file', undefined, 'missing_file');
       const bytes = await files.read(media.uri);
