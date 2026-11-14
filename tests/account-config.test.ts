@@ -121,6 +121,7 @@ describe('coupure côté serveur (§13.5)', () => {
     const error = classify({ message: 'sync_disabled', code: 'P0001' }, 400);
     expect(error.kind).toBe('rate');
     expect(error.retryAfterMs).toBe(30 * 60_000);
+    expect(classify({ message: 'feature_disabled', code: 'P0001' }, 400)).toMatchObject({ kind: 'rate', retryAfterMs: 30 * 60_000, code: 'feature_disabled' });
     expect(classify({ message: 'bad_batch', code: '22023' }, 400).kind).toBe('client');
     expect(classify({ message: 'TypeError: Network request failed' }, 0).kind).toBe('network');
     expect(classify({ message: 'JWT expired', code: 'PGRST301' }, 401).kind).toBe('auth');

@@ -8,7 +8,7 @@ export function classify(error: { message?: string; code?: string } | null, stat
   const code = (error?.code || '').toLowerCase() || undefined;
   if (status === 0 || /network|fetch|timeout|abort/i.test(message)) return new SyncError('network', message, undefined, 'network');
   // Fonction coupée par Flo (flag côté serveur) : pause, sans bloquer les éléments en attente.
-  if (/sync_disabled/.test(message)) return new SyncError('rate', message, 30 * 60_000, 'sync_disabled');
+  if (/sync_disabled|feature_disabled/.test(message)) return new SyncError('rate', message, 30 * 60_000, /feature_disabled/.test(message) ? 'feature_disabled' : 'sync_disabled');
   if (status === 401 || code === 'pgrst301' || code === '28000' || code === '42501' || status === 403) return new SyncError('auth', message, undefined, 'auth');
   if (status === 429) return new SyncError('rate', message, 60_000, 'rate_limited');
   if (status >= 500) return new SyncError('server', message, undefined, `server_${status}`);

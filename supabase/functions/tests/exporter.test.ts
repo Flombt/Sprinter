@@ -16,6 +16,11 @@ Deno.test('export : toutes les données du titulaire, rien d’autre', async () 
       { id: 'supprimee', distance_m: 1, deleted_at: '2026-11-01T00:00:00Z' },
     ],
     run_routes: [{ run_id: '1800000000000-abc', points_count: 10, bytes: 100 }],
+    profile_elements: [{ element_key: 'about', payload: { bio: 'Bio synthétique' }, deleted: false, revision: 2 }],
+    profile_media: [
+      { id: 'm1', usage: 'avatar', mime: 'image/jpeg', status: 'ready', storage_path: 'u1/m1.jpg' },
+      { id: 'm2', usage: 'banner', mime: 'image/jpeg', status: 'deleted', storage_path: 'u1/m2.jpg' },
+    ],
   };
   const selected: string[] = [];
   const zip = await buildExport({
@@ -26,6 +31,7 @@ Deno.test('export : toutes les données du titulaire, rien d’autre', async () 
     },
     async listTracks() { return ['u1/MTgwMDAwMDAwMDAwMC1hYmM.json.gz']; },
     async downloadTrack() { return gzipSync(strToU8('[]')); },
+    async downloadProfileMedia(path) { return path === 'u1/m1.jpg' ? new Uint8Array([0xff, 0xd8, 0xff]) : null; },
     now: () => new Date('2026-11-14T10:00:00Z'),
   });
   const files = unzipSync(zip);
@@ -36,7 +42,13 @@ Deno.test('export : toutes les données du titulaire, rien d’autre', async () 
   assert.ok(files['routes/MTgwMDAwMDAwMDAwMC1hYmM.json.gz']);
   assert.equal(JSON.parse(strFromU8(files['profile.json']!))[0].display_name, 'Coureur synthétique');
   assert.match(strFromU8(files['LISEZMOI.txt']!), /GPX/);
-  assert.deepEqual(selected.sort(), [...EXPORT_TABLES.map((t) => t.table), 'runs', 'run_routes'].sort());
+  assert.equal(JSON.parse(strFromU8(files['profile-page.json']!))[0].payload.bio, 'Bio synthétique', 'profil personnalisé exporté');
+  const media = JSON.parse(strFromU8(files['profile-media.json']!));
+  assert.deepEqual(media.map((item: { id: string }) => item.id), ['m1'], 'seuls les médias en service sont listés');
+  assert.ok(!('storage_path' in media[0]), 'aucun chemin interne de stockage');
+  assert.ok(files['profile-media/m1.jpg'] && !files['profile-media/m2.jpg'], 'images du profil incluses, fichiers purgés absents');
+  assert.match(strFromU8(files['LISEZMOI.txt']!), /brouillons du profil/);
+  assert.deepEqual(selected.sort(), [...EXPORT_TABLES.map((t) => t.table), 'runs', 'run_routes', 'profile_elements', 'profile_media'].sort());
 });
 
 Deno.test('noms de fichiers uniques et sûrs', () => {

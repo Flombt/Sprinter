@@ -32,6 +32,7 @@ import { startAppConfig } from './src/account/config';
 import { startAccount } from './src/account/account';
 import { onAccountSheetRequest } from './src/account/ui/bus';
 import { startSync } from './src/sync/sync';
+import { startProfile } from './src/profile/profile';
 import { UpdateRequiredGate } from './src/account/ui/UpdateRequired';
 
 function KeepScreenAwake() {
@@ -86,6 +87,7 @@ function AppContent() {
   useEffect(startAppConfig, []);
   useEffect(startAccount, []);
   useEffect(startSync, []);
+  useEffect(startProfile, []);
   useEffect(() => onAccountSheetRequest(() => setSheet('account')), []);
 
   const openHome = useCallback(() => {

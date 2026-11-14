@@ -93,7 +93,15 @@
         }
       ],
       "expo-status-bar",
-      "./plugins/with-android-queries"
+      "./plugins/with-android-queries",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Sprinter n’accède qu’aux photos que vous choisissez pour l’avatar ou la bannière de votre profil.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

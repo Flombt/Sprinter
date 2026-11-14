@@ -19,11 +19,14 @@ import { RouteChoice } from '../../sync/ui/RouteChoice';
 import { SupportForm } from './SupportForm';
 import { CommunityScreen } from '../../community/CommunityScreen';
 import { MaintenanceNotice } from './UpdateRequired';
+import { MyProfileScreen } from '../../profile/ui/MyProfileScreen';
+import { ProfileEditor } from '../../profile/ui/ProfileEditor';
 
-type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community';
+type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit';
 const TITLES: Record<Route, string> = {
   home: 'Compte', signIn: 'Se connecter', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
   methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte', support: 'Contacter le support', community: 'Classement communautaire',
+  myProfile: 'Mon profil', profileEdit: 'Modifier mon profil',
 };
 
 function signOut(pending: number) {
@@ -54,11 +57,12 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
   const routesFlag = useFlag('routes_sync_enabled');
   const supportFlag = useFlag('support_enabled');
   const leaderboardFlag = useFlag('leaderboard_enabled');
+  const profilesFlag = useFlag('profiles_enabled') && Platform.OS !== 'web';
   const sync = useSyncStatus();
   const [route, setRoute] = useState<Route>('home');
   const [firstTime, setFirstTime] = useState(false);
   useEffect(() => { if (state.status === 'signedOut' && route !== 'signIn' && route !== 'home') setRoute('home'); }, [route, state.status]);
-  const back = () => { account.clearNotice(); setRoute(route === 'delete' ? 'data' : 'home'); };
+  const back = () => { account.clearNotice(); setRoute(route === 'delete' ? 'data' : route === 'profileEdit' ? 'myProfile' : 'home'); };
   const close = <IconButton icon="close" label="Fermer" onPress={onClose} quiet />;
   return (
     <Screen key={route}>
@@ -66,6 +70,8 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
       <MaintenanceNotice />
       {route === 'support' && <SupportForm />}
       {route === 'community' && <CommunityScreen />}
+      {route === 'myProfile' && <MyProfileScreen onEdit={() => setRoute('profileEdit')} />}
+      {route === 'profileEdit' && <ProfileEditor onDone={() => setRoute('myProfile')} />}
       {route === 'signIn' && <SignIn onSignedIn={(first) => { setFirstTime(first); setRoute(first ? 'profile' : 'home'); }} />}
       {route === 'profile' && <ProfileForm firstTime={firstTime} onDone={() => { setFirstTime(false); setRoute(firstTime && syncFlag ? 'backup' : 'home'); }} />}
       {route === 'backup' && <BackupChoice onChosen={() => setRoute(routesFlag && syncEngine.getSnapshot().backup !== 'off' && syncEngine.getSnapshot().backup !== 'pending_off' ? 'routes' : 'home')} />}
@@ -93,6 +99,10 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
             <SectionHeading title="Compte" />
             <ListRow title="Profil de compte" icon="person-circle-outline" onPress={() => setRoute('profile')}
               subtitle={<Copy muted variant="caption">Nom affiché, pays, ville, tranche d’âge · facultatifs.</Copy>} />
+            {profilesFlag && (
+              <ListRow title="Mon profil" icon="color-palette-outline" onPress={() => setRoute('myProfile')}
+                subtitle={<Copy muted variant="caption">Avatar, bannière, thème, statut et widgets · privé.</Copy>} />
+            )}
             {syncFlag && (
               <ListRow title="Synchronisation" icon="sync-outline" onPress={() => setRoute('sync')}
                 subtitle={<Copy muted variant="caption">{sync.backup === 'on' ? 'Sauvegarde activée' : sync.backup === 'unset' ? 'Choisir la sauvegarde des courses' : 'Sauvegarde désactivée'}{sync.pending ? ` · ${sync.pending} en attente` : ''}{sync.blocked ? ` · ${sync.blocked} en erreur` : ''}</Copy>} />

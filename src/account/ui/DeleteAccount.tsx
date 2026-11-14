@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { forgetLocalProfile } from '../../profile/profile';
 import { View } from 'react-native';
 import { Button, Copy, Panel } from '../../ui/components';
 import { Toggle } from '../../ui/controls';
@@ -18,11 +19,13 @@ export function DeleteAccount({ onDone }: { onDone: () => void }) {
   const remove = () =>
     confirm('Supprimer définitivement ?',
       'Votre compte et toutes vos données stockées en ligne seront supprimés définitivement. Cette action est irréversible.',
-      'Supprimer', () => void account.deleteAccount().then(async (result) => {
+      'Supprimer', () => { const owner = account.getSnapshot().userId; void account.deleteAccount().then(async (result) => {
         if (!result) { setConfirmed(account.recentlyAuthenticated()); return; }
+        // Le profil personnalisé du compte supprimé quitte aussi l'appareil (§17.9).
+        if (owner) await forgetLocalProfile(owner).catch(() => undefined);
         if (wipe) await session.purgeLocalHistory();
         onDone();
-      }), true);
+      }); }, true);
   return (
     <View style={{ gap: spacing.lg }}>
       <SettingsNotice icon="warning-outline" title="Action irréversible"
