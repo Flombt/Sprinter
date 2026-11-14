@@ -1,6 +1,6 @@
 // Export « Mes données » (§6.6). Toutes les lectures passent par le client de l'utilisateur
 // (son JWT, donc RLS) : l'archive ne peut contenir aucune donnée d'un autre compte.
-import { strToU8, zipSync, type Zippable } from 'npm:fflate@0.8.3';
+import { strToU8, zipSync, type Zippable } from 'fflate';
 
 export interface ExportDeps {
   select(table: string, columns: string): Promise<Record<string, unknown>[]>;
