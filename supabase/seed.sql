@@ -25,14 +25,14 @@ select id, email,
 from seed_users
 on conflict (id) do nothing;
 
-insert into auth.identities (provider_id, user_id, provider, identity_data, email, created_at, updated_at)
+insert into auth.identities (provider_id, user_id, provider, identity_data, created_at, updated_at)
 select case when provider = 'email' then id::text else provider || '-seed-' || i end, id, provider,
-       jsonb_build_object('sub', id::text, 'email', email), email, created_at, created_at
+       jsonb_build_object('sub', id::text, 'email', email), created_at, created_at
 from seed_users
 on conflict (provider_id, provider) do nothing;
 
-insert into auth.identities (provider_id, user_id, provider, identity_data, email, created_at, updated_at)
-select id::text, id, 'email', jsonb_build_object('sub', id::text, 'email', email), email, created_at, created_at
+insert into auth.identities (provider_id, user_id, provider, identity_data, created_at, updated_at)
+select id::text, id, 'email', jsonb_build_object('sub', id::text, 'email', email), created_at, created_at
 from seed_users where second_method and provider <> 'email'
 on conflict (provider_id, provider) do nothing;
 
