@@ -21,44 +21,59 @@ create extension if not exists pgcrypto with schema extensions;
 -- Comme sur Supabase récent, aucune exposition automatique des nouveaux objets.
 alter default privileges in schema public revoke all on tables from anon, authenticated;
 
+-- Tables Auth alignées sur le schéma réel de GoTrue pour les colonnes utilisées : colonnes générées
+-- (identities.email, users.confirmed_at), niveau d'authentification typé (auth.aal_level) et
+-- colonnes sans valeur par défaut, pour qu'une graine ou un test invalide échoue ici comme en CI.
+create type auth.aal_level as enum ('aal1', 'aal2', 'aal3');
+
 create table auth.users (
   instance_id uuid,
   id uuid primary key,
-  aud text default 'authenticated',
-  role text default 'authenticated',
-  email text,
-  phone text,
+  aud varchar(255),
+  role varchar(255),
+  email varchar(255),
+  encrypted_password varchar(255),
   email_confirmed_at timestamptz,
+  phone text unique default null,
+  phone_confirmed_at timestamptz,
+  confirmed_at timestamptz generated always as (least(email_confirmed_at, phone_confirmed_at)) stored,
   last_sign_in_at timestamptz,
-  raw_app_meta_data jsonb not null default '{}'::jsonb,
-  raw_user_meta_data jsonb not null default '{}'::jsonb,
+  raw_app_meta_data jsonb,
+  raw_user_meta_data jsonb,
+  is_super_admin boolean,
+  is_sso_user boolean not null default false,
   is_anonymous boolean not null default false,
   banned_until timestamptz,
   deleted_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  created_at timestamptz,
+  updated_at timestamptz
 );
 
 create table auth.identities (
-  id uuid primary key default gen_random_uuid(),
   provider_id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
-  identity_data jsonb not null default '{}'::jsonb,
+  identity_data jsonb not null,
   provider text not null,
-  email text,
   last_sign_in_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
+  created_at timestamptz,
+  updated_at timestamptz,
+  email text generated always as (lower(identity_data ->> 'email')) stored,
+  id uuid primary key default gen_random_uuid(),
   unique (provider_id, provider)
 );
 
 create table auth.sessions (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
-  aal text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  factor_id uuid,
+  aal auth.aal_level,
   not_after timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  refreshed_at timestamp,
+  user_agent text,
+  ip inet,
+  tag text
 );
 
 create or replace function auth.jwt() returns jsonb language sql stable as $$
