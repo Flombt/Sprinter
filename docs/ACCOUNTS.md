@@ -135,7 +135,32 @@ Flag : `sync_enabled` (sans effet si `accounts_enabled` est faux). Retour arriè
 - **Meilleurs efforts** : calculés à la fin de la course sur l’appareil (`records.ts`) ; le serveur ne conserve que les valeurs plausibles.
 - Aucun accès admin aux tracés, aucun aperçu exposé ailleurs que pour le titulaire.
 
-## 8. Banc d’essai SQL sans Docker
+## 8. Sprinter Admin côté base (phases 4a à 4d)
+
+Contrat consommé par le site : [specs/ADMIN_RPC_CONTRACT.md](specs/ADMIN_RPC_CONTRACT.md). Toutes les fonctions `admin_*` exigent un JWT **AAL2**, un rôle présent dans `private.admin_users` (jamais lu dans les métadonnées) et la capacité du rôle ; les actions sensibles exigent en plus une authentification réelle de moins de 5 minutes (`amr`). Chaque lecture ou action sensible écrit sa ligne d’audit dans la même transaction, sans e-mail ni texte de recherche.
+
+| Migration | Contenu |
+|---|---|
+| `0009_admin_core` | `admin_whoami`, `assert_admin`, `admin_overview` (KPI §10.5, métriques quotidiennes Europe/Paris), `admin_list_audit`, job `daily-metrics` |
+| `0011_admin_users` | `admin_search_users` (id court, préfixe/trigramme d’e-mail, nom sans accents, filtres en liste blanche, keyset), `admin_get_user` (motif obligatoire), `admin_authorize_user_action` + Edge Function `admin-user-action` |
+| `0012_admin_rankings` | `admin_leaderboard` (agrégé / nominatif top 50), `admin_analytics` (k ≥ 10, « Autres » ≥ 10 ou absent), `admin_runs_stats`, vue matérialisée `private.leaderboard_stats` (job `refresh-rankings`) |
+| `0013_admin_ops` | `admin_get_config` / `admin_set_config` (schéma validé, réauth, audit), **coupure côté serveur** des écritures de synchro par flag, `submit_support_request` (app) / `admin_list_support` / `admin_update_support`, `admin_quality`, `admin_export_aggregates` (CSV standard ou Excel FR), job `retention`, comptes inactifs (Edge Function `inactive-accounts`) |
+
+**Premier administrateur** (Flo, une fois) : créer l’utilisateur dans Supabase › Authentication sans mot de passe, puis dans l’éditeur SQL :
+
+```sql
+insert into private.admin_users (user_id, role) select id, 'owner' from auth.users where email = '<EMAIL_DE_FLO>';
+```
+
+puis se connecter au site et enrôler le TOTP.
+
+**Tâches planifiées** : pg_cron (`daily-metrics` 01:15 UTC, `refresh-rankings` 01:30, `retention` 02:45) ; Supabase Cron (HTTP, en-tête `x-cron-secret`) pour les Edge Functions `process-deletions` (15 min), `purge-storage` (quotidien) et `inactive-accounts` (hebdomadaire ; secrets `EMAIL_API_URL`, `EMAIL_API_KEY`, `EMAIL_FROM` — sans eux, aucun compte n’est supprimé).
+
+**Budgets §10.6** : mesurés avec `scripts/db-local/perf-admin.sql` sur 10 001 comptes et 104 856 courses (voir les PR 4b et 4c).
+
+**App** : formulaire « Contacter le support » (flag `support_enabled`), écran « Mise à jour requise » (version minimale valide connue, jamais pendant une course, `EXPO_PUBLIC_APP_STORE_ID` pour le lien App Store), avis de maintenance.
+
+## 9. Banc d’essai SQL sans Docker
 
 `scripts/db-local/run.mjs` initialise un PostgreSQL 17 éphémère, applique `scripts/db-local/supabase-shim.sql` (rôles `anon`/`authenticated`/`service_role`, `auth.users`/`identities`/`sessions`, `auth.uid()`/`jwt()`, `storage.buckets`/`objects`), toutes les migrations, pgTAP, puis exécute `supabase/tests/database/*.sql` (une connexion par fichier, comme `pg_prove`).
 
@@ -143,7 +168,7 @@ Prérequis : `cd scripts/db-local && npm install`, puis `PG_BIN` (dossier conten
 
 Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent (les migrations qui l’utilisent le détectent). **La référence reste la CI** (`supabase test db`).
 
-## 9. Environnements et procédures
+## 10. Environnements et procédures
 
 | Env | Supabase | Données |
 |---|---|---|
@@ -155,12 +180,14 @@ Limites : les migrations y tournent en superutilisateur et `pg_cron` est absent 
 
 **Secrets** : saisis directement dans les gestionnaires (Supabase › Edge Functions › Secrets, Vercel, EAS). Jamais dans un fichier du dépôt ni dans une conversation.
 
-## 10. Variables d’environnement (Annexe A)
+## 11. Variables d’environnement (Annexe A)
 
 | Variable | Où | Public |
 |---|---|---|
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | App (EAS env / `.env.local` non versionné) | oui |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`, `EXPO_PUBLIC_SITE_URL` | App | oui |
-| `APPLE_*`, `APPLE_TOKEN_KEY`, `CRON_SECRET`, `PUBLIC_WEB_ORIGINS` | Secrets des Edge Functions | **non** |
+| `APPLE_*`, `APPLE_TOKEN_KEY`, `CRON_SECRET`, `PUBLIC_WEB_ORIGINS`, `ADMIN_ORIGINS`, `EMAIL_API_URL`, `EMAIL_API_KEY`, `EMAIL_FROM` | Secrets des Edge Functions | **non** |
+| `EXPO_PUBLIC_APP_STORE_ID` | App (lien de mise à jour) | oui |
+| `GOOGLE_MAPS_ANDROID_API_KEY` | Build EAS Android (clé restreinte) | non versionnée |
 
 Sans ces deux variables, aucune fonction en ligne n’existe dans l’app. L’URL doit être en HTTPS (HTTP accepté uniquement pour `localhost`/`127.0.0.1`).
