@@ -22,7 +22,7 @@ export type DeletionResult =
   | { status: 'not_found' }
   | { status: 'pending'; operation_id: string; step: string };
 
-export async function processDeletion(deps: DeletionDeps, userId: string, operationId: string, source: 'app' | 'web' | 'admin'): Promise<DeletionResult> {
+export async function processDeletion(deps: DeletionDeps, userId: string, operationId: string, source: 'app' | 'web' | 'admin' | 'inactivity'): Promise<DeletionResult> {
   const begin = await deps.rpc<{ status: string; operation_id?: string }>('service_begin_account_deletion', {
     p_user_id: userId, p_source: source, p_operation_id: operationId,
   });
