@@ -28,6 +28,7 @@ import { workouts } from './src/workouts/store';
 import { progression } from './src/progression/store';
 import { connectAppleIntegrations } from './src/apple/connect';
 import { connectRunningTools } from './src/tools/connect';
+import { startAppConfig } from './src/account/config';
 
 function KeepScreenAwake() {
   useKeepAwake('sprinter-active-screen');
@@ -77,6 +78,8 @@ function AppContent() {
   }, []);
   useEffect(connectAppleIntegrations, []);
   useEffect(connectRunningTools, []);
+  // Configuration distante facultative : sans backend configuré, aucun appel réseau.
+  useEffect(startAppConfig, []);
 
   const openHome = useCallback(() => {
     setTab('home');
