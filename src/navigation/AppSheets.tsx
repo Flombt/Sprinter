@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Modal, View } from 'react-native';
+import { Modal, Platform, View } from 'react-native';
 import type { RunRecord } from '../core/types';
 import Music from '../screens/Music';
 import RunningTools from '../screens/RunningTools';
@@ -54,7 +54,7 @@ export const AppSheets = memo(function AppSheets({
             state={state}
             onClose={onClose}
             onRecovery={onRecovery}
-            onApple={onApple}
+            onApple={Platform.OS === 'ios' ? onApple : undefined}
             onTools={onTools}
             onAccount={onAccount}
           />

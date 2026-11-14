@@ -36,7 +36,10 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
@@ -47,7 +50,9 @@
           "locationAlwaysAndWhenInUsePermission": "Pendant une course démarrée par vous, Sprinter enregistre le trajet même écran verrouillé. Le suivi s’arrête en pause manuelle et en fin de course. En pause automatique, la position permet de détecter la reprise.",
           "isIosBackgroundLocationEnabled": true,
           "locationAlwaysPermission": "Sprinter utilise votre position pendant les courses que vous démarrez, y compris écran verrouillé si vous activez ce suivi.",
-          "locationFullAccuracyPermission": "La position précise permet à Sprinter de mesurer votre allure et la distance de votre course."
+          "locationFullAccuracyPermission": "La position précise permet à Sprinter de mesurer votre allure et la distance de votre course.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [
@@ -87,7 +92,8 @@
           "frequentUpdates": false
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "./plugins/with-android-queries"
     ],
     "extra": {
       "eas": {

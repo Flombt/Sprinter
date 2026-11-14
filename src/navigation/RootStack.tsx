@@ -71,7 +71,7 @@ function RunDetailRoute({
       onBack={navigation.goBack}
       onCompare={() => navigation.push('Comparison', { runId })}
       onRecords={() => navigation.push('Records')}
-      onApple={() => navigation.push('Apple')}
+      onApple={Platform.OS === 'ios' ? () => navigation.push('Apple') : undefined}
       onTools={onTools}
       onRepeat={() => navigation.push('Preparation')}
     />

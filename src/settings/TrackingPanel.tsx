@@ -1,3 +1,4 @@
+import { AndroidBackgroundHelp } from './AndroidBackgroundHelp';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Platform, View } from 'react-native';
 import * as Location from 'expo-location';
@@ -184,6 +185,7 @@ export function TrackingPanel({ state, onApple }: { state: SessionStructure; onA
           />
         )}
       </SettingsDisclosure>
+      <AndroidBackgroundHelp />
     </>
   );
 }
