@@ -23,6 +23,7 @@ export const EXPORT_TABLES: { file: string; table: string; columns: string }[] =
   { file: 'profile-sharing.json', table: 'profile_sharing', columns: 'mode,searchable,handle,presence_audience,rules_version,rules_accepted_at,published_at,moderation,updated_at' },
   { file: 'profile-published.json', table: 'profile_published', columns: 'element_key,payload,published_at,moderation' },
   { file: 'profile-notices.json', table: 'profile_notices', columns: 'kind,element_key,reason,created_at,read_at' },
+  { file: 'themes.json', table: 'theme_library', columns: 'id,name,category,style,status,favorites_count,created_at' },
 ];
 
 const README = `Export de vos données Sprinter
@@ -43,6 +44,7 @@ Ce dossier contient toutes les données associées à votre compte et conservée
 - profile-sharing.json, profile-published.json, profile-notices.json : vos choix de partage,
   la version visible de votre profil et les décisions de modération qui vous ont été notifiées
 - profile-blocks.json : les profils que vous avez bloqués (pseudo au moment du blocage)
+- themes.json : les thèmes que vous avez publiés dans la bibliothèque
 
 Les brouillons du profil qui n'ont pas été enregistrés restent uniquement sur l'appareil
 où vous les avez créés : ils ne figurent pas dans cet export.

@@ -24,8 +24,10 @@ function syncLine(status: ProfileSyncStatus): string {
   }
 }
 
-export function MyProfileScreen({ onEdit, onShare }: { onEdit: () => void; onShare?: () => void }) {
+export function MyProfileScreen({ onEdit, onShare, onLibrary, onCard }: { onEdit: () => void; onShare?: () => void; onLibrary?: () => void; onCard?: () => void }) {
   const sharingFlag = useFlag('profile_sharing_enabled');
+  const libraryFlag = useFlag('theme_library_enabled');
+  const cardsFlag = useFlag('profile_cards_enabled');
   const profile = useProfile();
   const status = useProfileSyncStatus();
   const history = useSyncExternalStore(session.subscribe, () => session.getSnapshot().history, () => session.getSnapshot().history);
@@ -49,6 +51,8 @@ export function MyProfileScreen({ onEdit, onShare }: { onEdit: () => void; onSha
       <Button title={profile.drafts.length ? 'Reprendre la modification' : 'Modifier'} icon="create-outline" onPress={onEdit} />
       {status.pending > 0 && status.phase !== 'running' ? <Button title="Synchroniser maintenant" icon="sync-outline" secondary onPress={() => void syncProfileNow()} /> : null}
       {sharingFlag && onShare ? <Button title="Visibilité et partage" icon="people-outline" secondary onPress={onShare} /> : null}
+      {libraryFlag && onLibrary ? <Button title="Bibliothèque de thèmes" icon="color-palette-outline" secondary onPress={onLibrary} /> : null}
+      {cardsFlag && onCard ? <Button title="Carte de profil" icon="card-outline" secondary onPress={onCard} /> : null}
       <Copy muted variant="caption">{sharingFlag ? 'Votre profil reste privé tant que vous ne le publiez pas. Il est distinct de votre profil de compte, et chaque élément est facultatif.'
         : 'Votre profil est privé : vous seul le voyez. Il est distinct de votre profil de compte, et chaque élément est facultatif.'}</Copy>
     </View>
