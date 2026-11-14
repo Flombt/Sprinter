@@ -1,6 +1,8 @@
 -- Phase 4d : configuration, coupure serveur, support, qualité, exports, rétention.
 begin;
 select plan(26);
+-- Les agrégats admin portent sur tous les comptes : la graine synthétique de la CI est effacée pour ce test.
+select tests.clear_seed();
 create temporary table ids (name text primary key, id uuid) on commit drop;
 grant select on ids to authenticated, anon;
 insert into ids values ('owner', tests.create_user('owner@example.test')), ('support', tests.create_user('support@example.test')),
