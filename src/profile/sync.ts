@@ -47,7 +47,10 @@ export class ProfileSync {
   private listeners = new Set<() => void>();
   private inFlight: Promise<ProfileSyncStatus> | null = null;
   private notBefore = 0;
+  private steps: ((owner: string) => Promise<void>)[] = [];
   constructor(private store: ProfileLocalStore, private remote: ProfileRemote, private host: ProfileHost) {}
+  /** Étape exécutée en tête de chaque passage (8c : retraits faits hors ligne, prioritaires). */
+  addStep(step: (owner: string) => Promise<void>) { if (!this.steps.includes(step)) this.steps.push(step); }
 
   getSnapshot = () => this.value;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -88,6 +91,7 @@ export class ProfileSync {
       }
     };
     try {
+      for (const step of this.steps) { this.guard(); await attempt(() => step(owner)); }
       this.guard();
       await attempt(() => this.uploadMedia(owner));
       this.guard();

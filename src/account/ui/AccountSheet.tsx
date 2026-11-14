@@ -21,12 +21,16 @@ import { CommunityScreen } from '../../community/CommunityScreen';
 import { MaintenanceNotice } from './UpdateRequired';
 import { MyProfileScreen } from '../../profile/ui/MyProfileScreen';
 import { ProfileEditor } from '../../profile/ui/ProfileEditor';
+import { ShareSettings } from '../../profile/ui/ShareSettings';
+import { ProfileSearch } from '../../profile/ui/ProfileSearch';
+import { ProfileVisit } from '../../profile/ui/ProfileVisit';
+import type { VisitTarget } from '../../profile/sharing';
 
-type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit';
+type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit';
 const TITLES: Record<Route, string> = {
   home: 'Compte', signIn: 'Se connecter', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
   methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte', support: 'Contacter le support', community: 'Classement communautaire',
-  myProfile: 'Mon profil', profileEdit: 'Modifier mon profil',
+  myProfile: 'Mon profil', profileEdit: 'Modifier mon profil', profileShare: 'Visibilité et partage', profileSearch: 'Profils partagés', profileVisit: 'Profil',
 };
 
 function signOut(pending: number) {
@@ -62,7 +66,12 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
   const [route, setRoute] = useState<Route>('home');
   const [firstTime, setFirstTime] = useState(false);
   useEffect(() => { if (state.status === 'signedOut' && route !== 'signIn' && route !== 'home') setRoute('home'); }, [route, state.status]);
-  const back = () => { account.clearNotice(); setRoute(route === 'delete' ? 'data' : route === 'profileEdit' ? 'myProfile' : 'home'); };
+  const [visit, setVisit] = useState<VisitTarget>({});
+  const back = () => {
+    account.clearNotice();
+    setRoute(route === 'delete' ? 'data' : route === 'profileEdit' || route === 'profileShare' ? 'myProfile'
+      : route === 'profileSearch' ? 'profileShare' : route === 'profileVisit' ? (visit.handle || visit.token ? 'profileSearch' : 'profileShare') : 'home');
+  };
   const close = <IconButton icon="close" label="Fermer" onPress={onClose} quiet />;
   return (
     <Screen key={route}>
@@ -70,7 +79,10 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
       <MaintenanceNotice />
       {route === 'support' && <SupportForm />}
       {route === 'community' && <CommunityScreen />}
-      {route === 'myProfile' && <MyProfileScreen onEdit={() => setRoute('profileEdit')} />}
+      {route === 'myProfile' && <MyProfileScreen onEdit={() => setRoute('profileEdit')} onShare={() => setRoute('profileShare')} />}
+      {route === 'profileShare' && <ShareSettings onVisit={() => { setVisit({}); setRoute('profileVisit'); }} onSearch={() => setRoute('profileSearch')} />}
+      {route === 'profileSearch' && <ProfileSearch onOpen={(target) => { setVisit(target); setRoute('profileVisit'); }} />}
+      {route === 'profileVisit' && <ProfileVisit target={visit} onSupport={() => setRoute(supportFlag ? 'support' : 'home')} onBlocked={() => setRoute('profileSearch')} />}
       {route === 'profileEdit' && <ProfileEditor onDone={() => setRoute('myProfile')} />}
       {route === 'signIn' && <SignIn onSignedIn={(first) => { setFirstTime(first); setRoute(first ? 'profile' : 'home'); }} />}
       {route === 'profile' && <ProfileForm firstTime={firstTime} onDone={() => { setFirstTime(false); setRoute(firstTime && syncFlag ? 'backup' : 'home'); }} />}
