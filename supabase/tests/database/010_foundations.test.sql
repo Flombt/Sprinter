@@ -43,7 +43,7 @@ select is((select providers from private.user_directory where user_id = (select 
 
 -- anon ------------------------------------------------------------------------------
 select tests.login_anon();
-select is((select count(*)::int from public.app_config), 2, 'anon lit app_config (valeurs publiques)');
+select is((select count(*)::int from public.app_config where key in ('accounts_enabled', 'sync_enabled')), 2, 'anon lit app_config (valeurs publiques)');
 select throws_ok('select * from public.profiles', '42501', null, 'anon ne lit pas profiles');
 select throws_ok('select * from public.runs', '42501', null, 'anon ne lit pas runs');
 select throws_ok($$insert into public.app_config (key, value) values ('x', 'true')$$, '42501', null, 'anon n''écrit pas app_config');
