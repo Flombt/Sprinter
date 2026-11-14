@@ -58,13 +58,14 @@ function signOut(pending: number) {
 }
 
 /** Réglages › Compte (§6.1 étape 5). */
-export function AccountSheet({ onClose }: { onClose: () => void }) {
+export function AccountSheet({ onClose, profileToken }: { onClose: () => void; profileToken?: string | null }) {
   const state = useAccount();
   const syncFlag = useFlag('sync_enabled');
   const routesFlag = useFlag('routes_sync_enabled');
   const supportFlag = useFlag('support_enabled');
   const leaderboardFlag = useFlag('leaderboard_enabled');
   const profilesFlag = useFlag('profiles_enabled') && Platform.OS !== 'web';
+  const sharingFlag = useFlag('profile_sharing_enabled');
   const sync = useSyncStatus();
   const [route, setRoute] = useState<Route>('home');
   const [firstTime, setFirstTime] = useState(false);
@@ -79,6 +80,11 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
   };
   useEffect(() => { if (state.status === 'signedOut' && route !== 'signIn' && route !== 'home') setRoute('home'); }, [route, state.status]);
   const [visit, setVisit] = useState<VisitTarget>({});
+  useEffect(() => {
+    if (!profileToken || !profilesFlag || !sharingFlag) return;
+    setVisit({ token: profileToken });
+    setRoute(state.status === 'signedIn' ? 'profileVisit' : 'signIn');
+  }, [profileToken, profilesFlag, sharingFlag, state.status]);
   const back = () => {
     account.clearNotice();
     setRoute(route === 'delete' ? 'data' : route === 'profileEdit' || route === 'profileShare' || route === 'themeLibrary' || route === 'profileCard' ? 'myProfile'

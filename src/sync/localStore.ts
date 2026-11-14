@@ -244,10 +244,18 @@ export class SyncLocalStore {
          AND COALESCE(json_array_length(payload, '$.points'), 0) = 0 ORDER BY started_at DESC LIMIT ?`, limit)).map((row) => row.id));
   }
   /** Réintègre les points téléchargés dans la course locale, sans rien renvoyer au serveur. */
-  attachPoints(id: string, points: import('../core/types').TrackPoint[]) {
-    return this.serialize((db) => db.runAsync(
-      "UPDATE runs SET payload = json_set(json_remove(payload, '$.cloudRoute'), '$.points', json(?)) WHERE id = ? AND json_valid(payload)",
-      JSON.stringify(points), id));
+  attachPoints(id: string, points: import('../core/types').TrackPoint[], guard: () => void = () => {}) {
+    return this.serialize((db) => transaction(db, async () => {
+      guard();
+      const result = await db.runAsync(
+        "UPDATE runs SET payload = json_set(json_remove(payload, '$.cloudRoute'), '$.points', json(?)) WHERE id = ? AND json_valid(payload)",
+        JSON.stringify(points), id);
+      await db.runAsync(
+        `INSERT INTO sync_meta (entity, entity_id, synced_at, validity)
+         SELECT 'route', id, ?, 'uploaded' FROM runs WHERE id = ? AND json_valid(payload)
+         ON CONFLICT(entity, entity_id) DO UPDATE SET synced_at = excluded.synced_at, validity = excluded.validity`, Date.now(), id);
+      return result;
+    }));
   }
 
   // ------------------------------------------------------------------ Sauvegarde locale et changement de compte

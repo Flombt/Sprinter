@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WithdrawalQueue, linkFor, parseLink, snapshotsFor, type Withdrawal } from '../src/profile/sharingModel';
+import { WithdrawalQueue, linkFor, parseLink, profileTokenFromAppLink, snapshotsFor, type Withdrawal } from '../src/profile/sharingModel';
 import { widgetKey } from '../src/profile/model';
 import type { RunRecord } from '../src/core/types';
 
@@ -12,6 +12,14 @@ describe('partage du profil (8c)', () => {
     expect(parseLink(linkFor(token))).toBe(token);
     expect(parseLink(`  ${token} `)).toBe(token);
     expect(parseLink('https://exemple.fr/?t=court')).toBeNull();
+  });
+
+  it('ouvre uniquement un lien natif de profil avec un jeton complet', () => {
+    const token = 'AbCdEfGhIjKlMnOpQrStUvWx-_12';
+    expect(profileTokenFromAppLink(linkFor(token))).toBe(token);
+    for (const url of [null, token, 'sprinter://run', `sprinter://playlist?t=${token}`, `https://example.test/profil?t=${token}`, 'sprinter://profil?t=court']) {
+      expect(profileTokenFromAppLink(url)).toBeNull();
+    }
   });
 
   it('valeurs calculées : seulement les widgets montrés, valeur + libellé + période, objectif manuel exclu', () => {

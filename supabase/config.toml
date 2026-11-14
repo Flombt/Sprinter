@@ -143,8 +143,11 @@ redirect_uri = ""
 url = ""
 skip_nonce_check = false
 
-# Edge Functions. delete-account vérifie elle-même le JWT (auth.getUser) afin de répondre au
-# pré-contrôle CORS de la page web publique ; process-deletions exige l'en-tête x-cron-secret.
+# Edge Functions : les JWT utilisateur sont vérifiés par auth.getUser ou par une RPC
+# exécutée avec le JWT (RLS / require_uid / assert_admin), avant toute opération privilégiée.
+# La passerelle historique verify_jwt ne comprend pas les nouvelles clés asymétriques.
+# https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
+# Les fonctions planifiées exigent séparément l'en-tête x-cron-secret.
 [functions.delete-account]
 verify_jwt = false
 
@@ -155,16 +158,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-user-action]
-verify_jwt = true
+verify_jwt = false
 
 [functions.inactive-accounts]
 verify_jwt = false
 
 [functions.apple-link]
-verify_jwt = true
+verify_jwt = false
 
 [functions.export-my-data]
-verify_jwt = true
+verify_jwt = false
 
 [edge_runtime]
 enabled = true
@@ -178,7 +181,10 @@ port = 54327
 backend = "postgres"
 
 [functions.profile-media-commit]
-verify_jwt = true
+verify_jwt = false
 
 [functions.profile-media]
-verify_jwt = true
+verify_jwt = false
+
+[functions.admin-report-media]
+verify_jwt = false

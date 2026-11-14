@@ -228,6 +228,13 @@ Aucune donnée personnelle. Audit `export.aggregates`.
 - `admin_get_report(p_report_id uuid, p_reason text)` → `{ "report": <élément de liste>, "element": { "kind", "text" (≤ 2 000), "media_ref" ("profile-media:<id>" ou null), "media_url" (null en v1), "visibility" (état de modération de la version publiée), "published_at" }, "history": [ { "at", "decision", "reason", "admin_short", "note" } ] }`. Audit `moderation.view` avec le motif. Jamais de brouillon, de média privé, de tracé ni de statistique non publiée.
 - `admin_moderate(p_report_id uuid, p_decision text, p_reason text, p_note text default null)` — `p_decision` ∈ `hide`, `remove`, `restore`, `dismiss` → `{ "report_id", "decision", "status" }` (`actioned`, ou `dismissed` pour `dismiss`). Tous les signalements ouverts du même contenu prennent la décision. `hide` masque l’élément publié (examen en cours), `remove` le retire (une republication sans modification du contenu le laisse retiré), `restore` le rétablit ; le titulaire reçoit une notification (`profile_notices`) qu’il peut contester auprès du support. Pour un pseudo de classement (`handle`), `hide`/`remove` le masquent du classement. Audit `moderation.decide` (décision, motif, référence du signalement).
 
+
+### Lecture d’un média signalé — `admin_report_media(p_report_id uuid, p_reason text)`
+
+Capacité `moderation.read`, session AAL2 et motif obligatoire. Renvoie `{ "media_id": "uuid", "mime": "image/png", "bytes": 1234 }` uniquement pour un média prêt de la version publiée actuellement partagée, appartenant à un compte actif. Un brouillon privé ou un contenu dont le partage est retiré renvoie `not_found`. Audit `moderation.media` à chaque accès autorisé.
+
+Le navigateur appelle `GET /api/moderation/media?report=<uuid>&reason=<motif>` sur le site admin. Le serveur Next utilise le JWT de la session HttpOnly pour appeler `GET /functions/v1/admin-report-media` ; l’Edge Function vérifie la RPC avant de lire le fichier avec son client serveur. Aucun chemin Storage, clé privilégiée ni URL signée durable n’est transmis au navigateur. Réponse image limitée à JPEG/PNG/WebP/GIF, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. L’accès est revérifié à chaque requête.
+
 ## 3. Ce que le site ne fait jamais
 
 Lire une table directement · utiliser `service_role` · afficher un tracé, une carte ou une position · exporter des données personnelles · journaliser un e-mail, un texte de recherche ou un jeton · mettre en cache partagé une réponse admin.
