@@ -58,7 +58,11 @@ function signOut(pending: number) {
 }
 
 /** Réglages › Compte (§6.1 étape 5). */
-export function AccountSheet({ onClose, profileToken }: { onClose: () => void; profileToken?: string | null }) {
+export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
+  onClose: () => void;
+  profileToken?: string | null;
+  startAtSignIn?: boolean;
+}) {
   const state = useAccount();
   const syncFlag = useFlag('sync_enabled');
   const routesFlag = useFlag('routes_sync_enabled');
@@ -67,7 +71,7 @@ export function AccountSheet({ onClose, profileToken }: { onClose: () => void; p
   const profilesFlag = useFlag('profiles_enabled') && Platform.OS !== 'web';
   const sharingFlag = useFlag('profile_sharing_enabled');
   const sync = useSyncStatus();
-  const [route, setRoute] = useState<Route>('home');
+  const [route, setRoute] = useState<Route>(() => startAtSignIn && state.status === 'signedOut' ? 'signIn' : 'home');
   const [firstTime, setFirstTime] = useState(false);
   const [resettingDevice, setResettingDevice] = useState(false);
   const resetDevice = async () => {

@@ -3,11 +3,24 @@ import {
   AppConfigStore, CACHE_KEY, DEFAULT_APP_CONFIG, REFRESH_AFTER_MS, compareVersions, parseAppConfig, updateRequired, type Fetcher,
 } from '../src/account/configStore';
 import { createMemoryKeyValueStore } from '../src/account/kvStore';
-import { readBackendConfig } from '../src/account/env';
+import { nativeSignInSupport, readBackendConfig } from '../src/account/env';
 
 const backend = { url: 'https://example.supabase.co', publishableKey: 'sb_publishable_test' };
 const ok = (rows: unknown): ReturnType<Fetcher> => Promise.resolve({ ok: true, status: 200, json: async () => rows });
 const rows = (entries: Record<string, unknown>) => Object.entries(entries).map(([key, value]) => ({ key, value }));
+
+describe('méthodes de connexion selon le build', () => {
+  it('propose Apple uniquement dans un build iOS capable et Google avec sa configuration native', () => {
+    const native = { expoGo: false, sideload: false, googleWebClientId: 'web-client' };
+    const ios = { ...native, googleIosClientId: 'ios-client', googleIosUrlScheme: 'com.googleusercontent.apps.client' };
+    expect(nativeSignInSupport('ios', native)).toEqual({ apple: true, google: false });
+    expect(nativeSignInSupport('ios', ios)).toEqual({ apple: true, google: true });
+    expect(nativeSignInSupport('ios', { ...ios, sideload: true })).toEqual({ apple: false, google: true });
+    expect(nativeSignInSupport('ios', { ...ios, expoGo: true })).toEqual({ apple: false, google: false });
+    expect(nativeSignInSupport('android', native)).toEqual({ apple: false, google: true });
+    expect(nativeSignInSupport('web', ios)).toEqual({ apple: false, google: false });
+  });
+});
 
 describe('configuration distante (échec ouvert)', () => {
   it('reste inactive et ne fait aucun appel sans backend configuré', async () => {

@@ -78,7 +78,7 @@ function fakeClient(userId: string) {
   const auth = {
     verifyOtp: vi.fn(async ({ token }: { token: string }) => token === '123456'
       ? { data: { session: session(userId) }, error: null } : { data: { session: null }, error: { message: 'invalid' } }),
-    signInWithOtp: vi.fn(async () => ({ error: null })),
+    signInWithOtp: vi.fn(async (): Promise<{ error: { code: string } | null }> => ({ error: null })),
     signInWithIdToken: vi.fn(async () => ({ data: { session: session(userId) }, error: null })),
     signOut: vi.fn(async () => ({ error: null })),
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe() {} } } })),
@@ -107,6 +107,15 @@ function store(options: { client: Fake; ephemeral?: Fake; now?: () => number }) 
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('compte facultatif', () => {
+  it('explique un envoi e-mail refusé sans afficher le champ de code ni démarrer le délai de renvoi', async () => {
+    const client = fakeClient(randomUUID());
+    client.auth.signInWithOtp.mockResolvedValueOnce({ error: { code: 'email_address_not_authorized' } });
+    const { account } = store({ client });
+    expect(await account.requestEmailCode('coureur@example.test')).toBe(false);
+    expect(account.getSnapshot().error).toMatch(/ne peut pas envoyer de code/);
+    expect(account.resendDelay()).toBe(0);
+  });
+
   it('restaure l’état connecté sans réseau à partir de la session conservée', async () => {
     const id = randomUUID();
     const { account } = store({ client: fakeClient(id) });

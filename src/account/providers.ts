@@ -1,15 +1,20 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- chargement paresseux volontaire : aucun module de compte au démarrage (§0.1). */
 import { Platform } from 'react-native';
-import { IS_EXPO_GO } from '../services/capabilities';
+import { IS_EXPO_GO, IS_SIDELOAD_BUILD } from '../services/capabilities';
 import { cancelled, type AppleCredential } from './accountStore';
+import { nativeSignInSupport } from './env';
 
 /**
  * Connexions natives (§6.2). Les modules natifs sont chargés au moment du geste, jamais
  * au démarrage. Google exige un client de développement (pas Expo Go).
  */
-export const appleSupported = Platform.OS === 'ios';
-export const googleSupported =
-  Platform.OS !== 'web' && !IS_EXPO_GO && !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+export const { apple: appleSupported, google: googleSupported } = nativeSignInSupport(Platform.OS, {
+  expoGo: IS_EXPO_GO,
+  sideload: IS_SIDELOAD_BUILD,
+  googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  googleIosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME,
+});
 
 export async function appleCredential(): Promise<AppleCredential> {
   const Apple = require('expo-apple-authentication') as typeof import('expo-apple-authentication');

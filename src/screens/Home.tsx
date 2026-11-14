@@ -30,6 +30,7 @@ import { useRunSetup } from '../ui/useRunSetup';
 import { LiveRunMetrics } from './LiveRunMetrics';
 import { HoldToFinish } from '../ui/HoldToFinish';
 import { RunPauseButton } from '../ui/RunPauseButton';
+import { HomeSignIn } from '../account/ui/HomeSignIn';
 
 export { RunRow } from '../ui/RunRow';
 
@@ -465,6 +466,7 @@ export default function Home({
               </View>
               <IconButton square icon="options-outline" label="Réglages de course" onPress={onSettings} />
             </View>
+            {!expanded && !starting && !state.busy && !state.recoveryBlocked && <HomeSignIn />}
           </>
         )}
       </View>
