@@ -5,6 +5,7 @@ import { readRoute, readTools } from './validation';
 export interface ToolsPersistence {
   load(): Promise<{ routes: SavedRoute[]; preferences: ToolsData }>;
   saveRoute(route: SavedRoute): Promise<void>; deleteRoute(id: string): Promise<void>; savePreferences(data: ToolsData): Promise<void>;
+  clearRoutes(preferences: ToolsData): Promise<void>;
 }
 export async function openTools(): Promise<ToolsPersistence> {
   const db = await SQLite.openDatabaseAsync('sprinter-tools-v1.db');
@@ -16,5 +17,11 @@ export async function openTools(): Promise<ToolsPersistence> {
     return { routes: rows.map(r => readRoute(JSON.parse(r.payload))), preferences: preferences ? readTools(JSON.parse(preferences.payload)) : defaultToolsData() };
   }, async saveRoute(route) { await db.runAsync('INSERT INTO routes (id,payload) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload', route.id, JSON.stringify(route)); },
     async deleteRoute(id) { await db.runAsync('DELETE FROM routes WHERE id=?', id); },
-    async savePreferences(data) { await db.runAsync('INSERT INTO preferences (slot,payload) VALUES (1,?) ON CONFLICT(slot) DO UPDATE SET payload=excluded.payload', JSON.stringify(data)); } };
+    async savePreferences(data) { await db.runAsync('INSERT INTO preferences (slot,payload) VALUES (1,?) ON CONFLICT(slot) DO UPDATE SET payload=excluded.payload', JSON.stringify(data)); },
+    async clearRoutes(preferences) {
+      await db.withExclusiveTransactionAsync(async (tx) => {
+        await tx.runAsync('DELETE FROM routes');
+        await tx.runAsync('INSERT INTO preferences (slot,payload) VALUES (1,?) ON CONFLICT(slot) DO UPDATE SET payload=excluded.payload', JSON.stringify(preferences));
+      });
+    } };
 }

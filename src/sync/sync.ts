@@ -5,12 +5,15 @@ import { randomUUID } from 'expo-crypto';
 import { backend } from '../account/env';
 import { appConfig } from '../account/config';
 import { account } from '../account/account';
-import { CHOICE_VERSION } from '../account/consents';
+import { CHOICE_VERSION, type ConsentResult } from '../account/consents';
 import { appVersion, deviceId, devicePlatform, timeZone } from '../account/device';
 import { session } from '../services/session';
+import { workouts } from '../workouts/store';
+import { progression } from '../progression/store';
+import { toolsStore } from '../tools/store';
 import { SyncEngine } from './engine';
 import { SyncLocalStore } from './localStore';
-import { supabaseDocumentRemote, supabaseSyncRemote } from './remote';
+import { supabaseDocumentRemote, supabaseSyncRemote, syncRpc } from './remote';
 import { DocumentSync } from './documents';
 import { documentAdapters } from './documentAdapters';
 import { RouteSync, type RouteTransport } from './routes';
@@ -25,7 +28,8 @@ let applyingRemote = false;
 export const syncEnabled = () =>
   !!backend && Platform.OS !== 'web' && appConfig.getSnapshot().flags.sync_enabled && account.getSnapshot().status === 'signedIn';
 
-export const syncEngine = new SyncEngine(syncLocal, supabaseSyncRemote(client, deviceId), {
+const callSync: ReturnType<typeof syncRpc> = syncRpc(client, () => syncEngine.activeUser());
+export const syncEngine: SyncEngine = new SyncEngine(syncLocal, supabaseSyncRemote(callSync, deviceId), {
   enabled: syncEnabled,
   userId: () => account.getSnapshot().userId,
   // Aucune synchronisation pendant une séance, même en pause (§7.1 n° 4).
@@ -40,7 +44,10 @@ export const syncEngine = new SyncEngine(syncLocal, supabaseSyncRemote(client, d
     try { await session.reloadHistory(); } finally { applyingRemote = false; }
   },
   async recordBackupChoice(on, eventId, at) {
-    const result = await account.recordConsent('cloud_sync_runs', on, CHOICE_VERSION, eventId, at);
+    const result = await callSync<ConsentResult>('record_consent', {
+      p_purpose: 'cloud_sync_runs', p_version: CHOICE_VERSION, p_granted: on,
+      p_client_event_id: eventId, p_client_at: at,
+    });
     return { status: result.status, granted: result.effective ? result.effective.granted : null };
   },
   platform: devicePlatform,
@@ -56,8 +63,8 @@ export const syncEngine = new SyncEngine(syncLocal, supabaseSyncRemote(client, d
 });
 
 // Phase 2b : séances, chaussures, plans et itinéraires, après les courses.
-const documentSync = new DocumentSync(syncLocal, supabaseDocumentRemote(client), documentAdapters, Date.now);
-syncEngine.addExtension({ name: 'documents', run: ({ routesOn }) => documentSync.run(routesOn) });
+const documentSync = new DocumentSync(syncLocal, supabaseDocumentRemote(callSync), documentAdapters, Date.now);
+syncEngine.addExtension({ name: 'documents', run: ({ routesOn, guard }) => documentSync.run(routesOn, guard) });
 
 // Phase 3 : tracés GPS, sur choix explicite et flag routes_sync_enabled.
 const bucket = () => client()!.storage.from('run-tracks');
@@ -76,8 +83,7 @@ const routeTransport: RouteTransport = {
   },
   async remove(paths) { const { error } = await bucket().remove(paths); if (error) throw new Error(error.message); },
   async register(runId, path, pointsCount, bytes, preview) {
-    const { error } = await client()!.rpc('sync_register_route', { p_run_id: runId, p_path: path, p_points_count: pointsCount, p_bytes: bytes, p_preview_polyline: preview });
-    if (error) throw new Error(error.message);
+    await callSync('sync_register_route', { p_run_id: runId, p_path: path, p_points_count: pointsCount, p_bytes: bytes, p_preview_polyline: preview });
   },
   async deleteRoutes(runIds) {
     const { data, error } = await client()!.rpc('sync_delete_routes', { p_run_ids: runIds });
@@ -148,10 +154,23 @@ export const useSyncStatus = (): SyncStatus => useSyncExternalStore(syncEngine.s
 /** Scénario D : efface les données d'un autre compte sur cet appareil puis lie le compte connecté. */
 export async function resetDeviceForCurrentAccount() {
   const userId = account.getSnapshot().userId;
-  if (!userId) return;
-  await syncLocal.resetForAccount(userId);
-  await session.reloadHistory();
-  await syncEngine.sync('manual');
+  if (!userId) return false;
+  const changed = await syncEngine.resetForAccount(userId, () => session.resetAccountData(async (settings) => {
+    if (account.getSnapshot().userId !== userId) return false;
+    if (!await syncLocal.beginAccountReset(userId)) return false;
+    const cleared = await Promise.allSettled([
+      workouts.clearForAccountSwitch(),
+      progression.clearForAccountSwitch(),
+      toolsStore.clearForAccountSwitch(),
+    ]);
+    if (cleared.some((result) => result.status !== 'fulfilled' || !result.value)) return false;
+    if (account.getSnapshot().userId !== userId) return false;
+    // L'ancien compte reste lié si un stockage échoue ou si l'application s'arrête avant ce commit.
+    await syncLocal.resetForAccount(userId, settings);
+    return true;
+  }));
+  if (changed) await syncEngine.sync('manual');
+  return changed;
 }
 
 /** Choix de sauvegarde des parcours GPS (§8.1), enregistré puis appliqué à tous les appareils. */

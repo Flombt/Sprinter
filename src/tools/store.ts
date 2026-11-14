@@ -65,10 +65,11 @@ class ToolsStore {
     try { return await this.addRoute(routeFromActivity(run)); }
     catch (error) { this.emit({ message: error instanceof Error ? error.message : String(error) }); return false; }
   };
-  renameRoute = (id: string, name: string) => this.operation(async () => {
+  renameRoute = (id: string, name: string, syncedAt?: number) => this.operation(async () => {
     const route = this.value.routes.find(r => r.id === id); if (!route) throw new Error('Parcours introuvable.');
     if (!name.trim()) throw new Error('Donnez un nom au parcours.');
-    const updated = { ...route, name: name.trim().slice(0, 100) }; await this.persistence!.saveRoute(updated);
+    const updatedAt = syncedAt ?? Math.max(Date.now(), (route.updatedAt ?? route.createdAt) + 1);
+    const updated = { ...route, name: name.trim().slice(0, 100), updatedAt }; await this.persistence!.saveRoute(updated);
     this.emit({ routes: this.value.routes.map(r => r.id === id ? updated : r) });
   });
   deleteRoute = (id: string) => this.operation(async () => {
@@ -77,6 +78,13 @@ class ToolsStore {
       const preferences = { ...this.value.preferences, selectedRouteId: null }; await this.persistence!.savePreferences(preferences); this.emit({ preferences });
     }
     await this.persistence!.deleteRoute(id); this.emit({ routes: this.value.routes.filter(r => r.id !== id) });
+  });
+  clearForAccountSwitch = () => this.operation(async () => {
+    if (this.latest?.run) throw new Error('Terminez votre course avant de changer de compte.');
+    const preferences = { ...this.value.preferences, selectedRouteId: null };
+    await this.persistence!.clearRoutes(preferences);
+    this.emit({ routes: [], preferences });
+    if (this.latest) this.observe(this.latest);
   });
   requestCadence = () => this.operation(async () => {
     if (!cadenceBridge) throw new Error('La cadence Core Motion exige une version iOS reconstruite. Le tempo cible du métronome reste disponible dans Expo Go.');

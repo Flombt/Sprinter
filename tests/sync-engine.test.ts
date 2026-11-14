@@ -222,7 +222,20 @@ describe('synchronisation · scénarios §7.6', () => {
     await phone.engine.sync('signin');
     expect(phone.engine.getSnapshot().phase).toBe('bound_other');
     expect(serverRuns(server, 'B')).toHaveLength(0);
-    await phone.local.resetForAccount('B');
+    await phone.engine.resetForAccount('B', async () => {
+      expect(await phone.local.beginAccountReset('B')).toBe(true);
+      return false; // Un autre stockage local a échoué avant le rattachement.
+    });
+    expect(await phone.local.getState('bound_user_id')).toBe('A');
+    expect(await phone.local.bind('A')).toBe('other');
+    await phone.engine.sync('manual');
+    expect(phone.engine.getSnapshot().phase).toBe('bound_other');
+    expect(serverRuns(server, 'B')).toHaveLength(0);
+    expect(await phone.engine.resetForAccount('B', async () => {
+      expect(await phone.local.beginAccountReset('B')).toBe(true);
+      await phone.local.resetForAccount('B', DEFAULT_SETTINGS);
+      return true;
+    })).toBe(true);
     expect(await phone.history()).toHaveLength(0);
     await phone.engine.sync('manual');
     expect(phone.engine.getSnapshot().phase).toBe('idle');

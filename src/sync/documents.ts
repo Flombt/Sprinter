@@ -13,7 +13,7 @@ export interface DocumentAdapter {
   requiresRoutes?: boolean;
   list(): Promise<LocalDocument[]>;
   /** Applique une version reçue ; null = supprimée ailleurs. */
-  apply(id: string, payload: Record<string, unknown> | null): Promise<void>;
+  apply(id: string, payload: Record<string, unknown> | null, updatedAt?: number): Promise<void>;
   /** Partie comparée (ex. sans `updatedAt`, réécrit à chaque enregistrement local). */
   fingerprint?(payload: Record<string, unknown>): unknown;
 }
@@ -35,39 +35,48 @@ export class DocumentSync {
   }
   private remember(kind: string, id: string, value: Known) { return this.local.setState(key(kind, id), JSON.stringify(value)); }
 
-  async run(routesOn: boolean) {
+  async run(routesOn: boolean, guard: () => void = () => {}) {
     const active = this.adapters.filter((adapter) => !adapter.requiresRoutes || routesOn);
     const byKind = new Map(active.map((adapter) => [adapter.kind, adapter]));
     const locals = new Map<string, Map<string, LocalDocument>>();
     for (const adapter of active) locals.set(adapter.kind, new Map((await adapter.list()).map((doc) => [doc.id, doc])));
 
     // 1. Réception d'abord : une copie locale inchangée ne doit pas écraser une modification faite ailleurs.
-    let cursor = JSON.parse((await this.local.getState('doc_cursor')) ?? '{"ts":null,"kind":null,"id":null}') as { ts: string | null; kind: string | null; id: string | null };
+    // Le curseur avancé sans les parcours ne doit pas servir quand ils redeviennent visibles.
+    const cursorKey = routesOn ? 'doc_cursor_with_routes' : 'doc_cursor';
+    let cursor = JSON.parse((await this.local.getState(cursorKey)) ?? '{"ts":null,"kind":null,"id":null}') as { ts: string | null; kind: string | null; id: string | null };
     for (let page = 0; page < 50; page++) {
+      guard();
       const result = await this.remote.pull(cursor, 200);
       for (const item of result.items) {
         const adapter = byKind.get(item.kind);
         if (!adapter) continue;
         const known = await this.known(item.kind, item.id);
+        guard();
         const localDoc = locals.get(item.kind)?.get(item.id);
         const localChanged = localDoc && known && !known.deleted && this.hash(adapter, localDoc.payload) !== known.hash;
         if (item.deleted) {
-          if (localDoc) { await adapter.apply(item.id, null).catch(() => undefined); locals.get(item.kind)!.delete(item.id); }
+          if (localDoc) {
+            await adapter.apply(item.id, null);
+            locals.get(item.kind)!.delete(item.id);
+          }
           await this.remember(item.kind, item.id, { hash: '', at: Date.parse(item.client_updated_at), deleted: true });
           continue;
         }
+        const updatedAt = Date.parse(item.client_updated_at);
+        if (known && (known.deleted || known.at > updatedAt)) continue;
         const remoteHash = this.hash(adapter, item.payload ?? {});
-        if (known?.hash === remoteHash) continue;
-        if (localChanged && (localDoc.updatedAt ?? 0) > Date.parse(item.client_updated_at)) continue;
+        if (known?.hash === remoteHash && known.at === updatedAt) continue;
+        if (localChanged && (localDoc.updatedAt ?? 0) > updatedAt) continue;
         try {
-          await adapter.apply(item.id, item.payload);
-          locals.get(item.kind)!.set(item.id, { id: item.id, payload: item.payload ?? {}, updatedAt: Date.parse(item.client_updated_at) });
-          await this.remember(item.kind, item.id, { hash: remoteHash, at: Date.parse(item.client_updated_at) });
-        } catch { /* version reçue invalide pour cette app : ignorée, la copie locale reste */ }
+          if (!localDoc || this.hash(adapter, localDoc.payload) !== remoteHash) await adapter.apply(item.id, item.payload, updatedAt);
+          locals.get(item.kind)!.set(item.id, { id: item.id, payload: item.payload ?? {}, updatedAt });
+          await this.remember(item.kind, item.id, { hash: remoteHash, at: updatedAt });
+        } catch { /* Un document reçu incompatible ne bloque pas les autres sauvegardes. */ }
       }
       const last = result.items.at(-1);
       if (last) cursor = { ts: last.server_updated_at, kind: last.kind, id: last.id };
-      await this.local.setState('doc_cursor', JSON.stringify(cursor));
+      await this.local.setState(cursorKey, JSON.stringify(cursor));
       if (!result.next_cursor) break;
     }
 
@@ -89,12 +98,14 @@ export class DocumentSync {
     }
     for (let index = 0; index < outgoing.length; index += 100) {
       const batch = outgoing.slice(index, index + 100);
+      guard();
       const results = await this.remote.push(batch);
+      guard();
       for (const sent of batch) {
         const result = results.find((item) => item.kind === sent.kind && item.id === sent.id);
         if (!result || result.status === 'rejected') { if (result?.reason === 'backup_disabled') return; continue; }
         if (result.status === 'ignored_deleted') {
-          await byKind.get(sent.kind)?.apply(sent.id, null).catch(() => undefined);
+          await byKind.get(sent.kind)?.apply(sent.id, null);
           await this.remember(sent.kind, sent.id, { hash: '', at: this.now(), deleted: true });
         } else if (sent.deleted) {
           await this.remember(sent.kind, sent.id, { hash: '', at: this.now(), deleted: true });

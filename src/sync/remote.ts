@@ -15,16 +15,24 @@ export function classify(error: { message?: string; code?: string } | null, stat
   return new SyncError('client', message, undefined, code ? `client_${code}` : `client_${status}`);
 }
 
-export function supabaseSyncRemote(client: () => SupabaseClient | null, deviceId: () => Promise<string>): SyncRemote {
-  const call = async <T>(name: string, args: Record<string, unknown> = {}): Promise<T> => {
+export function syncRpc(client: () => SupabaseClient | null, activeUser: () => string | null) {
+  return async <T>(name: string, args: Record<string, unknown> = {}, userId = activeUser()): Promise<T> => {
     const supabase = client();
     if (!supabase) throw new SyncError('auth', 'no_client', undefined, 'no_client');
+    const { data } = await supabase.auth.getSession();
+    if (!userId || data.session?.user.id !== userId) throw new SyncError('auth', 'account_changed');
     let response;
-    try { response = await supabase.rpc(name, args); }
+    try {
+      // Laisser l'appel utiliser le jeton vérifié, même si la session change avant l'envoi.
+      response = await supabase.rpc(name, args).setHeader('Authorization', `Bearer ${data.session.access_token}`);
+    }
     catch (error) { throw new SyncError('network', error instanceof Error ? error.message : 'network', undefined, 'network'); }
     if (response.error) throw classify(response.error, response.status);
     return response.data as T;
   };
+}
+
+export function supabaseSyncRemote(call: ReturnType<typeof syncRpc>, deviceId: () => Promise<string>): SyncRemote {
   return {
     pushRuns: (items) => call('sync_push_runs', { p_runs: items }),
     deleteRuns: (ids) => call('sync_delete_runs', { p_ids: ids }),
@@ -41,16 +49,7 @@ export function supabaseSyncRemote(client: () => SupabaseClient | null, deviceId
   };
 }
 
-export function supabaseDocumentRemote(client: () => SupabaseClient | null): DocumentRemote {
-  const call = async <T>(name: string, args: Record<string, unknown>): Promise<T> => {
-    const supabase = client();
-    if (!supabase) throw new SyncError('auth', 'no_client', undefined, 'no_client');
-    let response;
-    try { response = await supabase.rpc(name, args); }
-    catch (error) { throw new SyncError('network', error instanceof Error ? error.message : 'network', undefined, 'network'); }
-    if (response.error) throw classify(response.error, response.status);
-    return response.data as T;
-  };
+export function supabaseDocumentRemote(call: ReturnType<typeof syncRpc>): DocumentRemote {
   return {
     push: (docs) => call('sync_push_documents', { p_docs: docs }),
     pull: (cursor, limit) => call('sync_pull_documents', { p_after_ts: cursor.ts, p_after_kind: cursor.kind, p_after_id: cursor.id, p_limit: limit }),

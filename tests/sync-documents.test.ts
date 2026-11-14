@@ -34,7 +34,8 @@ class Server implements DocumentRemote {
     });
   }
   async pull(cursor: { ts: string | null; kind: string | null; id: string | null }) {
-    const items = [...this.docs.values()].filter((doc) => !cursor.ts || `${doc.server_updated_at}|${doc.kind}|${doc.id}` > `${cursor.ts}|${cursor.kind}|${cursor.id}`)
+    const items = [...this.docs.values()].filter((doc) => (doc.kind !== 'route' || this.routesAllowed)
+        && (!cursor.ts || `${doc.server_updated_at}|${doc.kind}|${doc.id}` > `${cursor.ts}|${cursor.kind}|${cursor.id}`))
       .sort((a, b) => (`${a.server_updated_at}|${a.kind}|${a.id}` < `${b.server_updated_at}|${b.kind}|${b.id}` ? -1 : 1));
     return { items, next_cursor: null };
   }
@@ -87,5 +88,26 @@ describe('entités secondaires (2b)', () => {
     expect(server.docs.size).toBe(0);
     await sync.run(true);
     expect(server.docs.has('route:r1')).toBe(true);
+  });
+
+  it('récupère un itinéraire antérieur au dernier document après activation des parcours', async () => {
+    const server = new Server();
+    await server.push([
+      { kind: 'route', id: 'r1', client_updated_at: new Date(100).toISOString(), payload: { name: 'Ancien parcours' } },
+      { kind: 'shoe', id: 's1', client_updated_at: new Date(200).toISOString(), payload: { name: 'Chaussures' } },
+    ]);
+    const routes = memoryAdapter('route', { requiresRoutes: true, fingerprint: ({ name }) => ({ name }) });
+    const shoes = memoryAdapter('shoe', { fingerprint: ({ name }) => ({ name }) });
+    const local = await localStore();
+    const sync = new DocumentSync(local, server, [routes, shoes], () => 5_000);
+    server.routesAllowed = false;
+    await sync.run(false);
+    expect(shoes.docs.get('s1')?.name).toBe('Chaussures');
+    expect(routes.docs.size).toBe(0);
+    const withoutRoutes = await local.getState('doc_cursor');
+    server.routesAllowed = true;
+    await sync.run(true);
+    expect(routes.docs.get('r1')?.name).toBe('Ancien parcours');
+    expect(await local.getState('doc_cursor')).toBe(withoutRoutes);
   });
 });

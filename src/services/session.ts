@@ -42,6 +42,7 @@ export class RunningStore {
   private revision = 0;
   private checkpointInFlight: Promise<void> | null = null;
   private operation = false;
+  private resettingAccount = false;
   private importingHealth = false;
   private recoveryBlocked = false;
   private healthAutoWrite = false;
@@ -301,6 +302,7 @@ export class RunningStore {
     finally { this.operation = false; this.emit({ busy: false }); }
   };
   updateSettings = async (patch: Partial<Settings>) => {
+    if (this.resettingAccount) return;
     if (this.engine && (patch.backgroundEnabled !== undefined || patch.autoPauseEnabled !== undefined)) { this.emit({ message: 'Modifiez le suivi en arrière-plan et la pause automatique entre deux courses.' }); return; }
     const settings = { ...this.value.settings, ...patch, coaching: sanitizeCoaching(patch.coaching ?? this.value.settings.coaching) };
     if (patch.audioEnabled === false || patch.hapticsEnabled === false || patch.coaching !== undefined) coaching.stop();
@@ -345,8 +347,28 @@ export class RunningStore {
       return true;
     } catch (error) { this.emit({ message: textError(error) }); return false; }
   };
+  resetAccountData = async (clear: (settings: Settings) => Promise<boolean>): Promise<boolean> => {
+    await this.initialize();
+    if (!this.repository || this.engine || this.operation || this.importingHealth) return false;
+    this.operation = true;
+    this.resettingAccount = true;
+    this.emit({ busy: true });
+    try {
+      const settings = { ...DEFAULT_SETTINGS, config: { ...DEFAULT_SETTINGS.config }, backgroundEnabled: this.value.settings.backgroundEnabled };
+      if (!await clear(settings)) return false;
+      for (const run of this.value.history) forgetActivityAnalysis(run.id);
+      this.recoveryBlocked = false;
+      coaching.stop();
+      this.emit({ settings, history: [], unreadableCount: 0, restored: false });
+      return true;
+    } finally {
+      this.resettingAccount = false;
+      this.operation = false;
+      this.emit({ busy: false });
+    }
+  };
   importHealthActivity = async (input: RunRecord): Promise<boolean> => {
-    if (this.importingHealth) return false;
+    if (this.importingHealth || this.resettingAccount) return false;
     this.importingHealth = true;
     try {
       await this.initialize();

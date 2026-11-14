@@ -22,8 +22,9 @@ export const documentAdapters: DocumentAdapter[] = [
       return workouts.getSnapshot().definitions.map((definition) => ({ id: definition.id, payload: definition as unknown as Record<string, unknown>, updatedAt: definition.updatedAt }));
     },
     async apply(id, payload) {
-      if (payload) await workouts.save(payload as unknown as WorkoutDefinition);
-      else if (workouts.getSnapshot().definitions.some((definition) => definition.id === id)) await workouts.remove(id);
+      const saved = payload ? await workouts.save(payload as unknown as WorkoutDefinition)
+        : !workouts.getSnapshot().definitions.some((definition) => definition.id === id) || await workouts.remove(id);
+      if (!saved) throw new Error('Séance reçue impossible à enregistrer.');
     },
     // `save` réécrit updatedAt : l'empreinte l'ignore pour éviter les allers-retours.
     fingerprint: (payload) => without(payload, 'updatedAt'),
@@ -37,8 +38,8 @@ export const documentAdapters: DocumentAdapter[] = [
     async apply(id, payload) {
       const existing = progression.getSnapshot().data.shoes.find((shoe) => shoe.id === id);
       // Une chaussure n'est jamais effacée : supprimée ailleurs, elle est archivée ici.
-      if (payload) await progression.saveShoe(payload as unknown as Shoe);
-      else if (existing && !existing.archived) await progression.saveShoe({ ...existing, archived: true });
+      const shoe = payload ? payload as unknown as Shoe : existing && !existing.archived ? { ...existing, archived: true } : null;
+      if (shoe && !await progression.saveShoe(shoe)) throw new Error('Chaussure reçue impossible à enregistrer.');
     },
   },
   {
@@ -55,9 +56,11 @@ export const documentAdapters: DocumentAdapter[] = [
       const data = progression.getSnapshot().data;
       if (payload) {
         const { plan, entries } = payload as unknown as { plan: TrainingPlan; entries: CalendarEntry[] };
-        if (!data.plans.some((item) => item.id === id)) await progression.savePlan(plan, entries);
+        if (!data.plans.some((item) => item.id === id) && !await progression.savePlan(plan, entries)) {
+          throw new Error('Plan reçu impossible à enregistrer.');
+        }
       } else if (data.plans.some((item) => item.id === id)) {
-        await progression.removePlan(id, session.getSnapshot().history);
+        if (!await progression.removePlan(id, session.getSnapshot().history)) throw new Error('Plan impossible à supprimer.');
       }
     },
     // Le plan est synchronisé à sa création ; l'état des séances découle des courses synchronisées.
@@ -68,14 +71,21 @@ export const documentAdapters: DocumentAdapter[] = [
     requiresRoutes: true,
     async list() {
       await toolsStore.initialize();
-      return toolsStore.getSnapshot().routes.map((route) => ({ id: route.id, payload: route as unknown as Record<string, unknown>, updatedAt: route.createdAt }));
+      return toolsStore.getSnapshot().routes.map(({ updatedAt, ...route }) => ({
+        id: route.id, payload: route, updatedAt: updatedAt ?? route.createdAt,
+      }));
     },
-    async apply(id, payload) {
+    async apply(id, payload, updatedAt) {
       const existing = toolsStore.getSnapshot().routes.find((route) => route.id === id);
-      if (!payload) { if (existing) await toolsStore.deleteRoute(id); return; }
+      if (!payload) {
+        if (existing && !await toolsStore.deleteRoute(id)) throw new Error('Parcours impossible à supprimer.');
+        return;
+      }
       const route = payload as unknown as SavedRoute;
-      if (existing) { if (existing.name !== route.name) await toolsStore.renameRoute(id, route.name); }
-      else await toolsStore.addRoute(route);
+      const saved = existing
+        ? existing.name === route.name || await toolsStore.renameRoute(id, route.name, updatedAt)
+        : await toolsStore.addRoute({ ...route, updatedAt });
+      if (!saved) throw new Error('Parcours reçu impossible à enregistrer.');
     },
   },
 ];

@@ -68,6 +68,15 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
   const sync = useSyncStatus();
   const [route, setRoute] = useState<Route>('home');
   const [firstTime, setFirstTime] = useState(false);
+  const [resettingDevice, setResettingDevice] = useState(false);
+  const resetDevice = async () => {
+    setResettingDevice(true);
+    try {
+      if (!await resetDeviceForCurrentAccount()) throw new Error('reset_incomplete');
+    } catch {
+      Alert.alert('Changement de compte interrompu', 'Terminez toute course en cours et réessayez. La synchronisation vers le nouveau compte reprendra une fois l’effacement terminé.');
+    } finally { setResettingDevice(false); }
+  };
   useEffect(() => { if (state.status === 'signedOut' && route !== 'signIn' && route !== 'home') setRoute('home'); }, [route, state.status]);
   const [visit, setVisit] = useState<VisitTarget>({});
   const back = () => {
@@ -106,11 +115,11 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
           </Panel>
           {sync.phase === 'bound_other' && (
             <SettingsNotice icon="swap-horizontal-outline" title="Appareil lié à un autre compte"
-              body="Cet appareil contient les données d’un autre compte. Pour continuer, effacez-les ou annulez.">
-              <Button title="Effacer les données de cet appareil" danger secondary onPress={() => confirm('Effacer les données de cet appareil ?',
-                'Les courses de l’autre compte seront supprimées de ce téléphone. Celles déjà sauvegardées restent dans leur compte.', 'Effacer',
-                () => void resetDeviceForCurrentAccount(), true)} />
-              <Button title="Annuler" variant="quiet" onPress={() => void account.signOut()} />
+              body="La synchronisation attend la fin du changement de compte. Pour continuer, effacez les données locales ou annulez.">
+              <Button title={resettingDevice ? 'Effacement en cours…' : 'Effacer les données de cet appareil'} disabled={resettingDevice} danger secondary onPress={() => confirm('Effacer les données de cet appareil ?',
+                'Les courses, séances, chaussures, données de progression et parcours GPS de l’autre compte seront effacés de ce téléphone. Les données déjà sauvegardées restent dans ce compte.', 'Effacer',
+                () => void resetDevice(), true)} />
+              <Button title="Annuler" disabled={resettingDevice} variant="quiet" onPress={() => void account.signOut()} />
             </SettingsNotice>
           )}
           <View style={{ gap: spacing.md }}>

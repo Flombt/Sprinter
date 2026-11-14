@@ -93,7 +93,7 @@ export class RouteSync implements SyncExtension {
     private deps: { userId(): string | null; enabled(): boolean; runActive(): boolean; wifi(): boolean; historyChanged(): Promise<void> },
   ) {}
   /** Envoi des tracés des courses déjà synchronisées, puis préchargement des 5 derniers en Wi-Fi. */
-  async run({ routesOn }: { routesOn: boolean }) {
+  async run({ routesOn, guard = () => {} }: { routesOn: boolean; guard?(): void }) {
     const userId = this.deps.userId();
     if (!routesOn || !this.deps.enabled() || !userId) return;
     for (const id of await this.local.routeCandidates(ROUTE_BATCH)) {
@@ -103,23 +103,29 @@ export class RouteSync implements SyncExtension {
       const bytes = compressPoints(points);
       if (bytes.length > MAX_ROUTE_BYTES) { await this.local.markRoute(id, 'too_large'); continue; }
       const path = routeObjectName(userId, id);
+      guard();
       await this.transport.upload(path, bytes);
+      guard();
       await this.transport.register(id, path, points.length, bytes.length, previewPolyline(points));
+      guard();
       await this.local.markRoute(id, 'uploaded');
     }
     if (this.deps.wifi()) {
       let fetched = 0;
       for (const id of await this.local.cloudRouteRuns(ROUTE_BATCH)) {
         if (this.deps.runActive()) break;
-        try { await this.download(id, userId); fetched++; } catch { /* réessayé plus tard */ }
+        guard();
+        try { await this.download(id, userId, guard); fetched++; } catch { /* réessayé plus tard */ }
       }
       if (fetched) await this.deps.historyChanged();
     }
   }
   /** Téléchargement à la demande (détail d'une course sans points locaux, §8.4). */
-  async download(runId: string, userId = this.deps.userId()) {
+  async download(runId: string, userId = this.deps.userId(), guard: () => void = () => {}) {
     if (!userId) throw new Error('Connectez-vous pour récupérer ce parcours.');
     const points = decompressPoints(await this.transport.download(routeObjectName(userId, runId)));
+    guard();
+    if (this.deps.userId() !== userId) throw new Error('Le compte a changé.');
     await this.local.attachPoints(runId, points);
     await this.local.markRoute(runId, 'uploaded');
     return points.length;

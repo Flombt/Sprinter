@@ -1,4 +1,5 @@
 import type { SqlDatabase } from '../storage/repository';
+import type { Settings } from '../core/types';
 import type { Cursor, PulledRun } from './types';
 
 /**
@@ -41,12 +42,25 @@ export class SyncLocalStore {
   /** Lie l'appareil à un compte (§7.6 A). Refuse silencieusement un autre compte (scénario D). */
   bind(userId: string): Promise<'bound' | 'same' | 'other'> {
     return this.serialize(async (db) => {
+      if (await db.getFirstAsync("SELECT 1 FROM sync_state WHERE key = 'account_reset_pending'")) return 'other';
       const current = (await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_state WHERE key = 'bound_user_id'"))?.value;
       if (current === userId) return 'same';
       if (current) return 'other';
       await db.runAsync("INSERT INTO sync_state (key, value) VALUES ('bound_user_id', ?)", userId);
       return 'bound';
     });
+  }
+
+  recordBackupChoice(userId: string, event: { id: string; at: string; on: boolean }): Promise<boolean> {
+    return this.serialize((db) => transaction(db, async () => {
+      if (await db.getFirstAsync("SELECT 1 FROM sync_state WHERE key = 'account_reset_pending'")) return false;
+      const current = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_state WHERE key = 'bound_user_id'");
+      if (current && current.value !== userId) return false;
+      await db.runAsync("INSERT OR IGNORE INTO sync_state (key, value) VALUES ('bound_user_id', ?)", userId);
+      await db.runAsync(`INSERT INTO sync_state (key, value) VALUES ('backup_runs', ?), ('backup_event', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value`, event.on ? 'pending_on' : 'pending_off', JSON.stringify(event));
+      return true;
+    }));
   }
 
   // ------------------------------------------------------------------ Outbox
@@ -245,11 +259,24 @@ export class SyncLocalStore {
       await db.runAsync("INSERT INTO sync_state (key, value) VALUES ('local_backup_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", String(Date.now()));
     }));
   }
-  /** Scénario D : efface les données de l'ancien compte sur cet appareil, puis lie le nouveau. */
-  resetForAccount(userId: string) {
+  /** Garde la synchro bloquée si le nettoyage de plusieurs stockages est interrompu. */
+  beginAccountReset(userId: string): Promise<boolean> {
+    return this.serialize(async (db) => {
+      const current = await db.getFirstAsync<{ value: string }>("SELECT value FROM sync_state WHERE key = 'bound_user_id'");
+      const pending = await db.getFirstAsync("SELECT 1 FROM sync_state WHERE key = 'account_reset_pending'");
+      if (!current || (current.value === userId && !pending)) return false;
+      await db.runAsync("INSERT OR IGNORE INTO sync_state (key, value) VALUES ('account_reset_pending', '1')");
+      return true;
+    });
+  }
+
+  /** Scénario D : efface l'historique puis lie le nouveau compte dans la même transaction. */
+  resetForAccount(userId: string, settings: Settings) {
     return this.serialize((db) => transaction(db, async () => {
-      await db.execAsync('DELETE FROM runs; DELETE FROM sync_outbox; DELETE FROM sync_meta; DELETE FROM sync_state;');
+      await db.execAsync(`DELETE FROM runs; DELETE FROM draft; DELETE FROM draft_points; DELETE FROM draft_archives;
+        DELETE FROM sync_outbox; DELETE FROM sync_meta; DELETE FROM sync_state;`);
       await db.execAsync('DROP TABLE IF EXISTS runs_backup');
+      await db.runAsync('INSERT INTO settings VALUES (1, ?) ON CONFLICT(slot) DO UPDATE SET payload = excluded.payload', JSON.stringify(settings));
       await db.runAsync("INSERT INTO sync_state (key, value) VALUES ('bound_user_id', ?)", userId);
     }));
   }

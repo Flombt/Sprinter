@@ -38,7 +38,7 @@ export function backoffMs(attempts: number, random = Math.random()) {
 }
 
 /** Synchronisations complémentaires exécutées après les courses quand la sauvegarde est active (2b, tracés…). */
-export interface SyncExtension { name: string; run(context: { routesOn: boolean }): Promise<void> }
+export interface SyncExtension { name: string; run(context: { routesOn: boolean; guard(): void }): Promise<void> }
 
 const INITIAL: SyncStatus = {
   phase: 'disabled', backup: 'unset', routes: 'unset', lastSuccessAt: null, pending: 0, blocked: 0, deletedElsewhere: [], importing: false, message: null,
@@ -50,10 +50,13 @@ export class SyncEngine {
   private value: SyncStatus = INITIAL;
   private listeners = new Set<() => void>();
   private inFlight: Promise<SyncStatus> | null = null;
+  private syncUserId: string | null = null;
+  private resetting = false;
   private notBefore = 0;
   private reconcileRequested = false;
   constructor(private local: SyncLocalStore, private remote: SyncRemote, private host: SyncHost, private extensions: SyncExtension[] = []) {}
   addExtension(extension: SyncExtension) { this.extensions.push(extension); }
+  activeUser = () => this.syncUserId;
 
   getSnapshot = () => this.value;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -61,7 +64,9 @@ export class SyncEngine {
     this.value = { ...this.value, ...patch };
     for (const listener of [...this.listeners]) { try { listener(); } catch { /* observateur facultatif */ } }
   }
-  private guard() { if (this.host.runActive()) throw new Interrupted('run_active'); }
+  private guard() {
+    if (this.host.runActive() || !this.host.enabled() || this.host.userId() !== this.syncUserId) throw new Interrupted();
+  }
 
   async refreshCounts() {
     const [counts, backup, last, pendingChoice] = await Promise.all([
@@ -75,18 +80,43 @@ export class SyncEngine {
 
   /** Point d'entrée unique (premier plan, fin de course, retour du réseau, « Réessayer »). */
   sync(trigger: string): Promise<SyncStatus> {
+    if (this.resetting) return Promise.resolve(this.value);
     if (!this.host.enabled() || !this.host.userId()) { this.emit({ phase: 'disabled' }); return Promise.resolve(this.value); }
     if (this.host.runActive()) return Promise.resolve(this.value);
     if (trigger !== 'manual' && this.host.now() < this.notBefore) return Promise.resolve(this.value);
-    this.inFlight ??= this.pass().finally(() => { this.inFlight = null; });
+    this.inFlight ??= this.pass().finally(() => {
+      const accountChanged = this.host.userId() !== this.syncUserId;
+      this.syncUserId = null;
+      this.inFlight = null;
+      if (accountChanged) void this.sync('manual');
+    });
     return this.inFlight;
+  }
+
+  async resetForAccount(userId: string, clearDevice: () => Promise<boolean>): Promise<boolean> {
+    if (this.resetting || !this.host.enabled()) return false;
+    this.resetting = true;
+    try {
+      await this.inFlight;
+      if (this.host.userId() !== userId || this.host.runActive()) return false;
+      if (!await clearDevice()) return false;
+      this.notBefore = 0;
+      this.reconcileRequested = false;
+      this.emit({ ...INITIAL, phase: 'idle' });
+      return true;
+    } finally { this.resetting = false; }
   }
 
   /** Choix explicite de sauvegarde des courses (§6.5). La désactivation s'applique tout de suite sur cet appareil. */
   async chooseBackup(on: boolean): Promise<BackupState> {
+    const userId = this.host.userId();
+    if (this.resetting || !this.host.enabled() || !userId) return this.value.backup;
     const eventId = this.host.uuid();
-    await this.local.setState('backup_runs', on ? 'pending_on' : 'pending_off');
-    await this.local.setState('backup_event', JSON.stringify({ id: eventId, at: new Date(this.host.now()).toISOString(), on }));
+    const event = { id: eventId, at: new Date(this.host.now()).toISOString(), on };
+    if (!await this.local.recordBackupChoice(userId, event)) {
+      await this.sync('manual');
+      return 'unset';
+    }
     this.emit({ backup: on ? 'pending_on' : 'pending_off' });
     await this.sync('manual');
     return this.value.backup;
@@ -109,20 +139,25 @@ export class SyncEngine {
 
   private async pass(): Promise<SyncStatus> {
     const userId = this.host.userId()!;
+    this.syncUserId = userId;
     this.emit({ phase: 'running', message: null });
     let refreshed = false, partial = false;
     const attempt = async <T>(step: () => Promise<T>): Promise<T> => {
+      this.guard();
       try { return await step(); }
       catch (error) {
+        this.guard();
         if (error instanceof SyncError && error.kind === 'auth' && !refreshed) {
           refreshed = true;
-          if (await this.host.refreshAuth()) return step();
+          if (await this.host.refreshAuth()) { this.guard(); return step(); }
         }
         throw error;
       }
     };
     try {
-      if ((await this.local.bind(userId)) === 'other') {
+      const binding = await this.local.bind(userId);
+      this.guard();
+      if (binding === 'other') {
         this.emit({ phase: 'bound_other', message: 'Cet appareil contient les données d’un autre compte. Pour continuer, effacez-les ou annulez.' });
         return this.value;
       }
@@ -137,21 +172,23 @@ export class SyncEngine {
         partial = await attempt(() => this.pushRuns());
         this.guard();
         await attempt(() => this.pull());
-        const routesChoice = (await this.remote.backupChoices()).routes;
+        const routesChoice = (await attempt(() => this.remote.backupChoices())).routes;
         this.emit({ routes: routesChoice === null ? 'unset' : routesChoice ? 'on' : 'off' });
         const routesOn = routesChoice === true;
         for (const extension of this.extensions) {
           this.guard();
-          await attempt(() => extension.run({ routesOn }));
+          await attempt(() => extension.run({ routesOn, guard: () => this.guard() }));
         }
       }
+      this.guard();
       await this.local.setState('last_success_at', String(this.host.now()));
+      this.guard();
       await this.remote.reportSync(partial ? 'partial' : 'ok', partial ? 'rejected_items' : null).catch(() => undefined);
       await this.refreshCounts();
       this.emit({ phase: 'idle', importing: false });
     } catch (error) {
       await this.refreshCounts().catch(() => undefined);
-      if (error instanceof Interrupted) { this.emit({ phase: 'idle', importing: false }); return this.value; }
+      if (error instanceof Interrupted || this.host.userId() !== userId) { this.emit({ phase: 'idle', importing: false }); return this.value; }
       const kind = error instanceof SyncError ? error.kind : 'server';
       if (kind === 'rate') this.notBefore = this.host.now() + ((error as SyncError).retryAfterMs ?? 60_000);
       const phase = kind === 'network' ? 'offline' : kind === 'auth' ? 'reauth' : kind === 'rate' ? 'paused' : 'error';
@@ -171,13 +208,17 @@ export class SyncEngine {
     if (state === 'pending_on' || state === 'pending_off') {
       const event = JSON.parse((await this.local.getState('backup_event')) ?? 'null') as { id: string; at: string; on: boolean } | null;
       if (event) {
+        this.guard();
         const result = await this.host.recordBackupChoice(event.on, event.id, event.at);
+        this.guard();
         // Une décision plus récente ailleurs l'emporte : le titulaire devra choisir à nouveau.
         state = result.status === 'stale' ? (result.granted ? 'on' : result.granted === false ? 'off' : 'unset') : event.on ? 'on' : 'off';
         await this.local.setState('backup_event', null);
       }
     } else {
+      this.guard();
       const choices = await this.remote.backupChoices();
+      this.guard();
       state = choices.runs === null ? 'unset' : choices.runs ? 'on' : 'off';
     }
     await this.local.setState('backup_runs', state);
@@ -198,13 +239,17 @@ export class SyncEngine {
     const lastHash = await this.local.getState('settings_hash');
     if (entry) {
       if (localHash === lastHash) { await this.local.complete(entry, {}); return; }
+      this.guard();
       const result = await this.remote.pushPreferences(localPortable as Record<string, unknown>, new Date(entry.createdAt).toISOString());
+      this.guard();
       if (result.status === 'ignored_stale') await this.applySettings(result.data);
       else await this.local.setState('settings_hash', localHash);
       await this.local.complete(entry, {});
       return;
     }
+    this.guard();
     const remote = await this.remote.getPreferences();
+    this.guard();
     if (!remote) {
       if (lastHash !== localHash) {
         await this.remote.pushPreferences(localPortable as Record<string, unknown>, new Date(this.host.now()).toISOString());
@@ -280,7 +325,9 @@ export class SyncEngine {
       const upserts = entries.filter((entry) => entry.op === 'upsert');
       try {
         if (deletes.length) {
+          this.guard();
           const results = await this.remote.deleteRuns(deletes.map((entry) => entry.entityId));
+          this.guard();
           for (const entry of deletes) {
             const result = results.find((item) => item.id === entry.entityId);
             if (result && result.status !== 'rejected') await this.local.complete(entry, { deleted: true });
@@ -293,7 +340,9 @@ export class SyncEngine {
           for (const entry of upserts) if (!byId.has(entry.entityId)) await this.local.complete(entry, {});
           const items = upserts.filter((entry) => byId.has(entry.entityId)).map((entry) => this.toItem(byId.get(entry.entityId)!));
           if (items.length) {
+            this.guard();
             const results = await this.remote.pushRuns(items);
+            this.guard();
             for (const entry of upserts.filter((item) => byId.has(item.entityId))) {
               const result = results.find((item) => item.id === entry.entityId);
               if (!result) { await this.local.fail(entry, 'missing_result', this.host.now() + backoffMs(entry.attempts), false); continue; }
@@ -341,6 +390,7 @@ export class SyncEngine {
     for (let page = 0; page < MAX_PULL_PAGES; page++) {
       this.guard();
       const result = await this.remote.pull(cursor, 200);
+      this.guard();
       const last = result.items.at(-1);
       const end: Cursor | null = result.next_cursor ?? (last ? { ts: last.server_updated_at, id: last.id } : null);
       if (end && compareCursor(end, best) > 0) best = end;
