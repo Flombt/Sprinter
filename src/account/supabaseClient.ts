@@ -7,8 +7,7 @@ import { accountKv } from './kv';
 import { createEncryptedSessionStorage, SESSION_PREFIX } from './secureSession';
 
 /**
- * Client Supabase unique (§6.3). Chargé à la demande par le module compte : sans compte,
- * ce fichier et la bibliothèque Supabase ne sont jamais évalués au démarrage.
+ * Client Supabase unique (§6.3), chargé par le module compte si le backend est configuré.
  */
 const webStorage = {
   getItem: (key: string) => accountKv.get(SESSION_PREFIX + key),

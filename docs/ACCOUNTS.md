@@ -52,11 +52,11 @@ scripts/db-local/       banc d’essai SQL sans Docker (PostgreSQL éphémère +
 
 ## 4. Configuration distante et flags
 
-`public.app_config` est la seule table lisible sans compte (valeurs `is_public`). L’app la lit **après** le démarrage (`startAppConfig` dans `App.tsx`), garde la dernière valeur connue dans `sprinter-account-v1.db`, relit en arrière-plan au-delà d’une heure (lancement, retour au premier plan) et **échoue en mode ouvert** : hors ligne, erreur ou réponse invalide, l’app fonctionne avec la valeur connue ou les défauts (tout éteint).
+`public.app_config` est la seule table lisible sans compte (valeurs `is_public`). L’app la lit en arrière-plan (`startAppConfig` dans `App.tsx`), garde la dernière valeur connue dans `sprinter-account-v1.db` et relit au-delà d’une heure (lancement, retour au premier plan). Hors ligne, erreur ou réponse invalide, les options cloud utilisent la valeur connue ou les défauts.
 
 | Clé | Défaut | Phase |
 |---|---|---|
-| `accounts_enabled` | `false` | 1 — affiche Réglages › Compte et le bandeau « Sauvegardez vos courses » |
+| `accounts_enabled` | `false` | Active les options cloud du compte. La connexion de base reste disponible. |
 | `sync_enabled` | `false` | 2 — synchronisation des courses et des réglages |
 | `routes_sync_enabled` | `false` | 3 — tracés GPS (choix explicite en plus) |
 
@@ -66,7 +66,7 @@ Une fonction dépendante n’est jamais active sans son socle (ex. `sync_enabled
 update public.app_config set value = 'true'::jsonb where key = 'accounts_enabled';
 ```
 
-**Retour arrière** : remettre le flag à `false` suffit ; aucune mise à jour de l’app n’est nécessaire.
+Remettre ce flag à `false` désactive les options cloud du compte.
 
 ## 5. Comptes (phase 1)
 
@@ -79,13 +79,13 @@ update public.app_config set value = 'true'::jsonb where key = 'accounts_enabled
 | État du compte, connexion, liaison, export, suppression | `src/account/accountStore.ts` (logique testée) · `src/account/account.ts` (branchement) |
 | Apple (nonce brut → Supabase, SHA-256 → Apple) et Google natifs | `src/account/providers.ts` |
 | Garde-fous du code e-mail (renvoi 60 s, 5 essais puis 15 min) | `src/account/otpGuard.ts` |
-| Écrans | `src/account/ui/` (feuille Compte ouverte depuis Réglages) |
+| Écrans | `src/account/ui/AccountGate.tsx` au lancement · `src/account/ui/AccountSheet.tsx` depuis Réglages |
 
-Points d’accroche dans l’existant : une section « Compte » dans `Settings.tsx` (visible seulement si le backend est configuré **et** `accounts_enabled` est vrai), la feuille `account` dans `AppSheets.tsx`, deux `useEffect` dans `App.tsx`, le bandeau dans `RunSummary.tsx`, et `purgeLocalRuns` (effacement local explicite) dans le dépôt de courses.
+Un compte est obligatoire dès l’ouverture de Sprinter. Tant qu’aucune session n’est authentifiée, l’écran d’entrée propose « Se connecter » et « S’inscrire », et la navigation de course reste inaccessible. Un départ en attente est annulé en cas de perte de la session. Une course déjà en cours est mise en pause et peut être enregistrée depuis l’écran d’entrée ou reprise après reconnexion.
 
-À l’accueil, « Se connecter ou créer un compte » ouvre directement le choix de connexion quand les comptes sont activés et qu’aucune session ni course n’est en cours. La variante iPhone à signature personnelle propose Google si les trois variables de build Google sont renseignées. Apple natif est disponible dans la variante normale signée avec la capacité Apple correspondante.
+Le formulaire e-mail envoie un code dans les deux parcours. Seule l’inscription autorise la création d’un nouveau compte par e-mail. Les méthodes Apple et Google créent le compte lors de la première utilisation. La variante iPhone à signature personnelle propose Google si les trois variables de build Google sont renseignées. Apple natif est disponible dans la variante normale signée avec la capacité Apple correspondante.
 
-**Démarrage** : la bibliothèque Supabase et les modules natifs de connexion ne sont jamais importés statiquement (test `tests/account-startup.test.ts`). Le bundle iOS passe de 4 054 832 à 4 871 309 octets de bytecode Hermes (+816 Ko, +20 %) ; ces modules ne sont pas évalués au démarrage. Mesure du temps de démarrage sur iPhone à faire en recette (avant/après, compte absent).
+Configurer un fournisseur de connexion opérationnel avant de distribuer une version avec compte obligatoire. Pour ouvrir l’inscription e-mail au public, configurer le SMTP du projet et tester la réception d’un code à une adresse externe à l’organisation Supabase. Une session locale existante permet de rouvrir Sprinter hors ligne. Le client Supabase est chargé au démarrage si le backend est configuré. Les modules natifs de connexion sont chargés au moment du geste.
 
 ### 5.2 Côté serveur
 

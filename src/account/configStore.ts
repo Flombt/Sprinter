@@ -5,7 +5,7 @@ import type { KeyValueStore } from './kvStore';
  * Configuration distante de l'app (`public.app_config`, §10.4 Config).
  * Règle d'or : ÉCHEC OUVERT. Hors ligne, erreur serveur ou réponse invalide, l'app
  * continue avec la dernière valeur connue ou, à défaut, avec les valeurs par défaut
- * (toutes les fonctions nouvelles éteintes). Aucun écran n'attend le réseau.
+ * (les options cloud désactivées). La connexion ne dépend pas des flags distants.
  */
 export const FLAG_KEYS = [
   'accounts_enabled', 'sync_enabled', 'routes_sync_enabled', 'support_enabled', 'leaderboard_enabled',

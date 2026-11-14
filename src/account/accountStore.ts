@@ -7,12 +7,15 @@ import {
 } from './otpGuard';
 
 /**
- * État du compte facultatif (§6). Règles : le réseau ne bloque jamais le démarrage, une
- * session expirée laisse l'app fonctionner en local, et aucune action sensible (liaison,
- * suppression) n'est possible sans authentification réelle de moins de 5 minutes.
+ * Une session conservée permet de lancer l'app hors ligne. Les actions sensibles (liaison,
+ * suppression) demandent une authentification réelle de moins de 5 minutes.
  */
 export type AccountStatus = 'unavailable' | 'loading' | 'signedOut' | 'signedIn';
 export type Provider = 'apple' | 'google' | 'email';
+
+export function isSignedIn(state: Pick<AccountSnapshot, 'status' | 'userId'>): boolean {
+  return state.status === 'signedIn' && !!state.userId;
+}
 
 export interface AccountSnapshot {
   status: AccountStatus;
@@ -82,7 +85,12 @@ function providersOf(session: Session | null): Provider[] {
 export function parseStoredSession(raw: string | null): { userId: string; email: string | null; providers: Provider[] } | null {
   if (!raw) return null;
   try {
-    const value = JSON.parse(raw) as { user?: { id?: unknown; email?: unknown; app_metadata?: { providers?: unknown } } };
+    const value = JSON.parse(raw) as {
+      access_token?: unknown;
+      refresh_token?: unknown;
+      user?: { id?: unknown; email?: unknown; app_metadata?: { providers?: unknown } };
+    };
+    if (typeof value.access_token !== 'string' || !value.access_token || typeof value.refresh_token !== 'string' || !value.refresh_token) return null;
     const id = value.user?.id;
     if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return null;
     const providers = Array.isArray(value.user?.app_metadata?.providers) ? value.user!.app_metadata!.providers as unknown[] : [];
@@ -151,9 +159,9 @@ export class AccountStore {
   /** Restaure l'état sans attendre le réseau. Ne lève jamais. */
   start(readStoredSession: () => Promise<string | null>): Promise<void> {
     this.started ??= (async () => {
-      const client = this.deps.loadClient();
-      if (!client) return;
       this.emit({ status: 'loading' });
+      const client = this.deps.loadClient();
+      if (!client) throw new Error('unavailable');
       try {
         const [raw, otp, pendingDeletion] = await Promise.all([
           readStoredSession(), this.deps.kv.get(OTP_KEY), this.deps.kv.get(DELETION_KEY),
@@ -172,7 +180,10 @@ export class AccountStore {
       });
       if (this.value.status === 'signedIn') void this.touch();
       if (this.value.pendingDeletion) void this.refreshDeletion();
-    })();
+    })().catch(() => {
+      this.started = null;
+      this.emit({ status: 'unavailable', userId: null, email: null, providers: [] });
+    });
     return this.started;
   }
 

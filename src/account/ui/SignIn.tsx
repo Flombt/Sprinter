@@ -12,6 +12,7 @@ import { Checkbox, ExternalLink, FormError } from './parts';
 /** Se connecter ou créer un compte (§6.1, §6.2) : Apple au moins aussi visible que Google sur iOS. */
 export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void }) {
   const state = useAccount();
+  const [mode, setMode] = useState<'signIn' | 'signUp' | null>(null);
   const [adult, setAdult] = useState(false);
   const [step, setStep] = useState<'providers' | 'email' | 'code'>('providers');
   const [email, setEmail] = useState('');
@@ -23,10 +24,23 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
     const timer = setInterval(() => setTick((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, [step, resendIn]);
-  useEffect(() => () => account.clearNotice(), []);
 
-  const done = (ok: boolean | null) => { if (ok) onSignedIn(account.getSnapshot().firstSignIn); };
+  const done = (ok: boolean | null) => {
+    const current = account.getSnapshot();
+    if (ok && current.status === 'signedIn') onSignedIn(current.firstSignIn);
+  };
   const gate = !adult || state.busy;
+  const creating = mode === 'signUp';
+  const requestCode = () => account.requestEmailCode(email, creating);
+
+  if (mode === null) {
+    return (
+      <View style={{ gap: spacing.md }}>
+        <Button title="Se connecter" icon="log-in-outline" disabled={state.busy} onPress={() => { account.clearNotice(); setMode('signIn'); }} />
+        <Button title="S’inscrire" icon="person-add-outline" secondary disabled={state.busy} onPress={() => { account.clearNotice(); setMode('signUp'); }} />
+      </View>
+    );
+  }
 
   if (step === 'email' || step === 'code') {
     return (
@@ -48,7 +62,7 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
             title="Recevoir un code"
             icon="mail-outline"
             disabled={gate || !validEmail(email)}
-            onPress={() => void account.requestEmailCode(email).then((sent) => { if (sent) setStep('code'); })}
+            onPress={() => void requestCode().then((sent) => { if (sent) setStep('code'); })}
           />
         ) : (
           <>
@@ -72,21 +86,19 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
               title={resendIn > 0 ? `Renvoyer le code (${resendIn} s)` : 'Renvoyer le code'}
               variant="quiet"
               disabled={state.busy || resendIn > 0}
-              onPress={() => void account.requestEmailCode(email)}
+              onPress={() => void requestCode()}
             />
           </>
         )}
         <FormError message={state.error} />
-        <Button title="Choisir une autre méthode" variant="quiet" icon="arrow-back" onPress={() => { setStep('providers'); setCode(''); account.clearNotice(); }} />
+        <Button title="Choisir une autre méthode" variant="quiet" icon="arrow-back" disabled={state.busy} onPress={() => { setStep('providers'); setCode(''); account.clearNotice(); }} />
       </View>
     );
   }
 
   return (
     <View style={{ gap: spacing.lg }}>
-      <Copy muted>
-        Sprinter fonctionne sans compte. Créez-en un si vous souhaitez sauvegarder vos courses et les retrouver sur un autre appareil.
-      </Copy>
+      <Copy variant="heading" accessibilityRole="header">{creating ? 'Créer un compte' : 'Se connecter'}</Copy>
       <Panel variant="setting" style={{ gap: spacing.sm }}>
         <Checkbox checked={adult} onChange={setAdult} label="J’ai 16 ans ou plus et j’accepte les conditions d’utilisation">
           <View style={{ flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' }}>
@@ -101,6 +113,9 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
       {googleSupported && (
         <Button title="Continuer avec Google" icon="logo-google" disabled={gate} secondary={appleSupported} onPress={() => void account.signInWithGoogle().then(done)} />
       )}
+      {(appleSupported || googleSupported) && (
+        <Copy variant="caption" muted>Lors de la première utilisation avec Apple ou Google, un compte Sprinter est créé.</Copy>
+      )}
       <Button title="Continuer avec une adresse e-mail" icon="mail-outline" secondary disabled={gate} onPress={() => { account.clearNotice(); setStep('email'); }} />
       {Platform.OS === 'android' && (
         <Copy variant="caption" muted>
@@ -109,6 +124,12 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
       )}
       {!adult && <Copy variant="caption" muted>Cochez la case pour continuer.</Copy>}
       <FormError message={state.error} />
+      <Button
+        title={creating ? 'J’ai déjà un compte' : 'Créer un compte'}
+        variant="quiet"
+        disabled={state.busy}
+        onPress={() => { account.clearNotice(); setMode(creating ? 'signIn' : 'signUp'); }}
+      />
     </View>
   );
 }

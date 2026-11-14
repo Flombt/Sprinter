@@ -3,6 +3,7 @@ import type { PaceTarget } from '../core/types';
 import { session } from '../services/session';
 import { startPreparedRun } from '../services/runPreparation';
 import { music } from '../spotify/device';
+import { hasSignedInAccount } from '../account/account';
 
 export function useRunStart(onStarted: () => void, onRecovery: () => void) {
   const pending = useRef<PaceTarget | null>(null);
@@ -12,6 +13,7 @@ export function useRunStart(onStarted: () => void, onRecovery: () => void) {
 
   const request = useCallback(
     (target: PaceTarget) => {
+      if (!hasSignedInAccount()) return;
       const state = session.getSnapshot();
       if (state.recoveryBlocked) {
         onRecovery();
@@ -32,13 +34,13 @@ export function useRunStart(onStarted: () => void, onRecovery: () => void) {
 
   const begin = useCallback(() => {
     const target = pending.current;
-    if (!target || inFlight.current) return;
+    if (!target || inFlight.current || !hasSignedInAccount()) return;
     inFlight.current = true;
     cancel();
     setStarting(true);
     void startPreparedRun(target)
       .then((started) => {
-        if (!started) return;
+        if (!started || !hasSignedInAccount()) return;
         onStarted();
         void music.onRunStarted();
       })

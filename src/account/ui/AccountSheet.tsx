@@ -10,7 +10,6 @@ import { DeleteAccount } from './DeleteAccount';
 import { MyData } from './MyData';
 import { FormNotice, PROVIDER_LABEL } from './parts';
 import { ProfileForm } from './ProfileForm';
-import { SignIn } from './SignIn';
 import { SignInMethods } from './SignInMethods';
 import { useFlag } from '../config';
 import { resetDeviceForCurrentAccount, syncEngine, useSyncStatus } from '../../sync/sync';
@@ -28,9 +27,9 @@ import type { VisitTarget } from '../../profile/sharing';
 import { ThemeLibrary } from '../../profile/ui/ThemeLibrary';
 import { ProfileCard } from '../../profile/ui/ProfileCard';
 
-type Route = 'home' | 'signIn' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit' | 'themeLibrary' | 'profileCard';
+type Route = 'home' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit' | 'themeLibrary' | 'profileCard';
 const TITLES: Record<Route, string> = {
-  home: 'Compte', signIn: 'Se connecter', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
+  home: 'Compte', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
   methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte', support: 'Contacter le support', community: 'Classement communautaire',
   myProfile: 'Mon profil', profileEdit: 'Modifier mon profil', profileShare: 'Visibilité et partage', profileSearch: 'Profils partagés', profileVisit: 'Profil',
   themeLibrary: 'Bibliothèque de thèmes', profileCard: 'Carte de profil',
@@ -58,10 +57,10 @@ function signOut(pending: number) {
 }
 
 /** Réglages › Compte (§6.1 étape 5). */
-export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
+export function AccountSheet({ onClose, profileToken, startAtProfile = false }: {
   onClose: () => void;
   profileToken?: string | null;
-  startAtSignIn?: boolean;
+  startAtProfile?: boolean;
 }) {
   const state = useAccount();
   const syncFlag = useFlag('sync_enabled');
@@ -71,8 +70,8 @@ export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
   const profilesFlag = useFlag('profiles_enabled') && Platform.OS !== 'web';
   const sharingFlag = useFlag('profile_sharing_enabled');
   const sync = useSyncStatus();
-  const [route, setRoute] = useState<Route>(() => startAtSignIn && state.status === 'signedOut' ? 'signIn' : 'home');
-  const [firstTime, setFirstTime] = useState(false);
+  const [route, setRoute] = useState<Route>(() => startAtProfile ? 'profile' : 'home');
+  const [firstTime, setFirstTime] = useState(startAtProfile);
   const [resettingDevice, setResettingDevice] = useState(false);
   const resetDevice = async () => {
     setResettingDevice(true);
@@ -82,12 +81,11 @@ export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
       Alert.alert('Changement de compte interrompu', 'Terminez toute course en cours et réessayez. La synchronisation vers le nouveau compte reprendra une fois l’effacement terminé.');
     } finally { setResettingDevice(false); }
   };
-  useEffect(() => { if (state.status === 'signedOut' && route !== 'signIn' && route !== 'home') setRoute('home'); }, [route, state.status]);
   const [visit, setVisit] = useState<VisitTarget>({});
   useEffect(() => {
-    if (!profileToken || !profilesFlag || !sharingFlag) return;
+    if (!profileToken || !profilesFlag || !sharingFlag || state.status !== 'signedIn') return;
     setVisit({ token: profileToken });
-    setRoute(state.status === 'signedIn' ? 'profileVisit' : 'signIn');
+    setRoute('profileVisit');
   }, [profileToken, profilesFlag, sharingFlag, state.status]);
   const back = () => {
     account.clearNotice();
@@ -95,6 +93,7 @@ export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
       : route === 'profileSearch' ? 'profileShare' : route === 'profileVisit' ? (visit.handle || visit.token ? 'profileSearch' : 'profileShare') : 'home');
   };
   const close = <IconButton icon="close" label="Fermer" onPress={onClose} quiet />;
+  if (state.status !== 'signedIn') return null;
   return (
     <Screen key={route}>
       <Header title={TITLES[route]} subtitle="Réglages" onBack={route === 'home' ? undefined : back} right={close} />
@@ -109,7 +108,6 @@ export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
       {route === 'profileSearch' && <ProfileSearch onOpen={(target) => { setVisit(target); setRoute('profileVisit'); }} />}
       {route === 'profileVisit' && <ProfileVisit target={visit} onSupport={() => setRoute(supportFlag ? 'support' : 'home')} onBlocked={() => setRoute('profileSearch')} />}
       {route === 'profileEdit' && <ProfileEditor onDone={() => setRoute('myProfile')} />}
-      {route === 'signIn' && <SignIn onSignedIn={(first) => { setFirstTime(first); setRoute(first ? 'profile' : 'home'); }} />}
       {route === 'profile' && <ProfileForm firstTime={firstTime} onDone={() => { setFirstTime(false); setRoute(firstTime && syncFlag ? 'backup' : 'home'); }} />}
       {route === 'backup' && <BackupChoice onChosen={() => setRoute(routesFlag && syncEngine.getSnapshot().backup !== 'off' && syncEngine.getSnapshot().backup !== 'pending_off' ? 'routes' : 'home')} />}
       {route === 'routes' && <RouteChoice onChosen={() => setRoute('home')} />}
@@ -117,7 +115,7 @@ export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
       {route === 'methods' && <SignInMethods />}
       {route === 'data' && <MyData onDelete={() => setRoute('delete')} />}
       {route === 'delete' && <DeleteAccount onDone={() => setRoute('home')} />}
-      {route === 'home' && (state.status === 'signedIn' ? (
+      {route === 'home' && (
         <View style={{ gap: spacing.lg }}>
           <Panel variant="setting" style={{ gap: spacing.xs }}>
             <Copy variant="emphasis">{state.email ?? 'Compte Sprinter'}</Copy>
@@ -160,19 +158,7 @@ export function AccountSheet({ onClose, profileToken, startAtSignIn }: {
           <Button title="Se déconnecter" icon="log-out-outline" secondary disabled={state.busy} onPress={() => signOut(sync.pending + sync.blocked)} />
           <FormNotice message={state.notice} />
         </View>
-      ) : (
-        <View style={{ gap: spacing.lg }}>
-          <Copy muted>Sprinter fonctionne sans compte. Créez-en un si vous souhaitez sauvegarder vos courses et les retrouver sur un autre appareil.</Copy>
-          {state.status === 'loading' ? <Copy muted>Chargement…</Copy> : (
-            <Button title="Se connecter ou créer un compte" icon="person-add-outline" onPress={() => setRoute('signIn')} />
-          )}
-          {state.pendingDeletion && (
-            <SettingsNotice icon="hourglass-outline" title="Suppression en cours"
-              body="Votre demande est validée et vos accès sont retirés. Le nettoyage de vos données en ligne se termine automatiquement." />
-          )}
-          <FormNotice message={state.notice} />
-        </View>
-      ))}
+      )}
     </Screen>
   );
 }

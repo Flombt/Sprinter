@@ -171,14 +171,20 @@ export class RunningStore {
     if (!this.engine || this.operation) return;
     this.engine.abandonWorkout(); coaching.cancelPace(); this.dispatchCoaching(); this.emit(); await this.checkpoint(true);
   };
-  async start(target: PaceTarget, definition?: WorkoutDefinition | null, metadata: { plannedEntryId?: string; shoeId?: string; routeId?: string; routeName?: string } = {}): Promise<boolean> {
-    if (!this.value.ready || this.engine || this.operation) return false;
+  async start(
+    target: PaceTarget,
+    definition?: WorkoutDefinition | null,
+    metadata: { plannedEntryId?: string; shoeId?: string; routeId?: string; routeName?: string } = {},
+    canStart?: () => boolean,
+  ): Promise<boolean> {
+    if (!this.value.ready || this.engine || this.operation || canStart?.() === false) return false;
     if (this.recoveryBlocked) { this.emit({ message: 'Le départ est bloqué pour conserver une sauvegarde interrompue illisible. Ouvrez les options de récupération pour conserver une archive et débloquer le départ.' }); return false; }
     const invalid = validateTarget(target, this.value.settings.config.maximumSpeed) ?? (definition ? validateWorkout(definition)[0] : null);
     if (invalid) { this.emit({ message: invalid }); return false; }
     this.operation = true; this.emit({ busy: true, message: null });
     try {
       await this.location.stop(); await this.location.ensureForeground(this.location.canBackground && this.value.settings.backgroundEnabled);
+      if (canStart?.() === false) return false;
       this.engine = new RunEngine(target, this.value.settings.config, mono(), Date.now(), undefined, undefined, { autoPauseEnabled: this.value.settings.autoPauseEnabled });
       if (definition) this.engine.attachWorkout(definition);
       if (typeof metadata.plannedEntryId === 'string' && metadata.plannedEntryId.length > 0 && metadata.plannedEntryId.length <= 200) this.engine.record.plannedEntryId = metadata.plannedEntryId;
