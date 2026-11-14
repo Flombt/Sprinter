@@ -1,6 +1,6 @@
 -- Phase 2 : synchronisation (§7, §9.1, §14 phase 2).
 begin;
-select plan(41);
+select plan(42);
 
 create temporary table ids (name text primary key, id uuid) on commit drop;
 grant select on ids to anon, authenticated;
@@ -14,8 +14,11 @@ insert into batch values (1, jsonb_build_array(
   tests.run_item('r2', now() - interval '2 days', 8000, 2600, now() - interval '2 hours'),
   tests.run_item('healthkit:0f1e2d3c-4b5a-4968-8776-655443322110', now() - interval '1 day', 3000, 1000, now() - interval '2 hours', null, 'healthkit')));
 
--- Sauvegarde non activée : rien n'est écrit -------------------------------------------------
+-- Compte vide sur une connexion neuve : la réception répond sans erreur.
 select tests.login_as((select id from ids where name = 'a'));
+select is(jsonb_array_length(public.sync_pull(null, null, 200) -> 'items'), 0, 'compte vide : réception sans erreur');
+
+-- Sauvegarde non activée : rien n'est écrit -------------------------------------------------
 select is((select count(*)::int from jsonb_array_elements(public.sync_push_runs((select payload from batch where n = 1))) e where e ->> 'reason' = 'backup_disabled'),
   3, 'sans sauvegarde activée, les courses restent sur l''appareil');
 select is((select count(*)::int from public.runs), 0, 'aucune ligne serveur avant le choix explicite');

@@ -241,7 +241,7 @@ returns jsonb language plpgsql stable security definer set search_path = '' as $
 declare
   v_uid uuid := private.require_uid();
   v_limit int := least(greatest(coalesce(p_limit, 200), 1), 500);
-  v_items jsonb := '[]'::jsonb; v_bytes int := 0; v_count int := 0; v_last record; v_row record; v_item jsonb; v_cut boolean := false;
+  v_items jsonb := '[]'::jsonb; v_bytes int := 0; v_count int := 0; v_last_ts timestamptz; v_last_id text; v_row record; v_item jsonb; v_cut boolean := false;
 begin
   for v_row in
     select * from public.runs r
@@ -258,10 +258,10 @@ begin
       'payload', case when v_row.deleted_at is null then v_row.payload end);
     if v_count > 0 and v_bytes + octet_length(v_item::text) > 3500000 then v_cut := true; exit; end if;
     v_items := v_items || v_item; v_bytes := v_bytes + octet_length(v_item::text); v_count := v_count + 1;
-    v_last := v_row;
+    v_last_ts := v_row.server_updated_at; v_last_id := v_row.id;
   end loop;
   return jsonb_build_object('items', v_items, 'next_cursor',
-    case when v_count > 0 and (v_cut or v_count = v_limit) then jsonb_build_object('ts', v_last.server_updated_at, 'id', v_last.id) end);
+    case when v_count > 0 and (v_cut or v_count = v_limit) then jsonb_build_object('ts', v_last_ts, 'id', v_last_id) end);
 end $$;
 
 create or replace function public.sync_list_ids(p_after text default null, p_limit int default 1000) returns jsonb
