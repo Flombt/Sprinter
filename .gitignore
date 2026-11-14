@@ -17,3 +17,8 @@ web-build/
 *.log
 coverage/
 .env*.local
+
+# Supabase CLI (local)
+supabase/.temp/
+supabase/.branches/
+supabase/functions/.env
