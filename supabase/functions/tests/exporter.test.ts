@@ -49,6 +49,7 @@ Deno.test('export : toutes les données du titulaire, rien d’autre', async () 
   assert.ok(files['profile-media/m1.jpg'] && !files['profile-media/m2.jpg'], 'images du profil incluses, fichiers purgés absents');
   assert.match(strFromU8(files['LISEZMOI.txt']!), /brouillons du profil/);
   assert.deepEqual(selected.sort(), [...EXPORT_TABLES.map((t) => t.table), 'runs', 'run_routes', 'profile_elements', 'profile_media'].sort());
+  assert.ok(files['profile-sharing.json'] && files['profile-published.json'] && files['profile-notices.json'], 'choix de partage exportés');
 });
 
 Deno.test('noms de fichiers uniques et sûrs', () => {

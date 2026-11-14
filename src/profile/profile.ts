@@ -86,7 +86,14 @@ export function startProfile() {
   };
   appConfig.subscribe(evaluate);
   account.subscribe(evaluate);
-  AppState.addEventListener('change', (state) => { if (state === 'active') schedule('foreground', 1500); });
+  // Partage (8c) : retraits hors ligne rejoués en tête de chaque synchronisation, présence éphémère.
+  const sharing = () => require('./sharing') as typeof import('./sharing');
+  sharing();
+  AppState.addEventListener('change', (state) => {
+    if (state !== 'active') return;
+    schedule('foreground', 1500);
+    if (profilesEnabled() && appConfig.getSnapshot().flags.profile_sharing_enabled) void sharing().touchPresence();
+  });
   let wasRunning = session.getSnapshot().run !== null;
   session.subscribe(() => {
     const running = session.getSnapshot().run !== null;
@@ -99,7 +106,7 @@ export function startProfile() {
 export const useProfileSyncStatus = (): ProfileSyncStatus =>
   useSyncExternalStore(profileSync.subscribe, profileSync.getSnapshot, profileSync.getSnapshot);
 
-export interface MediaRef { uri: string; width: number; height: number; animated?: boolean }
+export interface MediaRef { uri: string; width: number; height: number; animated?: boolean; headers?: Record<string, string> }
 export interface ProfileState {
   loading: boolean; saved: ProfileDoc; working: ProfileDoc; drafts: DraftElement[]; media: Record<string, MediaRef>;
   badges: OfficialBadge[]; notice: string | null; reload(): void;

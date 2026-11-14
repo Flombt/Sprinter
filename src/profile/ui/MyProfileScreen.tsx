@@ -6,6 +6,7 @@ import { SettingsNotice } from '../../ui/settings';
 import { spacing } from '../../ui/tokens';
 import { session } from '../../services/session';
 import { FormNotice, formatDate } from '../../account/ui/parts';
+import { useFlag } from '../../account/config';
 import { computeStats, goalProgress, type StatId, type WidgetPayload } from '../model';
 import { clearProfileNotice, profileSync, syncProfileNow, useProfile, useProfileSyncStatus } from '../profile';
 import type { ProfileSyncStatus } from '../sync';
@@ -23,7 +24,8 @@ function syncLine(status: ProfileSyncStatus): string {
   }
 }
 
-export function MyProfileScreen({ onEdit }: { onEdit: () => void }) {
+export function MyProfileScreen({ onEdit, onShare }: { onEdit: () => void; onShare?: () => void }) {
+  const sharingFlag = useFlag('profile_sharing_enabled');
   const profile = useProfile();
   const status = useProfileSyncStatus();
   const history = useSyncExternalStore(session.subscribe, () => session.getSnapshot().history, () => session.getSnapshot().history);
@@ -46,7 +48,9 @@ export function MyProfileScreen({ onEdit }: { onEdit: () => void }) {
       <Copy muted variant="caption" accessibilityLiveRegion="polite">{syncLine(status)}</Copy>
       <Button title={profile.drafts.length ? 'Reprendre la modification' : 'Modifier'} icon="create-outline" onPress={onEdit} />
       {status.pending > 0 && status.phase !== 'running' ? <Button title="Synchroniser maintenant" icon="sync-outline" secondary onPress={() => void syncProfileNow()} /> : null}
-      <Copy muted variant="caption">Votre profil est privé : vous seul le voyez. Il est distinct de votre profil de compte, et chaque élément est facultatif.</Copy>
+      {sharingFlag && onShare ? <Button title="Visibilité et partage" icon="people-outline" secondary onPress={onShare} /> : null}
+      <Copy muted variant="caption">{sharingFlag ? 'Votre profil reste privé tant que vous ne le publiez pas. Il est distinct de votre profil de compte, et chaque élément est facultatif.'
+        : 'Votre profil est privé : vous seul le voyez. Il est distinct de votre profil de compte, et chaque élément est facultatif.'}</Copy>
     </View>
   );
 }

@@ -20,6 +20,9 @@ export const EXPORT_TABLES: { file: string; table: string; columns: string }[] =
   { file: 'devices.json', table: 'user_devices', columns: 'device_id,platform,os_version,app_version,last_seen_at,last_sync_at,last_sync_status,created_at' },
   { file: 'activity.json', table: 'activity_days', columns: 'day,runs_count' },
   { file: 'support.json', table: 'support_requests', columns: 'id,category,message,platform,app_version,status,created_at,updated_at,closed_at' },
+  { file: 'profile-sharing.json', table: 'profile_sharing', columns: 'mode,searchable,handle,presence_audience,rules_version,rules_accepted_at,published_at,moderation,updated_at' },
+  { file: 'profile-published.json', table: 'profile_published', columns: 'element_key,payload,published_at,moderation' },
+  { file: 'profile-notices.json', table: 'profile_notices', columns: 'kind,element_key,reason,created_at,read_at' },
 ];
 
 const README = `Export de vos données Sprinter
@@ -37,6 +40,9 @@ Ce dossier contient toutes les données associées à votre compte et conservée
 - profile-page.json : votre profil personnalisé (apparence, avatar, bannière, présentation,
   statut, widgets et disposition) dans sa version enregistrée en ligne
 - profile-media.json et profile-media/ : les images de ce profil
+- profile-sharing.json, profile-published.json, profile-notices.json : vos choix de partage,
+  la version visible de votre profil et les décisions de modération qui vous ont été notifiées
+- profile-blocks.json : les profils que vous avez bloqués (pseudo au moment du blocage)
 
 Les brouillons du profil qui n'ont pas été enregistrés restent uniquement sur l'appareil
 où vous les avez créés : ils ne figurent pas dans cet export.
@@ -77,7 +83,7 @@ export async function buildExport(deps: ExportDeps): Promise<Uint8Array> {
   }
   files['routes'] = routeFiles;
 
-  files['profile-page.json'] = pretty(await deps.select('profile_elements', 'element_key,payload,deleted,revision,client_updated_at,server_updated_at'));
+  files['profile-page.json'] = pretty(await deps.select('profile_elements', 'element_key,payload,deleted,revision,visibility,client_updated_at,server_updated_at'));
   const media = await deps.select('profile_media', 'id,usage,mime,bytes,width,height,animated,duration_ms,status,storage_path,created_at,ready_at');
   files['profile-media.json'] = pretty(media.filter((item) => item.status === 'ready').map(({ storage_path: _path, ...item }) => item));
   const mediaFiles: Zippable = {};

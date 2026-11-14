@@ -42,8 +42,9 @@ export function CroppedImage({ media, poster, width, height, crop, label }: {
   const overflowX = (shownWidth - width) / 2, overflowY = (shownHeight - height) / 2;
   return (
     <View style={{ width, height, overflow: 'hidden' }} accessible accessibilityRole="image" accessibilityLabel={label}>
-      <Image source={{ uri: shown.uri }} placeholder={poster && !still ? { uri: poster.uri } : undefined} autoplay={!reduceMotion} accessibilityIgnoresInvertColors
-        contentFit="fill" style={{ position: 'absolute', width: shownWidth, height: shownHeight, left: -overflowX * (1 + x), top: -overflowY * (1 + y) }} />
+      <Image source={{ uri: shown.uri, headers: shown.headers }} placeholder={poster && !still ? { uri: poster.uri, headers: poster.headers } : undefined}
+        autoplay={!reduceMotion} accessibilityIgnoresInvertColors cachePolicy={shown.headers ? 'memory' : 'disk'} contentFit="fill"
+        style={{ position: 'absolute', width: shownWidth, height: shownHeight, left: -overflowX * (1 + x), top: -overflowY * (1 + y) }} />
     </View>
   );
 }
@@ -201,7 +202,9 @@ export function ProfileView({ doc, media, stats, goal, badges = [], viewer = 'ow
         <Text key={tag} style={[styles.tag, { color: theme.accentInk, backgroundColor: theme.accent, borderRadius: tagRadius }, font]}>{tag}</Text>))}</View></>, isWide)
         : empty('Ajoutez vos centres d’intérêt.');
       case 'stats': {
-        const values = stats(widget.stats ?? []);
+        // Version publiée : valeurs confirmées par le titulaire (valeur, libellé, période) ; sinon calcul local.
+        const published = (widget as { values?: { id: StatId; label: string; value: string; period?: string }[] }).values;
+        const values = published ? published.map((value) => ({ ...value, definition: value.period ?? '' })) : stats(widget.stats ?? []);
         const none = values.every((value) => value.value === '—' || value.value === '0' || value.value === '0 km');
         return card(key, <>
           {title}
@@ -213,12 +216,12 @@ export function ProfileView({ doc, media, stats, goal, badges = [], viewer = 'ow
           ))}
           {none ? <Text style={[styles.small, muted]}>Pas encore de course Sprinter enregistrée sur cet appareil.</Text> : null}
           {provenance(true)}
-          {viewer === 'owner' ? <Text style={[styles.small, muted]}>Calculé sur cet appareil · visible par vous seul</Text> : null}
+          {viewer === 'owner' && !published ? <Text style={[styles.small, muted]}>Calculé sur cet appareil · visible par vous seul</Text> : null}
         </>, isWide);
       }
       case 'goal': {
         if (!widget.target) return empty('Objectif à définir.');
-        const progress = goal?.(widget) ?? { value: widget.progress ?? 0, computed: false };
+        const progress = viewer === 'visitor' || !goal ? { value: widget.progress ?? 0, computed: (widget as { computed?: boolean }).computed === true } : goal(widget);
         const ratio = Math.max(0, Math.min(1, progress.value / widget.target));
         const unit = widget.unit === 'autre' ? '' : ` ${widget.unit ?? 'km'}`;
         return card(key, <>
@@ -236,7 +239,8 @@ export function ProfileView({ doc, media, stats, goal, badges = [], viewer = 'ow
         const images = (widget.images ?? []).filter((image) => media[image.mediaId]);
         if (!images.length) return empty('Galerie vide : ajoutez jusqu’à 5 images.');
         return card(key, <>{title}<View style={styles.gallery}>{images.map((image) => (
-          <Image key={image.mediaId} source={{ uri: media[image.mediaId]!.uri }} style={styles.thumb} contentFit="cover" accessible accessibilityLabel={image.alt} />))}</View></>, isWide);
+          <Image key={image.mediaId} source={{ uri: media[image.mediaId]!.uri, headers: media[image.mediaId]!.headers }} style={styles.thumb} contentFit="cover"
+            cachePolicy={media[image.mediaId]!.headers ? 'memory' : 'disk'} autoplay={!reduceMotion} accessible accessibilityLabel={image.alt} />))}</View></>, isWide);
       }
       case 'links': {
         if (!widget.links?.length) return empty('Ajoutez des liens HTTPS.');

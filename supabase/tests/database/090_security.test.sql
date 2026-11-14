@@ -6,7 +6,7 @@ select plan(8);
 select is((select string_agg(p.proname, ', ' order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute')
              and p.prosrc not like '%private.require_uid()%' and p.prosrc not like '%private.assert_admin(%'
-             and p.prosrc not like '%private.require_profiles()%'), null,
+             and p.prosrc not like '%private.require_profiles()%' and p.prosrc not like '%private.require_sharing()%'), null,
   'chaque RPC SECURITY DEFINER contrôle l''appelant');
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.prosecdef and p.proname like 'service\_%' and has_function_privilege('authenticated', p.oid, 'execute')), 0,
