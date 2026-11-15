@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Prototype interactif de la future interface Sprinter." />
+    <title>Sprinter · Prototype de refonte</title>
+    <link rel="stylesheet" href="prototype.css" />
+    <script defer src="fixtures.js"></script>
+    <script defer src="components.js"></script>
+    <script defer src="screens.js"></script>
+    <script defer src="panels.js"></script>
+    <script defer src="prototype.js"></script>
+  </head>
+  <body>
+    <header class="studio-header" id="studio-header">
+      <a class="studio-brand" href="#courir" aria-label="Sprinter, ouvrir le prototype">
+        <span class="speed-mark" aria-hidden="true"></span> Sprinter
+      </a>
+      <nav class="studio-views" aria-label="Livrables de conception">
+        <a href="#courir" data-mode="prototype">Prototype</a>
+        <a href="#maquettes" data-mode="maquettes">Maquettes</a>
+        <a href="#comparatif" data-mode="comparatif">Avant / après</a>
+      </nav>
+      <a class="studio-document" href="../refonte-editorial-performance.md">Dossier de conception ↗</a>
+    </header>
+
+    <main class="workspace" id="workspace" aria-label="Revue du prototype Sprinter">
+      <aside class="studio-rail studio-guide" aria-label="Raccourcis de revue">
+        <div class="project-heading">
+          <p class="studio-label">Prototype iOS</p>
+          <h1>De l’horizon<br />à l’allure.</h1>
+          <p>Parcourez la future interface. Les activités, le profil et les réglages sont simulés.</p>
+        </div>
+        <nav class="screen-links" id="screen-links" aria-label="Écrans du prototype"></nav>
+      </aside>
+
+      <div class="stage">
+        <div class="device" id="device" lang="fr" data-theme="clair" data-direction="a">
+          <div class="status-bar" aria-hidden="true">
+            <span>9:41</span>
+            <span class="device-island"></span>
+            <span class="status-icons" id="status-icons"></span>
+          </div>
+          <div class="viewport" id="viewport" tabindex="-1" role="region" aria-label="Écran Sprinter"></div>
+          <div class="device-footer" id="device-footer"></div>
+          <div class="home-indicator" aria-hidden="true"></div>
+          <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+          <dialog id="dialog" aria-labelledby="sheet-title"></dialog>
+        </div>
+      </div>
+
+      <aside class="studio-rail studio-controls" aria-label="Réglages de démonstration">
+        <div class="review-note">
+          <p class="studio-label">Écran affiché</p>
+          <h2 id="review-title">Courir</h2>
+          <p id="review-note"></p>
+        </div>
+        <form class="controls" id="review-controls">
+          <fieldset>
+            <legend>Direction artistique</legend>
+            <label
+              ><input type="radio" name="direction" value="a" checked />
+              <span>A · Editorial Coast</span></label
+            >
+            <label><input type="radio" name="direction" value="b" /> <span>B · Night Pace</span></label>
+            <label><input type="radio" name="direction" value="c" /> <span>C · Editorial Sport</span></label>
+          </fieldset>
+          <div class="case-controls">
+            <label class="studio-label" for="scenario">Scénario</label>
+            <select id="scenario" name="scenario">
+              <option value="standard">Parcours principal</option>
+              <option value="vide">Nouveau compte</option>
+              <option value="chargement">Chargement du catalogue</option>
+              <option value="offline">Catalogue en cache</option>
+              <option value="erreur">Catalogue indisponible</option>
+              <option value="media">Photo indisponible</option>
+              <option value="gps-refuse">Permission GPS refusée</option>
+              <option value="depart">Début de course</option>
+              <option value="gps-faible">GPS imprécis</option>
+              <option value="auto">Pause automatique</option>
+              <option value="recuperation">Course à récupérer</option>
+              <option value="sauvegarde">Échec d’enregistrement</option>
+              <option value="spotify">Spotify indisponible</option>
+            </select>
+          </div>
+          <div class="review-toggles">
+            <label><input type="checkbox" name="dark" /> Thème sombre</label>
+            <label><input type="checkbox" name="reduce" /> Réduire les animations</label>
+            <label><input type="checkbox" name="opaque" /> Réduire la transparence</label>
+            <label><input type="checkbox" name="large" /> Texte agrandi</label>
+          </div>
+          <button class="studio-reset" type="reset">Réinitialiser la démo</button>
+        </form>
+      </aside>
+    </main>
+
+    <main class="exhibition" id="exhibition" hidden></main>
+    <noscript><p>Activez JavaScript pour parcourir la maquette interactive de Sprinter.</p></noscript>
+  </body>
+</html>

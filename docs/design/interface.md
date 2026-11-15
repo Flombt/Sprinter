@@ -1,14 +1,15 @@
 # Interface et navigation actuelles
 
-[Carte documentaire](../00-INDEX.md) · [Système visuel](systeme-visuel.md)
+[Carte documentaire](../00-INDEX.md) · [Système visuel](systeme-visuel.md) · [Prototype de refonte Editorial Performance](refonte-editorial-performance.md)
 
 ## Entrée et onglets
 
-[App.tsx](../../App.tsx) ouvre la connexion sans session puis **Courir** après connexion. [RunTabs.tsx](../../src/navigation/RunTabs.tsx) déclare, dans l’ordre : **Spotify · Courir · Stats**. Ce sont des panneaux conservés, pas cinq onglets historiques. Spotify est monté après sa première visite ; les écrans visibles seuls reçoivent les abonnements rapides utiles.
+[App.tsx](../../App.tsx) ouvre la connexion sans session puis **Courir** après connexion. [RunTabs.tsx](../../src/navigation/RunTabs.tsx) déclare quatre onglets dans l’ordre **Découvrir · Courir · Stats · Spotify**. Spotify et Découvrir sont montés à leur première visite. Les écrans visibles reçoivent les abonnements rapides utiles.
 
 | Surface | Responsabilité / source |
 |---|---|
 | Courir | Carte, départ, pause/reprise et commandes de course ; [Home.tsx](../../src/screens/Home.tsx) |
+| Découvrir | Catalogue, filtres, favoris et carte. [Fiche Découvrir Nice](../features/decouvrir-nice.md) |
 | Stats | Tableau de bord, sorties, records, progression, chaussures et accès aux réglages de course ; [StatsDashboard.tsx](../../src/screens/StatsDashboard.tsx), [RunStats.tsx](../../src/screens/RunStats.tsx) |
 | Spotify | Import, sélection, bibliothèque et lecteur selon capacités ; [Music.tsx](../../src/screens/Music.tsx) |
 | Préparation | Allure, distance, séance, musique et options avancées ; [Preparation.tsx](../../src/screens/Preparation.tsx) |
