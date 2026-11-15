@@ -2,9 +2,6 @@ name: Build unsigned iPhone IPA
 
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/ipa-sideload]
-    paths-ignore: ['docs/**', 'README.md']
 
 permissions:
   contents: read
