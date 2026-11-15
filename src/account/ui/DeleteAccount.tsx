@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { forgetLocalProfile } from '../../profile/profile';
+import { discoveryStorage } from '../../discovery/storage';
 import { View } from 'react-native';
 import { Button, Copy, Panel } from '../../ui/components';
 import { Toggle } from '../../ui/controls';
@@ -22,7 +23,7 @@ export function DeleteAccount({ onDone }: { onDone: () => void }) {
       'Supprimer', () => { const owner = account.getSnapshot().userId; void account.deleteAccount().then(async (result) => {
         if (!result) { setConfirmed(account.recentlyAuthenticated()); return; }
         // Le profil personnalisé du compte supprimé quitte aussi l'appareil (§17.9).
-        if (owner) await forgetLocalProfile(owner).catch(() => undefined);
+        if (owner) await Promise.allSettled([forgetLocalProfile(owner), discoveryStorage.forget(owner)]);
         if (wipe) await session.purgeLocalHistory();
         onDone();
       }); }, true);

@@ -17,6 +17,7 @@
 | Mises à jour automatiques des futures versions App Store / Play Store | [Mises à jour OTA](architecture/mises-a-jour-ota.md) |
 | Allure, GPS, pauses, coach audio et haptiques | [Course et coach](features/course-et-coach.md) |
 | Séances, défis, calendrier, plans, objectifs et chaussures | [Séances et progression](features/seances-et-progression.md) |
+| Découverte locale, agenda, carte, favoris et import éditorial | [Découvrir Nice](features/decouvrir-nice.md) |
 | Historique, records, comparaison, parcours, exports | [Analyse, parcours et partage](features/analyse-parcours-partage.md) |
 | Connexion, session, consentements, export et suppression | [Comptes](features/comptes.md) |
 | Profil privé, studio, publication, thèmes, classement | [Profils et communauté](features/profils-et-communaute.md) |

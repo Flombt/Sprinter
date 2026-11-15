@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import type { RunRecord } from '../core/types';
+import type { LinkedPlanDraft } from '../discovery/trainingLink';
 import { km } from '../core/format';
 import { uid } from '../workouts/definition';
 import { Button, Copy, Header, Label, Panel, Screen, styles } from '../ui/components';
@@ -13,22 +14,24 @@ import { useLocalNow, useProgression } from './hooks';
 import { progression } from './store';
 import type { CalendarEntry, TrainingPlan } from './types';
 import { Choices, Field, numberValue } from './ui';
-export function Plans({ history, onBack, onSaved }: { history: RunRecord[]; onBack: () => void; onSaved: (day: string) => void }) {
+export function Plans({ history, onBack, onSaved, discoveryPlan }: { history: RunRecord[]; onBack: () => void; onSaved: (day: string) => void; discoveryPlan?: LinkedPlanDraft }) {
   const state = useProgression(), { colors } = useTheme(), now = useLocalNow(), today = dayKey(now);
   const recent = aggregate(history, dayStart(addDays(today, -27)), now + 1, now);
-  const [goal, setGoal] = useState<TrainingPlan['goalMeters']>(5000), [name, setName] = useState('Préparation 5 km');
-  const [start, setStart] = useState(addDays(monday(today), 7)), [weeks, setWeeks] = useState('6'), [weekdays, setWeekdays] = useState([1, 3, 6]);
+  const [goal, setGoal] = useState<TrainingPlan['goalMeters']>(discoveryPlan?.goalMeters ?? 5000), [name, setName] = useState(discoveryPlan?.name ?? 'Préparation 5 km');
+  const [start, setStart] = useState(discoveryPlan?.start ?? addDays(monday(today), 7)), [weeks, setWeeks] = useState(String(discoveryPlan?.weeks ?? 6)), [weekdays, setWeekdays] = useState([1, 3, 6]);
   const [base, setBase] = useState(recent.meters > 0 ? (recent.meters / 4000).toFixed(1) : ''), [maximum, setMaximum] = useState(recent.runs.length ? (recent.runs.reduce((n, r) => Math.max(n, r.distanceMeters), 0) / 1000).toFixed(1) : '');
   const [growth, setGrowth] = useState('0'), [error, setError] = useState<string | null>(null), [preview, setPreview] = useState<{ plan: TrainingPlan; entries: CalendarEntry[] } | null>(null);
   const changed = (action: () => void) => { action(); setPreview(null); setError(null); };
   const build = () => { try {
     const plan: TrainingPlan = { id: uid(), name: name.trim(), goalMeters: goal, start, weeks: numberValue(weeks), weekdays,
-      baseWeekMeters: numberValue(base) * 1000, maximumSessionMeters: numberValue(maximum) * 1000, growthPercent: numberValue(growth), createdAt: Date.now() };
+      baseWeekMeters: numberValue(base) * 1000, maximumSessionMeters: numberValue(maximum) * 1000, growthPercent: numberValue(growth), createdAt: Date.now(),
+      ...(discoveryPlan ? { targetEvent: discoveryPlan.targetEvent } : {}) };
     if (plan.start < today) throw new Error('Choisissez un lundi présent ou futur pour créer un plan.');
     setPreview({ plan, entries: generatePlan(plan) }); setError(null);
   } catch (e) { setError(e instanceof Error ? e.message : 'Plan invalide.'); setPreview(null); } };
   const save = async () => { if (preview && await progression.savePlan(preview.plan, preview.entries)) onSaved(preview.plan.start); };
   return <Screen bottom={40}><Header title="Plans de préparation" onBack={onBack} /><Copy muted>Une structure locale pour organiser votre préparation. Vous choisissez le volume, les jours et le plafond par sortie. Allure libre par défaut, sans prédiction de performance ni obligation de courir la distance finale à une date donnée.</Copy>
+    {discoveryPlan && <Panel><Label>Objectif Découvrir</Label><Copy>{discoveryPlan.name} · {dayLabel(discoveryPlan.targetEvent.day)}</Copy></Panel>}
     <Choices<TrainingPlan['goalMeters']> value={goal} choices={[[5000, '5 km'], [10000, '10 km'], [21097.5, 'Semi-marathon']]} onChange={v => changed(() => { setGoal(v); setName(`Préparation ${v === 5000 ? '5 km' : v === 10000 ? '10 km' : 'semi-marathon'}`); setWeeks(v === 5000 ? '6' : v === 10000 ? '8' : '12'); })} />
     <Field label="Nom du plan" value={name} onChange={v => changed(() => setName(v))} /><Field label="Lundi de début (AAAA-MM-JJ)" value={start} onChange={v => changed(() => setStart(v))} /><Field label="Nombre de semaines (4 à 24)" value={weeks} numeric onChange={v => changed(() => setWeeks(v))} />
     <Label>Jours de course · choisissez 2 à 4 jours</Label><View style={[styles.row, { gap: 6, flexWrap: 'wrap' }]}>{['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((label, i) => <Pressable key={i} accessibilityRole="button" accessibilityState={{ selected: weekdays.includes(i) }} onPress={() => changed(() => setWeekdays(weekdays.includes(i) ? weekdays.filter(d => d !== i) : [...weekdays, i]))}

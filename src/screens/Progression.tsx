@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import type { RunRecord } from '../core/types';
+import type { LinkedPlanDraft } from '../discovery/trainingLink';
 import { duration, km, pace } from '../core/format';
 import { usePersonalRecords } from '../analysis/useRecords';
 import { RECORD_DISTANCES } from '../analysis/types';
@@ -30,6 +31,7 @@ import { Choices } from '../progression/ui';
 
 export default function Progression({
   history,
+  discoveryPlan,
   canStart,
   onBack,
   onDetail,
@@ -37,6 +39,7 @@ export default function Progression({
   onRecords,
 }: {
   history: RunRecord[];
+  discoveryPlan?: LinkedPlanDraft;
   canStart: boolean;
   onBack: () => void;
   onDetail: (run: RunRecord) => void;
@@ -47,7 +50,7 @@ export default function Progression({
     now = useLocalNow(),
     today = dayKey(now);
   const [view, setView] = useState<{ name: 'dashboard' | 'calendar' | 'plans' | 'shoes'; day?: string }>({
-    name: 'dashboard',
+    name: discoveryPlan ? 'plans' : 'dashboard',
   });
   useEffect(() => {
     if (local.ready) void progression.reconcile(history);
@@ -58,7 +61,7 @@ export default function Progression({
         history={history}
         initialDay={view.day}
         canStart={canStart}
-        onBack={() => setView({ name: 'dashboard' })}
+        onBack={discoveryPlan ? onBack : () => setView({ name: 'dashboard' })}
         onDetail={onDetail}
         onStart={onStart}
       />
@@ -67,7 +70,8 @@ export default function Progression({
     return (
       <Plans
         history={history}
-        onBack={() => setView({ name: 'dashboard' })}
+        discoveryPlan={discoveryPlan}
+        onBack={discoveryPlan ? onBack : () => setView({ name: 'dashboard' })}
         onSaved={(day) => setView({ name: 'calendar', day })}
       />
     );

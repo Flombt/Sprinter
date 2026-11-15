@@ -1,5 +1,5 @@
 import { validateWorkout } from '../workouts/definition';
-import { monday, validDay } from './dates';
+import { addDays, monday, validDay } from './dates';
 import { ProgressionData, CalendarEntry, WeeklyGoal, RunJournal, Shoe, TrainingPlan } from './types';
 const id = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 200;
 const text = (v: unknown, limit: number) => typeof v === 'string' && v.length <= limit;
@@ -28,6 +28,8 @@ export function validatePlan(p: TrainingPlan): void {
       !Number.isInteger(p.weeks) || !finite(p.weeks, 4, 24) || !Array.isArray(p.weekdays) || p.weekdays.length < 2 || p.weekdays.length > 4 ||
       new Set(p.weekdays).size !== p.weekdays.length || !p.weekdays.every(d => Number.isInteger(d) && d >= 0 && d <= 6) ||
       !finite(p.baseWeekMeters, 1000, 200000) || !finite(p.maximumSessionMeters, 500, 30000) || !finite(p.growthPercent, 0, 10) || !Number.isFinite(p.createdAt)) throw new Error('Plan : 4 à 24 semaines, 2 à 4 jours distincts, volume explicite et plafond de 0,5 à 30 km par sortie.');
+  if (p.targetEvent !== undefined && (!p.targetEvent || !id(p.targetEvent.id) || !validDay(p.targetEvent.day) ||
+    addDays(p.start, p.weeks * 7 - 1) >= p.targetEvent.day)) throw new Error('Le plan doit se terminer avant la date de la course choisie.');
 }
 /** Unknown versions/corruption are retained by the adapter, never replaced with empty data. */
 export function readProgression(value: unknown): ProgressionData {

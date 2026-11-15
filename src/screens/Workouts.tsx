@@ -726,10 +726,12 @@ export function WorkoutEditor({
   );
 }
 export default function Workouts({
+  initialTemplate,
   onClose,
   onSelected,
   onDetail,
 }: {
+  initialTemplate?: 'endurance' | 'intervals1000';
   onClose?: () => void;
   onSelected?: () => void;
   onDetail?: (run: RunRecord) => void;
@@ -737,7 +739,7 @@ export default function Workouts({
   const { colors } = useTheme();
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
   const running = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
-  const [editor, setEditor] = useState<WorkoutDefinition | null>(null);
+  const [editor, setEditor] = useState<WorkoutDefinition | null>(() => initialTemplate ? createTemplate(initialTemplate) : null);
   const [view, setView] = useState<'library' | 'ghost' | 'personalBest' | 'records'>('library');
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<WorkoutLibraryFilter>('all'),
@@ -766,7 +768,7 @@ export default function Workouts({
   };
   if (editor)
     return (
-      <WorkoutEditor key={editor.id} initial={editor} onBack={() => setEditor(null)} onSelected={selected} />
+      <WorkoutEditor key={editor.id} initial={editor} onBack={initialTemplate && onClose ? onClose : () => setEditor(null)} onSelected={selected} />
     );
   if (view === 'personalBest')
     return (

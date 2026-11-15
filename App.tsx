@@ -39,7 +39,7 @@ import { UpdateRequiredGate } from './src/account/ui/UpdateRequired';
 import { profileTokenFromAppLink } from './src/profile/sharingModel';
 
 function KeepScreenAwake() {
-  useKeepAwake('sprinter-active-screen');
+  useKeepAwake('sprinter-active-screen', { suppressDeactivateWarnings: Platform.OS === 'web' });
   return null;
 }
 
@@ -77,7 +77,12 @@ function AppContent() {
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [profileToken, setProfileToken] = useState<string | null>(null);
-  const authenticated = isSignedIn(useAccount());
+  const account = useAccount();
+  const authenticated = isSignedIn(account);
+  const userId = authenticated ? account.userId : null;
+  useEffect(() => {
+    if (!authenticated) setTab((current) => current === 'discover' ? 'home' : current);
+  }, [authenticated]);
   const config = useAppConfig();
   useEffect(() => {
     if (authenticated && profileToken && config.flags.profile_sharing_enabled) setSheet('account');
@@ -167,11 +172,12 @@ function AppContent() {
           accessibilityElementsHidden={modalVisible}
           importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
         >
-          {!authenticated ? (
+          {!userId ? (
             <AccountGate />
           ) : startup.ready ? (
             <RootStack
               navigationRef={navigation}
+              userId={userId}
               onReady={() => {
                 if (pendingHome.current) openHome();
               }}

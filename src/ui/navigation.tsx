@@ -54,12 +54,14 @@ function BottomTabsView<T extends string>({
   onChange,
   onHeightChange,
   hidden = false,
+  disabledItem,
 }: {
   items: readonly TabItem<T>[];
   value: T;
   onChange: (value: T) => void;
   onHeightChange: (height: number) => void;
   hidden?: boolean;
+  disabledItem?: T;
 }) {
   const insets = useSafeAreaInsets(),
     { colors, reduceMotion } = useTheme();
@@ -157,14 +159,16 @@ function BottomTabsView<T extends string>({
           )}
           {items.map((item) => {
             const selected = value === item.key,
+              disabled = item.key === disabledItem,
               color = selected ? colors.accentText : colors.secondary;
             return (
               <Pressable
                 key={item.key}
                 accessibilityRole="tab"
                 accessibilityLabel={item.title}
-                accessibilityState={{ selected }}
+                accessibilityState={{ selected, disabled }}
                 aria-selected={selected}
+                disabled={disabled}
                 onPress={() => {
                   if (selected) return;
                   haptic.select();
@@ -179,13 +183,13 @@ function BottomTabsView<T extends string>({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 1,
-                  opacity: pressed ? interaction.pressedOpacity : 1,
+                  opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1,
                 })}
               >
                 {item.key === 'home' ? (
                   <RunnerGlyph size={21} color={color} />
                 ) : (
-                  <Icon name={item.icon} size={20} color={color} />
+                  <Icon name={selected ? (item.selectedIcon ?? item.icon) : item.icon} size={20} color={color} />
                 )}
                 <Copy
                   variant="bodyCompact"

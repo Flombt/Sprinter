@@ -14,6 +14,7 @@ export interface Shoe { id: string; name: string; initialMeters: number; archive
 export interface TrainingPlan {
   id: string; name: string; goalMeters: 5000 | 10000 | 21097.5; start: Day; weeks: number;
   weekdays: number[]; baseWeekMeters: number; maximumSessionMeters: number; growthPercent: number; createdAt: number;
+  targetEvent?: { id: string; day: Day };
 }
 export interface ProgressionData {
   version: 1; entries: CalendarEntry[]; goals: WeeklyGoal[]; journals: RunJournal[]; shoes: Shoe[]; plans: TrainingPlan[];

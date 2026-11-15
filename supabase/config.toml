@@ -188,3 +188,6 @@ verify_jwt = false
 
 [functions.admin-report-media]
 verify_jwt = false
+
+[functions.discovery-import]
+verify_jwt = false

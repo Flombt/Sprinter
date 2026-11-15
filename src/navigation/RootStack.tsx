@@ -8,6 +8,10 @@ import {
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Platform } from 'react-native';
 import type { PaceTarget, RunRecord } from '../core/types';
+import { parisDay } from '../../supabase/functions/_shared/discovery-model';
+import { DiscoveryProvider } from '../discovery/DiscoveryProvider';
+import { DiscoveryDetail } from '../discovery/DiscoveryDetail';
+import { linkedPlan } from '../discovery/trainingLink';
 import AppleIntegrations from '../screens/AppleIntegrations';
 import Comparison from '../screens/Comparison';
 import Detail from '../screens/Detail';
@@ -18,8 +22,10 @@ import Preparation from '../screens/Preparation';
 import Progression from '../screens/Progression';
 import Recovery from '../screens/Recovery';
 import RunSummary from '../screens/RunSummary';
+import Workouts from '../screens/Workouts';
 import { Shoes } from '../progression/Shoes';
 import { useSessionStructure } from '../services/useSessionSelector';
+import { session } from '../services/session';
 import { EmptyState, Header, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import type { Sheet } from './AppSheets';
@@ -80,6 +86,7 @@ function RunDetailRoute({
 
 export function RootStack({
   navigationRef,
+  userId,
   onReady,
   tab,
   onTabChange,
@@ -95,6 +102,7 @@ export function RootStack({
   onOpenSheet,
 }: {
   navigationRef: NavigationContainerRefWithCurrent<RootRoutes>;
+  userId: string;
   onReady: () => void;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
@@ -111,6 +119,10 @@ export function RootStack({
 }) {
   const { colors, reduceMotion } = useTheme();
   const state = useSessionStructure();
+  const canPrepare = () => {
+    const snapshot = session.getSnapshot();
+    return !snapshot.run && !snapshot.busy && !starting;
+  };
   const base = colors.dark ? DarkTheme : DefaultTheme;
   const theme = useMemo(
     () => ({
@@ -126,7 +138,7 @@ export function RootStack({
     }),
     [base, colors],
   );
-  return (
+  const navigationTree = (
     <NavigationContainer ref={navigationRef} onReady={onReady} theme={theme}>
       <Stack.Navigator
         initialRouteName="Tabs"
@@ -154,6 +166,7 @@ export function RootStack({
               onStart={() => onStart(target)}
               onRecover={() => navigation.push('Recovery')}
               onPrepare={() => navigation.push('Preparation')}
+              onDiscoveryDetail={(id) => navigation.push('DiscoveryDetail', { id })}
               onHistory={() => navigation.push('History')}
               statsNavigation={{
                 onHistory: () => navigation.push('History'),
@@ -172,9 +185,10 @@ export function RootStack({
           )}
         </Stack.Screen>
         <Stack.Screen name="Preparation">
-          {({ navigation }) => (
+          {({ navigation, route }) => (
             <Preparation
               state={state}
+              discovery={route.params?.discovery}
               initialTarget={target}
               onTargetChange={onTargetChange}
               onBack={navigation.goBack}
@@ -184,6 +198,38 @@ export function RootStack({
               onMusic={() => onOpenSheet('music')}
               onWorkouts={() => onOpenSheet('workouts')}
               onTools={() => onOpenSheet('tools')}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="DiscoveryDetail">
+          {({ navigation, route }) => (
+            <DiscoveryDetail
+              id={route.params.id}
+              key={route.params.id}
+              onBack={navigation.goBack}
+              onOpen={(id) => navigation.push('DiscoveryDetail', { id })}
+              onPrepare={(discovery, plan) => {
+                if (!canPrepare()) return;
+                const discoveryPlan = plan ? linkedPlan(discovery, parisDay(Date.now())) : undefined;
+                if (discoveryPlan) navigation.push('Progression', { discoveryPlan });
+                else navigation.push('Preparation', { discovery });
+              }}
+              onWorkout={(suggestion, discovery) => {
+                if (canPrepare()) navigation.push('DiscoveryWorkout', { suggestion, discovery });
+              }}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="DiscoveryWorkout">
+          {({ navigation, route }) => (
+            <Workouts
+              initialTemplate={route.params.suggestion}
+              onClose={navigation.goBack}
+              onSelected={() => {
+                if (canPrepare()) navigation.replace('Preparation', { discovery: route.params.discovery });
+                else navigation.goBack();
+              }}
+              onDetail={(run) => navigation.push('Detail', { runId: run.id })}
             />
           )}
         </Stack.Screen>
@@ -242,9 +288,10 @@ export function RootStack({
           )}
         </Stack.Screen>
         <Stack.Screen name="Progression">
-          {({ navigation }) => (
+          {({ navigation, route }) => (
             <Progression
               history={state.history}
+              discoveryPlan={route.params?.discoveryPlan}
               canStart={!state.runId}
               onBack={navigation.goBack}
               onDetail={(run) => navigation.push('Detail', { runId: run.id })}
@@ -261,5 +308,15 @@ export function RootStack({
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
+  );
+  return (
+    <DiscoveryProvider
+      key={userId}
+      userId={userId}
+      visible={tab === 'discover' && !covered}
+      blocked={!!state.runId || state.busy || starting}
+    >
+      {navigationTree}
+    </DiscoveryProvider>
   );
 }

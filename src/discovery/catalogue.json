@@ -1,0 +1,443 @@
+[
+  {
+    "id": "prom-classic-2027",
+    "kind": "race",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Prom’Classic",
+    "city": "Nice",
+    "summary": "Un 10 km en aller-retour sur la Promenade des Anglais, entre le centre de Nice et le bord de mer en direction de l’aéroport.",
+    "schedule": {
+      "day": "2027-01-10",
+      "startAt": "2027-01-10T09:00:00+01:00",
+      "endAt": "2027-01-10T12:45:00+01:00",
+      "timeZone": "Europe/Paris"
+    },
+    "venue": "Promenade des Anglais, face au Méridien",
+    "address": "1 promenade des Anglais, Nice",
+    "point": { "latitude": 43.695081, "longitude": 7.26579 },
+    "distancesKm": [10],
+    "terrain": "road",
+    "organizer": "Azur Sport Organisation",
+    "mediaKey": "promenade",
+    "featured": true,
+    "officialUrl": "https://www.promclassic.com/v27/",
+    "registration": { "state": "sold_out", "checkedOn": "2026-11-15" },
+    "facts": [
+      {
+        "label": "Vagues de départ",
+        "text": "Départs échelonnés à 9 h, 10 h et 11 h selon le sas. Départ handisport annoncé à 8 h 58."
+      },
+      {
+        "label": "Retrait des dossards",
+        "text": "Le village est prévu au kiosque à musique du Théâtre de Verdure les 8 et 9 janvier. Consulte les créneaux, justificatifs et consignes dans le programme officiel."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Prom’Classic · édition 2027",
+        "url": "https://www.promclassic.com/v27/",
+        "checkedOn": "2026-11-15"
+      },
+      {
+        "kind": "organizer",
+        "name": "Programme officiel",
+        "url": "https://www.promclassic.com/v27/infos/programme.htm",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "urban-trail-vence-2026",
+    "kind": "race",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Urban Trail de Vence",
+    "city": "Vence",
+    "summary": "Une boucle entre les ruelles de la cité historique et les sentiers de la forêt de la Sine, avec arrivée place Clémenceau.",
+    "schedule": { "day": "2026-12-13", "timeZone": "Europe/Paris" },
+    "venue": "Place Clémenceau (arrivée)",
+    "distancesKm": [11],
+    "elevationGainM": 320,
+    "terrain": "mixed",
+    "organizer": "Alpes Azur Merveilles",
+    "mediaKey": "vence",
+    "officialUrl": "https://urbantrailvence.fr/",
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Urban Trail Vence",
+        "url": "https://urbantrailvence.fr/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "mounta-cala-2026",
+    "kind": "race",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Mounta Cala",
+    "city": "Villefranche-sur-Mer",
+    "summary": "Une course nocturne d’environ 10 km depuis la citadelle Saint-Elme, à travers les ruelles de Villefranche. La marche de 5 km est une épreuve distincte.",
+    "schedule": { "day": "2026-12-19", "startAt": "2026-12-19T18:00:00+01:00", "timeZone": "Europe/Paris" },
+    "venue": "Citadelle Saint-Elme",
+    "address": "Place Emmanuel Philibert, Villefranche-sur-Mer",
+    "point": { "latitude": 43.701416, "longitude": 7.310776 },
+    "distancesKm": [10],
+    "terrain": "road",
+    "organizer": "Mounta Cala Villafranca et Villefranche-sur-Mer",
+    "mediaKey": "villefranche",
+    "officialUrl": "https://www.villefranche-sur-mer.fr/evenement/trail-urbain-nocturne/",
+    "registration": {
+      "state": "open",
+      "checkedOn": "2026-11-15",
+      "url": "https://www.sport-up.fr/www/calendrier/detail-29061-TRAIL-URBAIN-NOCTURNE.htm"
+    },
+    "facts": [
+      {
+        "label": "Programme",
+        "text": "Le rendez-vous à la citadelle commence à 16 h. L’Office de tourisme indique un départ de la course à 18 h."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Mairie de Villefranche-sur-Mer",
+        "url": "https://www.villefranche-sur-mer.fr/evenement/trail-urbain-nocturne/",
+        "checkedOn": "2026-11-15"
+      },
+      {
+        "kind": "institution",
+        "name": "Office de tourisme Nice Côte d’Azur",
+        "url": "https://www.explorenicecotedazur.com/evenement/trail-urbain-nocturne-mounta-cala/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "course-noel-cap-ferrat-2026",
+    "kind": "race",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Course de Noël du Cap-Ferrat",
+    "city": "Saint-Jean-Cap-Ferrat",
+    "summary": "Une course solidaire de 6 km autour de la pointe Saint-Hospice, organisée par l’association Enfance Arc-en-Ciel.",
+    "schedule": { "day": "2026-12-20", "startAt": "2026-12-20T10:00:00+01:00", "timeZone": "Europe/Paris" },
+    "venue": "Grande Jetée, port de Saint-Jean-Cap-Ferrat",
+    "distancesKm": [6],
+    "organizer": "Enfance Arc-en-Ciel",
+    "setting": "Bord de mer",
+    "officialUrl": "https://cotedazurfrance.fr/offres/4eme-edition-course-de-noel-saint-jean-cap-ferrat-fr-4490121/",
+    "sources": [
+      {
+        "kind": "institution",
+        "name": "Office de tourisme Nice Côte d’Azur · programme",
+        "url": "https://www.explorenicecotedazur.com/en/event/4th-annual-christmas-run/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "marathon-nice-cannes-2027",
+    "kind": "race",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Marathon Nice–Cannes",
+    "city": "Nice",
+    "summary": "Le marathon des Alpes-Maritimes relie le bord de mer niçois au boulevard de la Croisette, à Cannes.",
+    "schedule": { "day": "2027-11-07", "startAt": "2027-11-07T08:00:00+01:00", "timeZone": "Europe/Paris" },
+    "venue": "Promenade des Anglais, face au Théâtre de Verdure",
+    "distancesKm": [42.195],
+    "terrain": "road",
+    "point": { "latitude": 43.695543, "longitude": 7.267803 },
+    "organizer": "Azur Sport Organisation",
+    "mediaKey": "promenade",
+    "officialUrl": "https://www.marathon06.com/",
+    "facts": [
+      {
+        "label": "Inscriptions et règlement",
+        "text": "Les tarifs dépendent du palier et de la licence. Le règlement détaille le retrait du dossard, les justificatifs demandés et le départ handisport."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Règlement officiel · édition 2027",
+        "url": "https://www.marathon06.com/2027/dl/MAM2027_reglement-individuel.pdf",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "semi-marathon-nice-2027",
+    "kind": "race",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Semi-Marathon International de Nice",
+    "city": "Nice",
+    "summary": "L’organisateur annonce une édition en avril 2027. Le calendrier sera complété à la publication du programme.",
+    "dateNote": "Avril 2027 · jour à confirmer",
+    "reviewBy": "2027-04-30",
+    "terrain": "road",
+    "mediaKey": "promenade",
+    "officialUrl": "https://nicesemimarathon.com/",
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Semi-Marathon International de Nice",
+        "url": "https://nicesemimarathon.com/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "breakfast-run-2027",
+    "kind": "club_run",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Breakfast Run",
+    "city": "Nice",
+    "summary": "Une sortie collective de 4 à 5 km la veille de la Prom’Classic. L’organisation annonce un coach et des meneurs d’allure.",
+    "schedule": { "day": "2027-01-09", "startAt": "2027-01-09T10:00:00+01:00", "timeZone": "Europe/Paris" },
+    "venue": "Devant le village de retrait des dossards, Théâtre de Verdure",
+    "terrain": "road",
+    "mediaKey": "promenade",
+    "point": { "latitude": 43.695543, "longitude": 7.267803 },
+    "organizer": "Azur Sport Organisation",
+    "price": { "cents": 0, "checkedOn": "2026-11-15" },
+    "officialUrl": "https://www.promclassic.com/v27/epreuves/breakfast-run.htm",
+    "facts": [
+      {
+        "label": "Point de rendez-vous",
+        "text": "Le programme officiel demande d’arriver 15 minutes avant le départ devant le village Running Expo."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Prom’Classic · le Breakfast Run",
+        "url": "https://www.promclassic.com/v27/epreuves/breakfast-run.htm",
+        "checkedOn": "2026-11-15"
+      },
+      {
+        "kind": "organizer",
+        "name": "Programme du week-end",
+        "url": "https://www.promclassic.com/v27/infos/programme.htm",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "nice-cote-azur-athletisme",
+    "kind": "club",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Nice Côte d’Azur Athlétisme",
+    "city": "Nice",
+    "summary": "Club affilié à la Fédération française d’athlétisme. Il propose plusieurs disciplines et s’entraîne notamment au parc des sports Charles Ehrmann.",
+    "terrain": "track",
+    "setting": "Club affilié FFA",
+    "venue": "Parc des sports Charles Ehrmann",
+    "point": { "latitude": 43.676587, "longitude": 7.199784 },
+    "officialUrl": "https://ncaa.athle.fr/accueil.aspx",
+    "facts": [
+      {
+        "label": "Adhésion et créneaux",
+        "text": "Le club renseigne les groupes, les lieux d’entraînement et les modalités d’adhésion en fonction de la pratique."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "institution",
+        "name": "Fédération française d’athlétisme",
+        "url": "https://www.athle.fr/clubs/10098",
+        "checkedOn": "2026-11-15"
+      },
+      {
+        "kind": "institution",
+        "name": "Annuaire associatif Nice Côte d’Azur",
+        "url": "https://associations.nicecotedazur.org/organizations/nice-cote-d-azur-athletisme",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "runfest-run-club",
+    "kind": "club",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Runfest Run Club",
+    "city": "Cagnes-sur-Mer",
+    "summary": "Collectif de Cagnes-sur-Mer ouvert aux débutants. Les sorties alternent entre bord de mer, parc de Vaugrenier et rendez-vous thématiques.",
+    "terrain": "mixed",
+    "setting": "Collectif running",
+    "beginner": true,
+    "price": { "cents": 0, "checkedOn": "2026-11-15" },
+    "officialUrl": "https://www.runfest.net/runclub",
+    "facts": [
+      {
+        "label": "Rendez-vous habituel",
+        "text": "Le collectif annonce des sorties le mercredi à 19 h 30 hors août. Le lieu et chaque départ sont à confirmer sur les canaux liés par le club."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "Runfest Run Club",
+        "url": "https://www.runfest.net/runclub",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "asptt-nice-athletisme",
+    "kind": "club",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "ASPTT Nice Côte d’Azur",
+    "city": "Nice",
+    "summary": "La section athlétisme de l’ASPTT présente ses groupes et activités sur son site. Les inscriptions et créneaux se vérifient auprès du club.",
+    "setting": "Club omnisports",
+    "terrain": "track",
+    "officialUrl": "https://nice.asptt.com/activity/athletisme/",
+    "sources": [
+      {
+        "kind": "organizer",
+        "name": "ASPTT Nice Côte d’Azur · athlétisme",
+        "url": "https://nice.asptt.com/activity/athletisme/",
+        "checkedOn": "2026-11-15"
+      },
+      {
+        "kind": "institution",
+        "name": "Portail des sports de Nice",
+        "url": "https://sports.nice.fr/club/asptt-nice-athletisme/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "promenade-des-anglais",
+    "kind": "place",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Promenade des Anglais",
+    "city": "Nice",
+    "summary": "Un repère au bord de la baie des Anges pour partir courir face à la mer. La promenade s’étire sur près de 7 km selon l’Office de tourisme.",
+    "point": { "latitude": 43.695081, "longitude": 7.26579 },
+    "address": "1 promenade des Anglais, Nice",
+    "terrain": "road",
+    "setting": "Bord de mer",
+    "mediaKey": "promenade",
+    "officialUrl": "https://www.explorenicecotedazur.com/culture/promenade-des-anglais/",
+    "facts": [
+      {
+        "label": "Repère sur la carte",
+        "text": "Le point est situé à l’extrémité est, près du Jardin Albert Ier. Choisis ton sens et ta distance sur place."
+      }
+    ],
+    "sources": [
+      {
+        "kind": "institution",
+        "name": "Office de tourisme Nice Côte d’Azur",
+        "url": "https://www.explorenicecotedazur.com/culture/promenade-des-anglais/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "plateau-sportif-vauban",
+    "kind": "place",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Plateau sportif Vauban",
+    "city": "Nice",
+    "summary": "Piste d’athlétisme municipale près de l’arrêt Vauban de la ligne 1 du tramway. La ville publie des créneaux d’accès saisonniers.",
+    "point": { "latitude": 43.711572, "longitude": 7.286587 },
+    "address": "18 rue Maréchal Vauban, 06300 Nice",
+    "terrain": "track",
+    "setting": "Piste municipale",
+    "accessible": true,
+    "officialUrl": "https://www.nice.fr/lieux/plateaux-sportif-vauban/",
+    "facts": [
+      {
+        "label": "Horaires d’hiver · 1er nov. au 31 mars",
+        "text": "Du lundi au vendredi : 6 h 30–8 h, 12 h–14 h et 17 h 30–20 h 30. Samedi et dimanche : 8 h 30–17 h. Consulte les fermetures sur le site municipal avant de partir."
+      },
+      {
+        "label": "Horaires d’été · 1er avr. au 31 oct.",
+        "text": "Du lundi au vendredi : 6 h–8 h 30, 12 h–14 h et 17 h 30–20 h 30. Samedi et dimanche : 8 h–20 h 30."
+      },
+      { "label": "Accessibilité", "text": "L’accès PMR est indiqué par la Ville de Nice." }
+    ],
+    "sources": [
+      {
+        "kind": "institution",
+        "name": "Ville de Nice · horaires et accès",
+        "url": "https://www.nice.fr/lieux/plateaux-sportif-vauban/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "charles-ehrmann",
+    "kind": "place",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Parc des sports Charles Ehrmann",
+    "city": "Nice",
+    "summary": "Équipement d’athlétisme de Nice Ouest utilisé par Nice Côte d’Azur Athlétisme. Renseigne-toi sur les créneaux et les conditions d’accès auprès du gestionnaire.",
+    "terrain": "track",
+    "setting": "Équipement municipal",
+    "venue": "Stade Charles Ehrmann, Nice Ouest",
+    "point": { "latitude": 43.676587, "longitude": 7.199784 },
+    "address": "155 route de Grenoble, 06200 Nice",
+    "officialUrl": "https://www.nice.fr/territoire/nice-ouest/page/37/",
+    "sources": [
+      {
+        "kind": "institution",
+        "name": "Ville de Nice · équipements de Nice Ouest",
+        "url": "https://www.nice.fr/territoire/nice-ouest/page/37/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  },
+  {
+    "id": "canal-gairaut",
+    "kind": "route",
+    "state": "published",
+    "market": "nice",
+    "countryCode": "FR",
+    "title": "Sentier du canal de Gairaut",
+    "city": "Nice",
+    "summary": "Un parcours de santé annoncé à 1,75 km par l’Office de tourisme. Il longe l’ancien canal sous les oliviers et les figuiers, au-dessus de Nice.",
+    "point": { "latitude": 43.738899, "longitude": 7.27298 },
+    "venue": "Accès par l’avenue ou l’ancien chemin de Gairaut",
+    "setting": "Sentier nature",
+    "terrain": "trail",
+    "mediaKey": "gairaut",
+    "officialUrl": "https://www.explorenicecotedazur.com/itineraire/sentier-du-canal-de-gairaut/",
+    "sources": [
+      {
+        "kind": "institution",
+        "name": "Office de tourisme Nice Côte d’Azur",
+        "url": "https://www.explorenicecotedazur.com/itineraire/sentier-du-canal-de-gairaut/",
+        "checkedOn": "2026-11-15"
+      }
+    ]
+  }
+]

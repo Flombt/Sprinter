@@ -2,6 +2,20 @@
 
 [Carte documentaire](../00-INDEX.md) · [Recettes ciblées](recettes/README.md) · [Priorités](../roadmap/priorites.md)
 
+## Découvrir Nice — 15 novembre 2026
+
+[Fiche du domaine](../features/decouvrir-nice.md). Validation sur Windows avec PostgreSQL 17.11, Deno 2.9 et Edge en mode headless.
+
+| Contrôle | Résultat observé | Portée |
+|---|---|---|
+| `npm run check` | 37 fichiers, 354 tests réussis. Types et garde secrets valides. Lint sans erreur, six avertissements préexistants. | 12 nouveaux tests Découvrir. Couverture de 95,4 % des fonctions sur les cinq fichiers de synchronisation configurés. |
+| Lint, typecheck et tests Deno | 24 tests réussis, dont cinq pour Apidae | Licence, dates en heure de Paris, récurrence, validation, rejeu et erreurs. Le sondage HTTPS a aussi lu le fichier public réel. |
+| PostgreSQL et pgTAP | 21 migrations appliquées, 19 fichiers, 416 assertions réussies, dont 24 pour Découvrir | Base éphémère avec émulation des schémas Auth et Storage, selon le banc `scripts/db-local`. Les tests vérifient les rôles, le bail, la revue et le retrait du catalogue. |
+| Export Expo et dépendances | `expo install --check` et exports iOS, Android et web réussis | Bundles JavaScript et ressources locales. |
+| Recette web à 360 et 320 px | Parcours réussis avec session et RPC locales simulées | Navigation Courir puis Découvrir, recherche, fiche, lien officiel, favori après relancement, téléchargement ICS, plan 10 km, carte, dock, cache hors ligne et erreur réseau. Démarrage web avec position de test, pause et contrôle de l’absence de lecture de Découvrir pendant la pause. Captures claire et sombre dans `.expo/discovery-validation`. |
+
+La recette sur iPhone et Android reste à effectuer pour VoiceOver, Dynamic Type, le GPS physique, le rendu du fournisseur cartographique et l’ouverture du fichier calendrier. La migration, la fonction et le déclenchement planifié restent à activer sur le projet Supabase cible.
+
 ## Intégration OTA store — 15 novembre 2026
 
 Après la refonte documentaire ci-dessous, intégration locale des [mises à jour OTA](../architecture/mises-a-jour-ota.md), sur Windows, à partir de `cc98fc6`. L’installation `expo install expo-updates` a ajouté la version SDK 58 et complété les modules locaux manquants sans réécrire les versions natives existantes du verrou.

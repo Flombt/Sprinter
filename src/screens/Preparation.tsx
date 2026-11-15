@@ -4,6 +4,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PaceTarget } from '../core/types';
 import { duration, estimatedDuration, km, pace, targetLabel, validateTarget } from '../core/format';
+import { preparationTarget, type DiscoveryPreparation } from '../discovery/trainingLink';
 import { PacingGoalEditor } from '../pacing/GoalEditor';
 import { entryState } from '../progression/aggregates';
 import { dayLabel } from '../progression/dates';
@@ -88,6 +89,7 @@ function PaceControl({
 
 export default function Preparation({
   state,
+  discovery,
   initialTarget,
   onTargetChange,
   onBack,
@@ -99,6 +101,7 @@ export default function Preparation({
   onTools,
 }: {
   state: SessionStructure;
+  discovery?: DiscoveryPreparation;
   initialTarget: PaceTarget;
   onTargetChange: (target: PaceTarget) => void;
   onBack: () => void;
@@ -113,7 +116,8 @@ export default function Preparation({
   const insets = useSafeAreaInsets();
   const focused = useIsFocused();
   const [footerHeight, setFooterHeight] = useState(110);
-  const target = initialTarget;
+  const [draft, setDraft] = useState(() => discovery ? preparationTarget(initialTarget, discovery) : undefined);
+  const target = draft ?? initialTarget;
   const [precise, setPrecise] = useState(target.fast === target.slow);
   const [custom, setCustom] = useState(
     !distances.some(([value]) => value === (target.distanceMeters ?? 'free')),
@@ -164,7 +168,7 @@ export default function Preparation({
               ? 'Position GPS disponible'
               : 'GPS en attente';
 
-  const setTarget = onTargetChange;
+  const setTarget = discovery ? setDraft : onTargetChange;
   const openEditor = (key: 'fast' | 'slow') => {
     setEditValue(target[key]);
     setEditing(key);

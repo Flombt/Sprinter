@@ -3,6 +3,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PaceTarget } from '../core/types';
+import { DiscoveryHome } from '../discovery/DiscoveryHome';
 import Home from '../screens/Home';
 import Music from '../screens/Music';
 import RunStats from '../screens/RunStats';
@@ -12,11 +13,12 @@ import { MusicDock } from '../spotify/components';
 import { BottomBarInsetContext } from '../ui/layout';
 import { BottomTabs, TabPane, type TabItem } from '../ui/navigation';
 
-export type Tab = 'stats' | 'home' | 'music';
+export type Tab = 'discover' | 'home' | 'stats' | 'music';
 const tabs: readonly TabItem<Tab>[] = [
-  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
+  { key: 'discover', title: 'Découvrir', icon: 'compass-outline', selectedIcon: 'compass' },
   { key: 'home', title: 'Courir', icon: 'flash-outline' },
   { key: 'stats', title: 'Stats', icon: 'stats-chart-outline' },
+  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
 ];
 
 function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
@@ -54,6 +56,7 @@ export function RunTabs({
   onStart,
   onRecover,
   onPrepare,
+  onDiscoveryDetail,
   onHistory,
   statsNavigation,
   onSettings,
@@ -74,6 +77,7 @@ export function RunTabs({
   onStart: () => void;
   onRecover: () => void;
   onPrepare: () => void;
+  onDiscoveryDetail: (id: string) => void;
   onHistory: () => void;
   statsNavigation: StatsNavigation;
   onSettings: () => void;
@@ -85,6 +89,7 @@ export function RunTabs({
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const [musicVisited, setMusicVisited] = useState(false);
+  const [discoveryVisited, setDiscoveryVisited] = useState(false);
   const [tabBarHeight, setTabBarHeight] = useState(0);
   const [playerHeight, setPlayerHeight] = useState(0);
   const active = focused && !covered;
@@ -95,6 +100,7 @@ export function RunTabs({
   const changeTab = useCallback(
     (next: Tab) => {
       if (next === 'music') setMusicVisited(true);
+      if (next === 'discover') setDiscoveryVisited(true);
       onTabChange(next);
     },
     [onTabChange],
@@ -102,6 +108,11 @@ export function RunTabs({
 
   return (
     <BottomBarInsetContext.Provider value={bottomInset}>
+      {(discoveryVisited || tab === 'discover') && (
+        <TabPane visible={tab === 'discover'}>
+          <DiscoveryHome onOpen={onDiscoveryDetail} />
+        </TabPane>
+      )}
       <TabPane visible={tab === 'home'}>
         <LiveHome
           active={active && tab === 'home'}
@@ -151,6 +162,7 @@ export function RunTabs({
       <BottomTabs
         items={tabs}
         value={tab}
+        disabledItem={running ? 'discover' : undefined}
         hidden={hideTabBar}
         onChange={changeTab}
         onHeightChange={setTabBarHeight}
