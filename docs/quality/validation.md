@@ -2,7 +2,24 @@
 
 [Carte documentaire](../00-INDEX.md) · [Recettes ciblées](recettes/README.md) · [Priorités](../roadmap/priorites.md)
 
-## Contrôles exécutés le 15 novembre 2026
+## Intégration OTA store — 15 novembre 2026
+
+Après la refonte documentaire ci-dessous, intégration locale des [mises à jour OTA](../architecture/mises-a-jour-ota.md), sur Windows, à partir de `cc98fc6`. L’installation `expo install expo-updates` a ajouté la version SDK 58 et complété les modules locaux manquants sans réécrire les versions natives existantes du verrou.
+
+| Contrôle | Résultat observé | Portée |
+|---|---|---|
+| `npm run check` | **Réussi** : lint sans erreur (6 avertissements préexistants), types et garde secrets valides ; **36 fichiers, 342 tests réussis** | Tests du dépôt courant, dont 28 cas OTA ; scénarios natifs simulés |
+| Couverture | **95,4 % des fonctions** (83/87), seuil 90 % satisfait | Seulement les cinq fichiers de synchronisation de `vitest.config.mjs`, pas toute l’application |
+| `npx expo install --check` | **Réussi** | Dépendances compatibles SDK 58, dont `expo-updates ~58.0.22` |
+| `node scripts/check-sideload-config.cjs` | **Réussi** | Variante IPA : OTA désactivées, URL retirée ; configuration et plugins store conservés |
+| Configuration Expo résolue | **Vérifiée localement** | URL du projet EAS existant, politique fingerprint, bundle embarqué et plugins store présents |
+| Fingerprints natifs | **Distincts** : store `e55c9fa65f79739ed5042fb0442acf1fbd857494`, sideload `13d6d2e2751a14e37bbbf4bb0d8ec97a0bd5b313` | Calcul local avec `@expo/fingerprint`, plateformes iOS et Android ; pas une attestation d’un binaire construit |
+| Export Expo iOS / Android / web | **Réussi** vers `.expo/ota-validation` | Bundles JavaScript/assets uniquement, aucune compilation IPA ni publication |
+| Publication EAS / build IPA / recette iPhone et Android | **Non exécutés** | Préparation pour les futurs stores ; aucune preuve de livraison OTA réelle |
+
+Les tests et TypeScript excluent désormais `.verification/` dans leur configuration ; aucun worktree ni artefact personnel n’a été déplacé ou supprimé. Les recherches concurrentes, pause/course/récupération, indisponibilité réseau, délais, échecs de téléchargement et directive de rollback embarqué sont simulés. Le choix du bundle avant JavaScript et la récupération d’un brouillon après un démarrage avec OTA restent des scénarios physiques ouverts. Voir la recette détaillée dans la fiche OTA.
+
+## Relevé documentaire initial — 15 novembre 2026
 
 Sources : arbre issu de `4197244`, Windows, installation locale existante. Aucun changement de dépendance, de test ou de code applicatif n’a été effectué pour cette refonte.
 

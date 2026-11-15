@@ -47,4 +47,6 @@ Expo SDK 58, RN 0.88 et React 19.3 restent alignés. [TypeScript](../../tsconfig
 
 [eas.json](../../eas.json) définit development, preview et production. `npm run build:ios` demande un build EAS. Le [workflow IPA](../../.github/workflows/ios-ipa.yml) est manuel : runner `xcode-27`, Node 24, prebuild, pods, puis [packaging](../../scripts/build-unsigned-ipa.sh).
 
+Les profils EAS possèdent leurs canaux et environnements homonymes pour les [mises à jour OTA des futures versions store](mises-a-jour-ota.md). Expo Updates utilise la politique `fingerprint`, un bundle embarqué et des téléchargements différés sans rechargement forcé. La variante IPA sideload désactive les OTA. Le premier binaire compatible et la recette physique restent à réaliser sur demande.
+
 **Toute compilation IPA locale ou distante exige une demande explicite pour la tâche en cours.** Les exemples de commande et les builds passés ne constituent pas cette demande. Pour un paquet existant, voir [INSTALL_IPA](../INSTALL_IPA.md).

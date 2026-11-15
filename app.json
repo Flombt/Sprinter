@@ -3,6 +3,15 @@
     "name": "Sprinter",
     "slug": "sprinter-pace",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/429ba0a6-7672-4e65-b1b0-d0f311820e23",
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0,
+      "useEmbeddedUpdate": true
+    },
     "scheme": [
       "sprinter",
       "app.sprinter.running"

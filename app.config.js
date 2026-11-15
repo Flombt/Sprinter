@@ -19,6 +19,10 @@ module.exports = ({ config: input }) => {
   if (process.env.SPRINTER_SIDELOAD !== '1') return config;
   // Keep the normal App Store configuration intact; this is a separate build.
   const variant = JSON.parse(JSON.stringify(config));
+  // OTA is reserved for future store releases, never the personal sideload IPA.
+  variant.updates = { ...variant.updates, enabled: false };
+  delete variant.updates.url;
+  delete variant.updates.requestHeaders;
   variant.extra = { ...variant.extra, sprinterSideload: true };
   delete variant.extra.eas?.build?.experimental?.ios?.appExtensions;
   variant.plugins = (variant.plugins ?? []).filter(plugin => {

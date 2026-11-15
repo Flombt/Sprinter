@@ -12,6 +12,7 @@ import type { Tab } from './src/navigation/RunTabs';
 import type { RootRoutes } from './src/navigation/routes';
 import { useRunStart } from './src/navigation/useRunStart';
 import { session, type SessionState } from './src/services/session';
+import { startUpdates } from './src/services/updates';
 import { sameFields } from './src/services/snapshotSelection';
 import { useSessionSelector } from './src/services/useSessionSelector';
 import { defaultPalettes, ThemeProvider, useTheme } from './src/ui/theme';
@@ -96,6 +97,7 @@ function AppContent() {
   useEffect(startAccount, []);
   useEffect(startSync, []);
   useEffect(startProfile, []);
+  useEffect(startUpdates, []);
 
   const openHome = useCallback(() => {
     setTab('home');

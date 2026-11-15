@@ -26,14 +26,17 @@ import { CoachingSettings } from '../coaching/SettingsPanel';
 import { coachingSummary } from '../coaching/presentation';
 import { PrecisionPanel } from '../settings/PrecisionPanel';
 import { TrackingPanel } from '../settings/TrackingPanel';
+import { VersionPanel } from '../settings/VersionPanel';
+import { getUpdateInfo } from '../services/updates';
 import { useAccount } from '../account/account';
 
-type SettingsPage = 'main' | 'coach' | 'tracking' | 'precision' | 'privacy';
+type SettingsPage = 'main' | 'coach' | 'tracking' | 'precision' | 'privacy' | 'version';
 const PAGE_TITLE = {
   coach: 'Personnaliser le coach',
   tracking: 'Suivi de course',
   precision: 'Précision et alertes',
   privacy: 'Vos données',
+  version: 'Version de Sprinter',
 };
 
 function PrivacyPanel({ onApple }: { onApple?: () => void }) {
@@ -181,6 +184,7 @@ export default function Settings({
           />
         )}
         {page === 'privacy' && <PrivacyPanel onApple={onApple} />}
+        {page === 'version' && <VersionPanel />}
       </Screen>
     );
 
@@ -404,8 +408,14 @@ export default function Settings({
           }
         />
       </View>
+      <ListRow
+        title="Version de Sprinter"
+        icon="information-circle-outline"
+        onPress={() => setPage('version')}
+        subtitle={<Copy muted variant="caption">Version de l’application et mises à jour automatiques.</Copy>}
+      />
       <Label>
-        Sprinter 1.0 · {Platform.OS === 'web' ? 'Aperçu web' : IS_EXPO_GO ? 'Expo Go' : 'Version installée'}
+        Sprinter {getUpdateInfo().version} · {Platform.OS === 'web' ? 'Aperçu web' : IS_EXPO_GO ? 'Expo Go' : 'Version installée'}
       </Label>
     </Screen>
   );

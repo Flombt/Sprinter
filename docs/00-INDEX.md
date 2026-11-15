@@ -14,6 +14,7 @@
 | Modules et dépendances | [Architecture générale](architecture/vue-ensemble.md) |
 | Cycle GPS, données, bases locales et migrations | [Données et cycle de course](architecture/donnees-et-cycle-course.md) |
 | Installation, commandes, Expo Go, iOS, Android et web | [Développement](architecture/developpement.md) |
+| Mises à jour automatiques des futures versions App Store / Play Store | [Mises à jour OTA](architecture/mises-a-jour-ota.md) |
 | Allure, GPS, pauses, coach audio et haptiques | [Course et coach](features/course-et-coach.md) |
 | Séances, défis, calendrier, plans, objectifs et chaussures | [Séances et progression](features/seances-et-progression.md) |
 | Historique, records, comparaison, parcours, exports | [Analyse, parcours et partage](features/analyse-parcours-partage.md) |

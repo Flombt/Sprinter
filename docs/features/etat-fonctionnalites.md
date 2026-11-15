@@ -27,6 +27,7 @@ Les tests cités dans les fiches vérifient des calculs ou adaptateurs simulés.
 | Classement communautaire | Implémenté | `leaderboard_enabled`, adhésion explicite et pseudo | [Communauté](profils-et-communaute.md) ; pgTAP présent, non exécuté ici |
 | Admin, support, export/suppression, purges | Backend implémenté | Site admin externe ; SMTP, jobs et déploiement à vérifier | [Backend](../backend/architecture.md) ; Deno/SQL présents, outils absents ici |
 | Android | Code et CI configurés | Cartes, fournisseurs, fond et permissions à recetter | [Développement](../architecture/developpement.md), [recette Android](../quality/recettes/android.md) |
+| Mises à jour automatiques store | MVP intégré le 15/11/2026 après le relevé initial | Futures versions App Store / Play Store ; sideload désactivé ; premier binaire et recette EAS/appareil requis | [OTA](../architecture/mises-a-jour-ota.md) ; tests de logique et configuration |
 | Météo | Partiel pour la distribution | Open-Meteo en développement ; aucun fournisseur de production branché | [Intégrations](integrations.md) |
 | Strava | Contrat préparatoire seulement | Aucun OAuth, transport ou envoi actif | [Intégrations](integrations.md) |
 | Apple Watch | Contrat préparatoire seulement | Aucune app watchOS ou session WatchConnectivity | [Intégrations](integrations.md) |
