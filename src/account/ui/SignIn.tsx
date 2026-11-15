@@ -10,7 +10,7 @@ import { validEmail } from '../otpGuard';
 import { Checkbox, ExternalLink, FormError } from './parts';
 
 /** Se connecter ou créer un compte (§6.1, §6.2) : Apple au moins aussi visible que Google sur iOS. */
-export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void }) {
+export function SignIn() {
   const state = useAccount();
   const [mode, setMode] = useState<'signIn' | 'signUp' | null>(null);
   const [adult, setAdult] = useState(false);
@@ -25,10 +25,6 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
     return () => clearInterval(timer);
   }, [step, resendIn]);
 
-  const done = (ok: boolean | null) => {
-    const current = account.getSnapshot();
-    if (ok && current.status === 'signedIn') onSignedIn(current.firstSignIn);
-  };
   const gate = !adult || state.busy;
   const creating = mode === 'signUp';
   const requestCode = () => account.requestEmailCode(email, creating);
@@ -80,7 +76,7 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
             <Button
               title="Valider"
               disabled={state.busy || code.length !== 6}
-              onPress={() => void account.verifyEmailCode(email, code).then((ok) => { setCode(''); done(ok); })}
+              onPress={() => void account.verifyEmailCode(email, code).then((ok) => { if (!ok) setCode(''); })}
             />
             <Button
               title={resendIn > 0 ? `Renvoyer le code (${resendIn} s)` : 'Renvoyer le code'}
@@ -108,10 +104,10 @@ export function SignIn({ onSignedIn }: { onSignedIn: (first: boolean) => void })
         </Checkbox>
       </Panel>
       {appleSupported && (
-        <Button title="Continuer avec Apple" icon="logo-apple" disabled={gate} highContrast onPress={() => void account.signInWithApple().then(done)} />
+        <Button title="Continuer avec Apple" icon="logo-apple" disabled={gate} highContrast onPress={() => void account.signInWithApple()} />
       )}
       {googleSupported && (
-        <Button title="Continuer avec Google" icon="logo-google" disabled={gate} secondary={appleSupported} onPress={() => void account.signInWithGoogle().then(done)} />
+        <Button title="Continuer avec Google" icon="logo-google" disabled={gate} secondary={appleSupported} onPress={() => void account.signInWithGoogle()} />
       )}
       {(appleSupported || googleSupported) && (
         <Copy variant="caption" muted>Lors de la première utilisation avec Apple ou Google, un compte Sprinter est créé.</Copy>

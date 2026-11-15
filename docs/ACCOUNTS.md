@@ -83,6 +83,8 @@ Remettre ce flag à `false` désactive les options cloud du compte.
 
 Un compte est obligatoire dès l’ouverture de Sprinter. Tant qu’aucune session n’est authentifiée, l’écran d’entrée propose « Se connecter » et « S’inscrire », et la navigation de course reste inaccessible. Un départ en attente est annulé en cas de perte de la session. Une course déjà en cours est mise en pause et peut être enregistrée depuis l’écran d’entrée ou reprise après reconnexion.
 
+Une inscription ou une connexion terminée ouvre directement l’accueil. Le profil et les choix de sauvegarde se règlent dans Réglages › Compte.
+
 Le formulaire e-mail envoie un code dans les deux parcours. Seule l’inscription autorise la création d’un nouveau compte par e-mail. Les méthodes Apple et Google créent le compte lors de la première utilisation. La variante iPhone à signature personnelle propose Google si les trois variables de build Google sont renseignées. Apple natif est disponible dans la variante normale signée avec la capacité Apple correspondante.
 
 Configurer un fournisseur de connexion opérationnel avant de distribuer une version avec compte obligatoire. Pour ouvrir l’inscription e-mail au public, configurer le SMTP du projet et tester la réception d’un code à une adresse externe à l’organisation Supabase. Une session locale existante permet de rouvrir Sprinter hors ligne. Le client Supabase est chargé au démarrage si le backend est configuré. Les modules natifs de connexion sont chargés au moment du geste.

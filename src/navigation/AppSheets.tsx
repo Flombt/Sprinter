@@ -9,7 +9,7 @@ import { AccountSheet } from '../account/ui/AccountSheet';
 import { useSessionStructure } from '../services/useSessionSelector';
 import { useTheme } from '../ui/theme';
 
-export type Sheet = 'music' | 'player' | 'settings' | 'workouts' | 'tools' | 'account' | 'accountSetup';
+export type Sheet = 'music' | 'player' | 'settings' | 'workouts' | 'tools' | 'account';
 
 export const AppSheets = memo(function AppSheets({
   sheet,
@@ -61,14 +61,7 @@ export const AppSheets = memo(function AppSheets({
             onAccount={onAccount}
           />
         )}
-        {(sheet === 'account' || sheet === 'accountSetup') && (
-          <AccountSheet
-            key={sheet}
-            onClose={onClose}
-            profileToken={profileToken}
-            startAtProfile={sheet === 'accountSetup'}
-          />
-        )}
+        {sheet === 'account' && <AccountSheet onClose={onClose} profileToken={profileToken} />}
         {sheet === 'workouts' && <Workouts onClose={onClose} onSelected={onClose} onDetail={onDetail} />}
         {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
       </View>

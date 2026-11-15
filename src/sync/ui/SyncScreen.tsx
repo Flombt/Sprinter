@@ -15,9 +15,9 @@ const date = (value: number | null) => (value ? new Date(value).toLocaleString('
 const km = (meters: number) => `${(meters / 1000).toFixed(2).replace('.', ',')} km`;
 
 /** Choix de sauvegarde des courses (§6.5, texte §6.7) : aucune option présélectionnée. */
-export function BackupChoice({ onChosen }: { onChosen?: () => void }) {
+function BackupChoice() {
   const status = useSyncStatus();
-  const choose = (on: boolean) => void syncEngine.chooseBackup(on).then(() => onChosen?.());
+  const choose = (on: boolean) => void syncEngine.chooseBackup(on);
   return (
     <Panel variant="setting" style={{ gap: spacing.md }}>
       <Copy variant="emphasis">Sauvegarde des courses</Copy>

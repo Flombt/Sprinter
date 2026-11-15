@@ -164,7 +164,7 @@ describe('compte Sprinter', () => {
     const { account: other } = store({ client: fresh });
     await other.start(async () => null);
     expect(await other.verifyEmailCode('c@example.test', '123456')).toBe(true);
-    expect(other.getSnapshot()).toMatchObject({ status: 'signedIn', firstSignIn: true });
+    expect(other.getSnapshot()).toMatchObject({ status: 'signedIn', userId: id });
     const purposes = fresh.rpc.mock.calls.filter(([name]) => name === 'record_consent').map(([, args]) => args?.p_purpose);
     expect(purposes).toEqual(['terms', 'privacy_policy']);
   });

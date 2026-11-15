@@ -25,8 +25,6 @@ export interface AccountSnapshot {
   busy: boolean;
   error: string | null;
   notice: string | null;
-  /** Première connexion de ce compte : proposer « Votre profil » puis la sauvegarde. */
-  firstSignIn: boolean;
   /** Nom fourni par Apple à la première autorisation, proposé sans être enregistré. */
   proposedName: string | null;
   /** Suppression validée dont le nettoyage se termine côté serveur. */
@@ -118,7 +116,7 @@ export function lastAuthenticationAt(accessToken: string | null | undefined): nu
 export class AccountStore {
   private value: AccountSnapshot = {
     status: 'unavailable', userId: null, email: null, providers: [], busy: false, error: null, notice: null,
-    firstSignIn: false, proposedName: null, pendingDeletion: null, otp: EMPTY_OTP_GUARD,
+    proposedName: null, pendingDeletion: null, otp: EMPTY_OTP_GUARD,
   };
   private listeners = new Set<() => void>();
   private started: Promise<void> | null = null;
@@ -250,12 +248,10 @@ export class AccountStore {
     this.emit({ status: 'signedIn', userId: session.user.id, email: session.user.email ?? null, providers: providersOf(session), proposedName: extra.proposedName ?? null });
     // Acceptations versionnées enregistrées une seule fois (case 16 ans + CGU cochées avant la connexion).
     const consents = await this.consents().catch(() => null);
-    const firstSignIn = !consents?.terms?.granted;
-    if (firstSignIn) {
+    if (!consents?.terms?.granted) {
       await this.recordConsent('terms', true, TERMS_VERSION).catch(() => undefined);
       await this.recordConsent('privacy_policy', true, PRIVACY_VERSION).catch(() => undefined);
     }
-    this.emit({ firstSignIn });
     void this.registerDevice();
     void this.touch(true);
     if (extra.appleCode) void client.functions.invoke('apple-link', { body: { authorizationCode: extra.appleCode } }).catch(() => undefined);
@@ -460,7 +456,7 @@ export class AccountStore {
     await this.deps.clearSession();
     await this.fresh?.release(); this.fresh = null;
     await this.deps.kv.remove(ACTIVITY_KEY);
-    this.emit({ busy: false, status: 'signedOut', userId: null, email: null, providers: [], firstSignIn: false, proposedName: null });
+    this.emit({ busy: false, status: 'signedOut', userId: null, email: null, providers: [], proposedName: null });
   }
   /** Suppression du compte (§6.6) avec le jeton issu d'une ré-authentification récente. */
   deleteAccount(): Promise<'done' | 'pending' | null> {
