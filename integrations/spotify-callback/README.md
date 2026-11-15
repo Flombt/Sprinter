@@ -11,4 +11,4 @@ Cette page termine le retour HTTPS de la Web API dans la session native Sprinter
 
 La destination native est fixe. La page retire les paramètres de l’historique visible, n’affiche pas leur contenu et fournit un bouton si l’ouverture automatique est bloquée. Sprinter vérifie le retour, `state` et PKCE, puis échange le code avec l’URI HTTPS originale. Garder cet emplacement sous votre contrôle et servir la page intacte.
 
-Aucun domaine, déploiement ou compte n’a été configuré pendant le Module 5. Aucun test de cette page n’a été effectué, conformément à la consigne. Voir [la règle Spotify](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri) et [le rapport audio](../../docs/AUDIO.md).
+Le domaine déployé et le retour sur un compte réel n’ont pas été vérifiés pendant la refonte documentaire. Les tests de l’app simulent des parties du parcours et ne valident pas cet hébergement. Voir [la règle Spotify](https://developer.spotify.com/documentation/web-api/concepts/redirect_uri) et [l’intégration Spotify](../../docs/features/integrations.md).

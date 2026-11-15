@@ -1,5 +1,7 @@
 # Conditions générales d'utilisation de Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Bandeau interne, à retirer avant publication.**
 > **Brouillon de travail. Ce document n'est pas un avis juridique.** À faire relire et valider par un juriste avant publication, notamment les clauses de responsabilité, de contenus et de litiges, qui dépendent du statut de l'éditeur (particulier ou professionnel, §16 n° 2). Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Les notes de rédaction en fin de document sont à retirer.
 > Publication prévue : `https://<domaine>/cgu`, liée depuis l'écran de connexion et Réglages › Compte. Chaque version acceptée est journalisée dans `consent_log` (`terms`, version).
@@ -22,9 +24,9 @@ Si vous avez téléchargé l'Application sur l'App Store, le contrat de licence 
 
 L'Application est proposée gratuitement. Elle fonctionne sur les appareils compatibles indiqués sur les boutiques d'applications.
 
-**Sans compte**, vous pouvez enregistrer, consulter et exporter vos courses. Vos données restent alors sur votre appareil.
+**Un compte est requis** pour accéder à l’Application. Après connexion, vous pouvez enregistrer, consulter et exporter vos courses sur l’appareil ; la session déjà stockée peut être restaurée hors ligne.
 
-**Avec un compte**, facultatif, vous pouvez sauvegarder vos courses en ligne et les retrouver sur vos autres appareils. Une connexion internet est nécessaire pour les Services en ligne, jamais pour enregistrer une course.
+**La sauvegarde en ligne est facultative.** Vous pouvez l’activer pour retrouver vos courses sur vos autres appareils. Une connexion internet est nécessaire à l’authentification initiale et aux Services en ligne ; le calcul et l’enregistrement d’une course après accès authentifié restent locaux.
 
 ## 4. Votre compte
 
@@ -133,7 +135,7 @@ Un compte inactif pendant 24 mois est supprimé. Nous vous prévenons par e-mail
 
 ### 12.3 Fin des Services en ligne
 
-Si nous décidons d'arrêter les Services en ligne, nous vous prévenons au moins `<PRÉAVIS>` jours à l'avance, pour vous laisser le temps d'exporter vos données. L'Application continue de fonctionner sans compte tant qu'elle reste compatible avec votre appareil.
+Si nous décidons d'arrêter les Services en ligne, nous vous prévenons au moins `<PRÉAVIS>` jours à l'avance, pour vous laisser le temps d'exporter vos données. **[À réévaluer avant publication]** Le compte étant désormais obligatoire, la continuité d’accès à l’Application lors d’un arrêt des Services en ligne doit être définie et validée ; elle ne peut pas être promise par le code actuel.
 
 ## 13. Responsabilité
 

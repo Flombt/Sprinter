@@ -1,5 +1,7 @@
 # Politique de confidentialité de Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Bandeau interne, à retirer avant publication.**
 > **Brouillon de travail. Ce document n'est pas un avis juridique.** Il doit être relu et validé par un juriste avant publication. Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Les notes de rédaction en fin de document sont à retirer. Champs à compléter : `<domaine>`, `<ÉDITEUR>`, `<ADRESSE>`, `<EMAIL_CONTACT_RGPD>`, `<RÉGION_UE>`, `<PRESTATAIRE_SMTP>`, `<DATE_D_ENTRÉE_EN_VIGUEUR>`.
 > Publication prévue : `https://<domaine>/confidentialite` (adresse en HTML, pas en PDF), liée depuis l'app (écran de connexion, Réglages › Compte) et depuis les fiches App Store et Google Play. La version publiée doit porter le même numéro que celui enregistré dans `consent_log` (`privacy_policy`).
@@ -8,8 +10,8 @@ Version 1.0 · en vigueur le `<DATE_D_ENTRÉE_EN_VIGUEUR>`
 
 ## En bref
 
-- **Sprinter fonctionne sans compte.** Vos courses, vos parcours et vos réglages restent alors sur votre téléphone. Nous n'en recevons rien.
-- **Le compte est facultatif.** Il sert à sauvegarder vos courses et à les retrouver sur un autre appareil. La sauvegarde des courses et celle des parcours GPS sont deux choix distincts, que vous faites vous-même. Aucune option n'est cochée à l'avance.
+- **Un compte est requis pour accéder à Sprinter.** L’enregistrement sportif et le stockage des courses restent sur votre téléphone ; la connexion traite les données de compte décrites ci-dessous.
+- **La sauvegarde en ligne est facultative.** Elle permet de retrouver vos courses sur un autre appareil. La sauvegarde des courses et celle des parcours GPS sont deux choix distincts, que vous faites vous-même. Aucune option n'est cochée à l'avance.
 - **Vos parcours GPS sauvegardés ne sont visibles que par vous.** L'outil d'administration de Sprinter ne permet pas de les consulter.
 - **Pas de publicité, pas d'outil d'analyse tiers, pas de revente de données, pas de suivi entre applications.**
 - **Vous gardez la main** : vous pouvez exporter vos données, supprimer une course, supprimer vos parcours en ligne ou supprimer votre compte, depuis l'app ou depuis `https://<domaine>/supprimer-mon-compte`.
@@ -20,9 +22,9 @@ Le responsable du traitement est `<ÉDITEUR>`, `<ADRESSE>`, éditeur de l'applic
 
 Pour toute question sur vos données ou pour exercer vos droits : `<EMAIL_CONTACT_RGPD>`.
 
-## 2. Utiliser Sprinter sans compte
+## 2. Enregistrement local et sauvegarde facultative
 
-Sans compte, tout reste sur votre appareil : vos courses et leurs points GPS, vos brouillons, vos séances, vos itinéraires, vos réglages et les courses importées depuis Apple Santé. Nous n'avons accès à aucune de ces données.
+Après connexion, sans activation de la sauvegarde correspondante, vos courses et leurs points GPS restent sur l’appareil. Les brouillons, séances, itinéraires, réglages et imports Santé suivent les choix et périmètres de synchronisation décrits ci-dessous. L’authentification et la mesure d’usage minimale du compte restent des traitements en ligne distincts ; le profil personnalisable possède ses propres choix.
 
 Vous pouvez exporter vos courses (GPX, CSV) et les partager vous-même. Lorsque vous supprimez l'application, ces données sont effacées avec elle, sauf si votre téléphone en garde une sauvegarde selon vos propres réglages système.
 
@@ -190,7 +192,7 @@ Les courses présentes sur votre téléphone y restent, sauf si vous choisissez 
 
 ## 13. Âge minimum
 
-Vous devez avoir **16 ans ou plus** pour créer un compte. L'application peut être utilisée sans compte.
+Vous devez avoir **16 ans ou plus** pour créer un compte. Le compte est requis pour accéder à l’application ; la sauvegarde en ligne et le profil personnalisable restent facultatifs.
 
 ## 14. Sécurité
 

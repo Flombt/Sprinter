@@ -1,5 +1,7 @@
 # Durées de conservation et mécanique de purge · Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Brouillon de travail. Ce document n'est pas un avis juridique.**
 > Les durées reprennent les valeurs par défaut du §5.7 et du §17.9 du cahier des charges v2.1. Elles restent à valider avant la phase 6 (§16 n° 4). Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Champs à compléter : `<domaine>`, `<ÉDITEUR>`, `<ADRESSE>`, `<EMAIL_CONTACT_RGPD>`.
 
@@ -27,19 +29,19 @@
 | Profil de compte | `public.profiles` | Durée du compte. Un champ vidé est effacé aussitôt | — | Cascade à la suppression du compte | §5.7 |
 | Réglages portables | `public.user_preferences` | Durée du compte | — | Cascade | §5.7 |
 | Courses | `public.runs` | Durée du compte, ou jusqu'à la suppression de la course | — | Tombstone, puis purge | §5.7 |
-| Tombstones de courses | `public.runs` avec `deleted_at` (contenu vidé immédiatement) | 90 jours | `deleted_at` | `purge-tombstones` (quotidien) | §5.6, §5.7 |
+| Tombstones de courses | `public.runs` avec `deleted_at` (contenu vidé immédiatement) | 90 jours | `deleted_at` | `private.job_retention()` (job `retention`, quotidien) | §5.6, §5.7 |
 | Tracés GPS | Bucket `run-tracks` et `public.run_routes` | Jusqu'à la suppression du tracé, de la course ou du compte, ou au choix « Supprimer aussi mes parcours en ligne » | — | Suppression via l'API Storage, puis `purge-storage` (quotidien) pour les fichiers orphelins | §5.6, §8 |
 | Choix et acceptations | `public.consent_log` | Durée du compte | — | Cascade | §6.5 |
 | Appareils | `public.user_devices` | Jusqu'à « Déconnecter cet appareil » ou la fermeture du compte. **[Décision de Flo]** purger les appareils non vus depuis 24 mois | `last_seen_at` | Cascade · `purge-devices` (proposé) | §5.2 |
-| Jours d'activité | `public.activity_days` | 25 mois glissants | `day` | `purge-activity` (mensuel) | §5.6, §5.7 |
+| Jours d'activité | `public.activity_days` | 25 mois glissants | `day` | `retention` (quotidien) | §5.6, §5.7 |
 | Agrégats quotidiens | `private.daily_metrics` | Sans limite | — | Aucun. Condition : aucune dimension ne doit permettre d'isoler une personne (pas de ville, pas de cellule nominative) | §5.7 |
-| Demandes de support | `public.support_requests` | 12 mois après la clôture. Supprimées avec le compte | `closed_at` | `purge-support` (mensuel) **à ajouter**, absent du §5.6 | §5.7 |
-| Journal d'administration | `private.admin_audit_logs` | 12 mois | `at` | `purge-audit` (mensuel), seul chemin autorisé par le trigger | §5.6, §5.7 |
-| Trace système d'une suppression de compte | Audit système (action, date, identifiant technique de l'opération) | 12 mois | Date de suppression | `purge-audit` | §6.6 |
+| Demandes de support | `public.support_requests` | 12 mois après la clôture. Supprimées avec le compte | `closed_at` | `retention` (quotidien), implémenté en migration 0013 | §5.7 |
+| Journal d'administration | `private.admin_audit_logs` | 12 mois | `at` | `retention` (quotidien), avec la garde attendue par le trigger | §5.6, §5.7 |
+| Trace système d'une suppression de compte | Audit système (action, date, identifiant technique de l'opération) | 12 mois | Date de suppression | `retention` ; contrôle de la trace à vérifier selon son emplacement | §6.6 |
 | Sessions et jetons | `auth.sessions`, `auth.refresh_tokens` | Jusqu'à la déconnexion, la révocation ou l'expiration | — | Natif Supabase **[À vérifier]** · **[Décision de Flo]** durée maximale de session et délai d'inactivité | §6.3 |
 | Journal d'audit Auth en base | `auth.audit_log_entries` (adresse IP pour certains événements) | **[Décision de Flo]** désactiver l'écriture en base (l'audit reste disponible dans les journaux de la plateforme) ou purger après 30 jours | — | Réglage « Write audit logs to the database » · `purge-auth-audit` (proposé) | §12.3 |
 | Codes à usage unique | Supabase Auth | Expiration courte, environ 10 minutes **[À vérifier]** | Envoi | Natif | §6.2 |
-| Jeton de rafraîchissement Apple chiffré | Emplacement défini à l'implémentation de `apple-link` | Jusqu'à la révocation à la suppression du compte | — | `delete-account` | §6.6 |
+| Jeton de rafraîchissement Apple chiffré | `private.apple_tokens`, contenu chiffré par `apple-link` | Jusqu'à la révocation à la suppression du compte | — | `delete-account` | §6.6 |
 | Archive d'export | Si elle transite par Storage | **[Décision de Flo]** 24 heures conseillées, 7 jours au plus | Création | `purge-storage` (extension proposée) · lien signé de courte durée | §6.6 |
 | Suivi des demandes d'exercice des droits | Registre des demandes (voir [procédure droits](procedure-droits.md)) | 12 mois après la réponse **[À valider par un juriste]** | Date de réponse | Revue mensuelle | — |
 | Échanges de support dans la messagerie de Flo | Messagerie `<FOURNISSEUR_MESSAGERIE>` | **[Décision de Flo]** 12 mois après la clôture, comme les demandes | Clôture | Revue mensuelle manuelle | — |
@@ -73,58 +75,33 @@ Les journaux applicatifs ne contiennent ni e-mail, ni coordonnées, ni tracé (�
 | Index de recherche | Aligné sur la publication | Mise à jour au retrait, au blocage et à la suppression | §17.7 |
 | Signalements, blocages et décisions de modération | **[Décision de Flo]** à fixer avant l'ouverture de la phase 8c (§16 n° 14). Proposition : signalements et décisions conservés 12 mois après la décision, blocages jusqu'à leur levée ou la fermeture de l'un des comptes | `purge-moderation` (proposé) | §17.9 |
 
-## 3. Jobs planifiés
+## 3. Jobs planifiés : code présent et propositions
 
-pg_cron planifie en UTC (§5.6). Les horaires ci-dessous sont des propositions qui étalent la charge.
+La référence technique est [l’exploitation backend](../backend/exploitation.md), avec les migrations sources. Les horaires ci-dessous sont ceux déclarés en SQL, en UTC ; leur installation dépend de pg_cron et leur exécution distante n’a pas été vérifiée ici.
 
-| Job | Type | Planification (UTC) | Action | Statut |
-|---|---|---|---|---|
-| `daily-metrics` | SQL | `15 1 * * *` | Calcule J-1 et recalcule J-2 | §5.6 |
-| `purge-tombstones` | SQL | `0 2 * * *` | Supprime les courses dont `deleted_at` dépasse 90 jours. Met les fichiers associés en file de purge | §5.6 |
-| `purge-storage` | Edge | `30 2 * * *` | Supprime via l'API Storage les fichiers orphelins et ceux en file de purge (tracés, puis médias de profil et archives d'export) | §5.6, étendu |
-| `refresh-rankings` | SQL | `0 3 * * *` | Rafraîchit les vues matérialisées de classement | §5.6 |
-| `resume-deletions` | Edge | `*/15 * * * *` | Reprend les suppressions de compte interrompues (statut « suppression en cours »), sans réactiver le compte | **Proposé** (§6.6 exige un nettoyage reprenable) |
-| `inactive-accounts` | Edge | `0 4 * * 1` | Avertit à 23 mois d'inactivité, supprime à 24 mois | §5.6 |
-| `purge-audit` | SQL | `30 4 1 * *` | Supprime le journal d'administration de plus de 12 mois | §5.6 |
-| `purge-activity` | SQL | `45 4 1 * *` | Supprime `activity_days` de plus de 25 mois | §5.6 |
-| `purge-support` | SQL | `0 5 1 * *` | Supprime les demandes clôturées depuis plus de 12 mois | **À ajouter** |
-| `purge-devices` | SQL | `15 5 1 * *` | Supprime les appareils non vus depuis 24 mois | **Proposé** |
-| `purge-auth-audit` | SQL | `30 5 * * *` | Purge `auth.audit_log_entries` après 30 jours, si l'écriture en base reste active | **Proposé** |
+| Job déclaré | Plan UTC | Action implémentée |
+|---|---|---|
+| `daily-metrics` | `15 1 * * *` | Métriques quotidiennes ; migration 0009 |
+| `refresh-rankings` | `30 1 * * *` | Vue matérialisée ; migration 0012 |
+| `retention` | `45 2 * * *` | Tombstones courses/documents, audit admin, jours d’activité, support clos, traces de suppression terminée ; migration 0013 |
+| `profile-media` | `20 3 * * *` | Réservations abandonnées et médias inutilisés ; migration 0015 |
+| `recompute-validity` | `*/15 * * * *` | Validité des courses ; migration 0019 |
+
+Les fonctions HTTP `process-deletions`, `purge-storage` et `inactive-accounts` existent ; leurs horaires, secrets et résultats doivent être relevés dans l’environnement choisi. Les fréquences visées restent respectivement toutes les 15 minutes, quotidiennes et hebdomadaires jusqu’à validation opérationnelle.
+
+Les noms historiques `purge-tombstones`, `purge-audit`, `purge-activity` et `purge-support` décrivaient des tâches séparées : elles sont regroupées dans `retention`. `purge-devices`, `purge-auth-audit`, `purge-moderation`, la table de suivi `private.job_runs` et la purge d’archives d’export restent des **propositions non attestées par le code actuel** ; ne pas les compter parmi les jobs installés.
 
 ## 4. Mécanique de purge
 
 ### 4.1 Jobs SQL (pg_cron)
 
-Chaque job appelle une fonction du schéma `private`, jamais exposée à l'API. Exemple de structure, à adapter aux migrations réelles :
+[private.job_retention](../../supabase/migrations/0013_admin_ops.sql) est la référence du mécanisme effectif. Il applique les durées ci-dessus et la garde du trigger d’audit dans sa transaction. Le squelette SQL proposé auparavant n’est plus reproduit : il ne correspondait pas à une fonction livrée.
 
-```sql
--- Exemple de planification (migration de la phase 4d)
-select cron.schedule('purge-tombstones', '0 2 * * *', $$select private.purge_tombstones()$$);
-
--- Squelette : traitement par lots, idempotent, sans donnée personnelle dans le compte rendu
-create or replace function private.purge_tombstones() returns void
-language plpgsql set search_path = '' as $$
-declare v_count int;
-begin
-  with doomed as (
-    select user_id, id from public.runs
-    where deleted_at < now() - interval '90 days'
-    limit 1000
-  )
-  delete from public.runs r using doomed d
-  where r.user_id = d.user_id and r.id = d.id;
-  get diagnostics v_count = row_count;
-  insert into private.job_runs (job, rows_affected, status) values ('purge-tombstones', v_count, 'ok');
-end $$;
-```
-
-- **Lots** de 1 000 lignes au plus par passage. Le job suivant reprend le reste.
-- **Compte rendu** dans une table `private.job_runs` (proposée) : nom du job, horaires, statut, nombre de lignes, code d'erreur. Aucune donnée personnelle. Conservation 90 jours.
-- **Journal d'administration** : la purge positionne le réglage local attendu par le trigger, dans la même transaction (`set local private.purging_audit = 'on'`), puis supprime les lignes de plus de 12 mois. Toute autre suppression reste refusée.
+Cette fonction utilise des suppressions SQL sans plafond explicite de 1 000 lignes. Un traitement par lots et un journal durable des passages restent des choix à concevoir si les volumes l’exigent ; ils ne doivent pas être présentés comme déjà validés.
 
 ### 4.2 Jobs Edge Functions
 
-`purge-storage`, `inactive-accounts` et `resume-deletions` ont besoin de l'API Storage, de l'API Auth ou de l'envoi d'e-mails : ils tournent en Edge Functions. La documentation Supabase décrit leur planification par pg_cron avec un appel HTTP (extension `pg_net`), le secret d'appel étant conservé dans Vault et jamais dans une migration **[À vérifier]**.
+`purge-storage`, `inactive-accounts` et `process-deletions` ont besoin de l'API Storage, de l'API Auth ou de l'envoi d'e-mails : ils tournent en Edge Functions. La documentation Supabase décrit leur planification par pg_cron avec un appel HTTP (extension `pg_net`), le secret d'appel étant conservé dans Vault et jamais dans une migration **[À vérifier]**.
 
 - Chaque fonction vérifie un secret d'appel dédié et refuse tout autre appelant.
 - Les suppressions de fichiers passent par l'API Storage, par lots.
@@ -135,11 +112,11 @@ end $$;
 1. Validation de la demande (app : réauthentification de moins de 5 minutes · à distance : vérification par le support puis `process_deletion`).
 2. Accès suspendus et sessions révoquées immédiatement. Le statut passe à « suppression en cours ».
 3. Révocation du jeton Apple, si une identité Apple est liée.
-4. Suppression des objets `run-tracks/<uid>/` via l'API Storage, puis, dès la phase 8, des médias du profil.
+4. Suppression des objets `run-tracks/<uid>/` via l'API Storage, ainsi que des médias du profil pour les fonctions déjà implémentées.
 5. `auth.admin.deleteUser(uid)`. Les cascades retirent les données relationnelles.
 6. Trace dans l'audit système (action, date, identifiant de l'opération).
 
-`resume-deletions` reprend toute suppression restée « en cours », sans jamais réactiver le compte. Objectif : suppression complète en quelques heures. Le délai maximal d'un mois est un plafond, pas une cible.
+`process-deletions` reprend toute suppression restée « en cours », sans jamais réactiver le compte. Objectif : suppression complète en quelques heures. Le délai maximal d'un mois est un plafond, pas une cible.
 
 ### 4.4 Comptes inactifs
 
@@ -160,8 +137,8 @@ Procédure : avant de rouvrir le service, rejouer les suppressions de comptes et
 
 ### 4.6 Vérification
 
-- Recette **R4d.03** (`docs/RECETTE_COMPTES.md`) : jobs exécutés sur staging avec des comptes inactifs simulés, des tombstones anciens et un journal ancien.
-- Contrôle mensuel des comptes rendus `private.job_runs`. Alerte si un job échoue deux fois de suite ou ne s'est pas exécuté depuis 48 heures.
+- Recette **R4d.03** (`docs/quality/recettes/README.md`) : jobs exécutés sur staging avec des comptes inactifs simulés, des tombstones anciens et un journal ancien.
+- **Surveillance à mettre en place et vérifier** : contrôle des exécutions via les outils de l’environnement ; `private.job_runs` n’est pas implémentée. Les seuils proposés restent deux échecs successifs ou une absence de passage depuis 48 heures.
 - Test pgTAP : le journal d'administration refuse `UPDATE` et `DELETE` en dehors de la purge.
 
 ## 5. Sauvegardes techniques
@@ -176,7 +153,7 @@ Procédure : avant de rouvrir le service, rejouer les suppressions de comptes et
 
 - Les données locales restent jusqu'à leur suppression par la personne ou la désinstallation de l'app.
 - À la déconnexion, les données restent sur l'appareil, liées à l'ancien compte. L'option « Effacer aussi les courses de cet appareil » est désactivée par défaut (§7.8).
-- Après la suppression du compte, l'app efface la session et les données propres au compte, dont les brouillons de profil (phase 8). Les courses restent en mode invité, sauf choix contraire (§6.6).
+- Après la suppression du compte, l'app efface la session et les données propres au compte, dont les brouillons de profil (phase 8). Les courses conservées selon le choix restent sur l’appareil, mais leur accès nécessite une connexion ; aucun mode invité n’est fourni par le code actuel.
 
 ## 7. Modèle d'e-mail d'avertissement d'inactivité (brouillon)
 
@@ -202,7 +179,7 @@ Envoyé depuis l'adresse d'expédition de `<domaine>`, sans pixel de suivi ni li
 | Réf. | Point | Repère |
 |---|---|---|
 | DC-1 | Valider l'ensemble des durées du §5.7 (§16 n° 4) | **[À valider par un juriste]** |
-| DC-2 | Ajouter `purge-support` et `resume-deletions` aux jobs du §5.6 | **[Décision de Flo]** |
+| DC-2 | Vérifier `retention` pour le support et planifier/relever `process-deletions` dans l’environnement réel | **[Décision de Flo]** |
 | DC-3 | Purger les appareils non vus depuis 24 mois | **[Décision de Flo]** |
 | DC-4 | Journal d'audit Auth : désactiver l'écriture en base ou le purger après 30 jours | **[Décision de Flo]** |
 | DC-5 | Durée de vie de l'archive d'export | **[Décision de Flo]** |

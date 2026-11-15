@@ -1,5 +1,7 @@
 # Registre des activités de traitement · Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Brouillon de travail. Ce document n'est pas un avis juridique.**
 > Il prépare la phase 6 de Sprinter à partir du cahier des charges v2.1 (§13) et du contrat RPC admin v1. Faites-le relire par un juriste, ou confrontez-le aux ressources de la CNIL, avant toute mise en production.
 > Repères utilisés : **[À valider par un juriste]** point de droit à trancher · **[Décision de Flo]** choix produit ou d'organisation · **[À vérifier]** fait technique ou documentaire à confirmer sur la source officielle à jour.
@@ -9,13 +11,13 @@
 |---|---|
 | Version | 0.1 (brouillon) · 14 novembre 2026 |
 | Fondement | Article 30 du RGPD (registre des activités de traitement du responsable) |
-| Sources | `COMPTES_SYNC_ADMIN_v2_1.md` (§2, §5, §5.7, §6 à §10, §12.3, §13, §17) · `ADMIN_RPC_CONTRACT.md` v1 · observation du dépôt de l'app (types `RunRecord`, `SavedRoute`, plugins iOS) |
+| Sources | [cahier des charges historique v2.1](../archive/specifications/comptes-sync-admin-v2.1.md) (§2, §5, §5.7, §6 à §10, §12.3, §13, §17) · [contrat RPC admin](../backend/admin-rpc-contract.md) v1 · observation du dépôt de l'app (types `RunRecord`, `SavedRoute`, plugins iOS) |
 | Documents liés | [Durées de conservation](durees-conservation.md) · [Sous-traitants](sous-traitants.md) · [AIPD](analyse-aipd.md) · [Procédure droits](procedure-droits.md) · [Procédure violation](procedure-violation.md) · [Politique de confidentialité](politique-confidentialite.md) |
 
 ## Comment lire ce registre
 
-- Une fiche par traitement, de T1 à T13. T0 décrit pour mémoire le fonctionnement local sans compte.
-- **Actif au lancement** : traitement en service dès que les flags `accounts_enabled`, `sync_enabled` ou `routes_sync_enabled` sont activés en production. **Préparatoire** : fonction prévue (phases 7 et 8) et non activée au lancement. Une fiche préparatoire doit être complétée et validée avant l'activation du flag correspondant.
+- Une fiche par traitement, de T1 à T13. T0 décrit le calcul et le stockage sportifs locaux après connexion ; T1 décrit l’authentification obligatoire.
+- **Actif au lancement** : périmètre de traitement visé, à confirmer dans l’environnement réel. L’authentification est obligatoire indépendamment des flags ; sauvegardes et fonctions dépendantes suivent leurs flags et choix propres. **Préparatoire** : périmètre de traitement prévu pour l’activation des phases 7 et 8 ; leur code existe désormais, mais l’activation réelle n’est pas attestée par ce registre. Une fiche préparatoire doit être complétée et validée avant l'activation du flag correspondant.
 - Les bases légales sont celles **proposées** au §13.1 du cahier des charges. Aucune n'est validée à ce stade.
 - La CNIL publie un modèle de registre et une fiche explicative : [Le registre des activités de traitement](https://www.cnil.fr/fr/RGPD-le-registre-des-activites-de-traitement).
 
@@ -34,8 +36,8 @@
 
 | Réf. | Traitement | Finalité principale | Base légale proposée | Durée principale | Statut |
 |---|---|---|---|---|---|
-| T0 | Fonctionnement local sans compte | Enregistrer et consulter ses courses sur l'appareil | Pour mémoire, aucune donnée transmise à l'éditeur | Sur l'appareil, sous le contrôle de la personne | Actif |
-| T1 | Comptes et authentification | Créer, sécuriser et fermer le compte facultatif | Exécution du contrat (CGU) | Durée du compte, 24 mois d'inactivité au plus | Actif au lancement |
+| T0 | Calcul et stockage sportifs locaux | Enregistrer et consulter ses courses sur l'appareil | Pour mémoire, aucune donnée transmise à l'éditeur | Sur l'appareil, sous le contrôle de la personne | Actif |
+| T1 | Comptes et authentification | Créer, sécuriser et fermer le compte obligatoire | Exécution du contrat (CGU) | Durée du compte, 24 mois d'inactivité au plus | Actif au lancement |
 | T2 | Profil de compte facultatif | Nom affiché, statistiques agrégées | Consentement (champs facultatifs) | Durée du compte ou jusqu'à effacement du champ | Actif au lancement |
 | T3 | Sauvegarde et synchronisation des courses | Sauvegarde en ligne et synchronisation demandées | Exécution du contrat, sur choix explicite | Durée du compte · tombstones 90 jours | Actif au lancement |
 | T4 | Sauvegarde des tracés GPS | Retrouver ses parcours sur un autre appareil | Exécution du contrat, sur choix explicite distinct | Jusqu'à suppression des tracés ou du compte | Actif au lancement |
@@ -51,20 +53,20 @@
 
 ## 3. Fiches de traitement
 
-### T0 · Fonctionnement local sans compte (pour mémoire)
+### T0 · Calcul et stockage sportifs locaux (pour mémoire)
 
-Sprinter fonctionne pleinement sans compte (§0.1, décision 1). Les courses, les points GPS, les brouillons, les réglages, les itinéraires, les séances et les imports Apple Santé restent dans les bases SQLite de l'appareil. Rien n'est transmis à l'éditeur.
+Sprinter exige une connexion avant l’accès à l’interface. Le calcul et le stockage sportifs utilisent les bases locales ; la sauvegarde des courses, celle des tracés et les fonctions de profil ont leurs propres choix et périmètres. Cette fiche ne signifie pas absence de traitement en ligne : T1 et T6 décrivent notamment l’authentification et la mesure minimale d’activité.
 
 - **Qualification** · **[À valider par un juriste]** Préciser si l'éditeur agit comme responsable d'un traitement purement local auquel il n'a pas accès. La fiche est tenue pour la transparence. La politique de confidentialité informe de ce fonctionnement dans tous les cas.
 - **Services tiers déjà présents dans l'app** (hors compte) : affichage des cartes (Apple Plans sur iOS, Google Maps SDK sur Android), connexion Spotify à l'initiative de la personne, lecture et écriture Apple Santé avec autorisation, exports GPX/CSV partagés par la personne. La météo n'est active que dans les builds de développement (`src/tools/weather.ts`). Si un fournisseur météo est activé en production, il recevra une position arrondie à environ 1 km : mettre alors à jour ce registre, la politique et les déclarations des stores.
-- **Sauvegardes système** · **[À vérifier]** Sur iOS, les bases sont exclues d'iCloud selon `docs/RECETTE_IPHONE.md`. Sur Android, la sauvegarde automatique peut copier les données de l'app vers le compte Google de la personne : décider en phase 5 des fichiers exclus (session, `device_id`, état de synchronisation). [Sauvegarde automatique Android](https://developer.android.com/identity/data/autobackup)
+- **Sauvegardes système** · **[À vérifier]** Sur iOS, les bases sont exclues d'iCloud selon `docs/quality/recette-course-iphone.md`. Sur Android, la sauvegarde automatique peut copier les données de l'app vers le compte Google de la personne : décider en phase 5 des fichiers exclus (session, `device_id`, état de synchronisation). [Sauvegarde automatique Android](https://developer.android.com/identity/data/autobackup)
 
 ### T1 · Comptes et authentification
 
 | Rubrique | Contenu |
 |---|---|
-| Statut | Actif au lancement (flag `accounts_enabled`) |
-| Finalités | Créer le compte facultatif · authentifier par Apple, Google ou code e-mail · lier ou retirer des méthodes de connexion · sécuriser les sessions · envoyer les e-mails de service (code, avertissement d'inactivité) · fermer le compte |
+| Statut | Authentification requise indépendamment de `accounts_enabled` ; activation du service réel à vérifier |
+| Finalités | Créer le compte requis pour accéder à l’application · authentifier par Apple, Google ou code e-mail · lier ou retirer des méthodes de connexion · sécuriser les sessions · envoyer les e-mails de service (code, avertissement d'inactivité) · fermer le compte |
 | Base légale proposée | Exécution du contrat (CGU), art. 6.1.b (§13.1) |
 | Personnes concernées | Personnes de 16 ans et plus ayant créé un compte |
 | Données | Adresse e-mail, y compris une adresse relais Apple, et sa copie normalisée `email_norm` dans `private.user_directory` · `user_id` (UUID) · identifiant du compte chez Apple ou Google · méthodes de connexion · statut (actif, désactivé, suppression en cours) · date d'inscription et de dernière connexion · données transmises par le fournisseur d'identité et conservées par Supabase Auth dans les métadonnées d'identité (Google : nom et adresse de la photo de profil) **[À vérifier en staging]** · nom complet Apple transmis une seule fois à l'app et enregistré dans le profil seulement si la personne le valide (§6.2) · sessions (jetons, niveau d'authentification, adresse IP et agent utilisateur dans `auth.sessions`) · codes à usage unique et compteurs d'essais · jeton de rafraîchissement Apple chiffré (`apple-link`), nécessaire à la révocation · adresse destinataire, objet et statut de remise des e-mails chez le prestataire SMTP |

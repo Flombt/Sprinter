@@ -1,12 +1,14 @@
 # Procédure de traitement des demandes d'exercice des droits · Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Brouillon de travail. Ce document n'est pas un avis juridique.**
 > Procédure interne à faire relire par un juriste avant le lancement. Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Champs à compléter : `<domaine>`, `<ÉDITEUR>`, `<ADRESSE>`, `<EMAIL_CONTACT_RGPD>`.
 
 | | |
 |---|---|
 | Version | 0.1 (brouillon) · 14 novembre 2026 |
-| Sources | §6.5, §6.6, §10.2, §10.4, §13.4 du cahier des charges v2.1 · `ADMIN_RPC_CONTRACT.md` v1 (`admin_get_user`, `admin-user-action`, `admin_list_audit`) |
+| Sources | §6.5, §6.6, §10.2, §10.4, §13.4 du cahier des charges v2.1 · [contrat RPC admin](../backend/admin-rpc-contract.md) v1 (`admin_get_user`, `admin-user-action`, `admin_list_audit`) |
 | Références | [Respecter les droits des personnes (CNIL)](https://www.cnil.fr/fr/respecter-les-droits-des-personnes) · [Répondre à une demande de droit d'accès (CNIL)](https://www.cnil.fr/fr/repondre-une-demande-de-droit-dacces) · [Délai de réponse (CNIL)](https://www.cnil.fr/fr/cnil-direct/question/exercice-des-droits-informatique-et-libertes-dans-quel-delai-doit-me-repondre) · [Droit à la portabilité (CNIL)](https://www.cnil.fr/fr/respecter-les-droits-des-personnes/professionnels-comment-repondre-une-demande-de-droit-la-portabilite) · [Lignes directrices 01/2022 du CEPD sur le droit d'accès](https://www.edpb.europa.eu/documents/guideline/guidelines-012022-on-data-subject-rights-right-of-access_en) |
 
 ## 1. Objet
@@ -104,7 +106,7 @@ La page web de suppression ne doit **pas** demander de réinstaller l'applicatio
 | Vérification | Réauthentification de moins de 5 minutes | Section 5 |
 | Exécution | Edge Function `delete-account` | Sprinter Admin › fiche (motif `data_request`) › action `process_deletion` via `admin-user-action`, confirmation typée `SUPPRIMER <id court>` et réauthentification de moins de 5 minutes |
 | Effets | Accès coupés et sessions révoquées dès la validation · révocation Apple · purge Storage · `auth.admin.deleteUser` · trace dans l'audit système (§6.6) | Identiques |
-| Contrôle | L'app affiche l'état jusqu'à la confirmation | Vérifier que la fiche n'existe plus et que le statut est terminé. En cas de blocage, `resume-deletions` reprend le nettoyage |
+| Contrôle | L'app affiche l'état jusqu'à la confirmation | Vérifier que la fiche n'existe plus et que le statut est terminé. En cas de blocage, `process-deletions` reprend le nettoyage |
 | Confirmation | Écran de confirmation | Modèle 9.4, envoyé à l'adresse du compte **avant** la suppression effective ou à l'adresse de la demande vérifiée |
 
 **Effacements partiels, sans fermeture du compte** : supprimer une course (tombstone, contenu vidé immédiatement) · supprimer les parcours en ligne · vider un champ du profil · déconnecter un appareil · supprimer une demande de support **[Décision de Flo]** aucune RPC ne le permet : prévoir une action `owner` journalisée ou un traitement manuel consigné.
@@ -206,7 +208,7 @@ Toute réponse négative, totale ou partielle, mentionne la possibilité de sais
 
 ## 10. Recette et contrôles
 
-- Avant le lancement : traiter une demande fictive de bout en bout pour chaque canal (app, page web, e-mail) avec un compte de test, en moins d'une journée. Scénarios R1.4, R1.5 et R1.10 de `docs/RECETTE_COMPTES.md`.
+- Avant le lancement : traiter une demande fictive de bout en bout pour chaque canal (app, page web, e-mail) avec un compte de test, en moins d'une journée. Scénarios R1.4, R1.5 et R1.10 de `docs/quality/recettes/README.md`.
 - Chaque trimestre : revoir le registre des demandes et les délais tenus.
 
 ## 11. Points ouverts

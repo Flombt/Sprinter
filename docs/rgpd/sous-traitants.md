@@ -1,5 +1,7 @@
 # Sous-traitants et tiers · Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Brouillon de travail. Ce document n'est pas un avis juridique.**
 > Les informations sur les prestataires proviennent de leurs pages officielles consultées le 14 novembre 2026. Elles évoluent : **tous les liens et toutes les régions sont à revérifier** au moment de la souscription et à chaque revue. Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Champs à compléter : `<domaine>`, `<ÉDITEUR>`, `<ADRESSE>`, `<EMAIL_CONTACT_RGPD>`.
 
@@ -101,7 +103,7 @@ Non utilisé par défaut : les rapports de plantage d'App Store Connect et de la
 | **Spotify** | Connexion facultative, à l'initiative de la personne, pour contrôler sa musique · lecteur intégré de playlist | Échanges directs entre l'app et Spotify. Sprinter ne reçoit rien côté serveur | Politique de Spotify **[À vérifier]** |
 | **Open-Meteo** | Météo, **builds de développement uniquement** | Position arrondie à environ 1 km | Sans objet en production |
 
-**[À valider par un juriste]** Qualification de Google pour le Maps SDK (responsable indépendant selon ses conditions, ou autre) et conséquences pour l'information des personnes. Les données collectées par ce SDK doivent de toute façon figurer dans le formulaire Data Safety (voir [Google Play Data Safety](../stores/google-play-data-safety.md)).
+**[À valider par un juriste]** Qualification de Google pour le Maps SDK (responsable indépendant selon ses conditions, ou autre) et conséquences pour l'information des personnes. Les données collectées par ce SDK doivent de toute façon figurer dans le formulaire Data Safety (voir [Google Play Data Safety](stores/google-play-data-safety.md)).
 
 ## 4. Contrôle des accords (article 28)
 

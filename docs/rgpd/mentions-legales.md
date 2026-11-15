@@ -1,5 +1,7 @@
 # Mentions légales
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Bandeau interne, à retirer avant publication.**
 > **Brouillon de travail. Ce document n'est pas un avis juridique.** Le contenu exigé dépend du statut de l'éditeur (§16 n° 2). Les deux variantes sont proposées ci-dessous : n'en garder qu'une. Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**.
 > Publication prévue : `https://<domaine>/mentions-legales`, accessible depuis toutes les pages publiques (accueil, politique, CGU, suppression de compte) et depuis Réglages › À propos dans l'app.

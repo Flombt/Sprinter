@@ -1,5 +1,7 @@
 # Procédure de gestion des violations de données personnelles · Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Brouillon de travail. Ce document n'est pas un avis juridique.**
 > Procédure interne à faire relire par un juriste et à tester par un exercice avant le lancement. Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Champs à compléter : `<domaine>`, `<ÉDITEUR>`, `<ADRESSE>`, `<EMAIL_CONTACT_RGPD>`.
 
@@ -64,7 +66,7 @@ H0 désigne le moment où Flo a une certitude raisonnable qu'une violation s'est
 
 | Levier | Effet | Où | Attention |
 |---|---|---|---|
-| `sync_enabled = false` | Arrête la synchronisation des courses | Sprinter Admin › Config (`config.write` + réauthentification) | L'app lit `app_config` au lancement avec un cache de 24 heures. **[À vérifier]** Les RPC de synchronisation doivent aussi refuser les écritures quand le flag est éteint pour que la coupure soit immédiate (voir `docs/LANCEMENT.md`) |
+| `sync_enabled = false` | Arrête la synchronisation des courses | Sprinter Admin › Config (`config.write` + réauthentification) | L'app lit `app_config` au lancement avec un cache de 24 heures. **[À vérifier]** Les RPC de synchronisation doivent aussi refuser les écritures quand le flag est éteint pour que la coupure soit immédiate (voir `docs/roadmap/lancement.md`) |
 | `routes_sync_enabled = false` | Arrête l'envoi des tracés | Idem | Idem |
 | `accounts_enabled = false` | Masque les écrans de compte | Idem | Masque aussi « Supprimer mon compte » dans l'app : garder la page web de suppression opérationnelle |
 | `maintenance` | Message affiché dans l'app | Idem | Message global, sans ciblage |

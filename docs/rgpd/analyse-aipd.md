@@ -1,5 +1,7 @@
 # Analyse d'impact relative à la protection des données (AIPD) · Sprinter
 
+> **Révision documentaire technique du 15 novembre 2026.** Le compte est obligatoire dans le code actuel ; les sauvegardes restent des choix distincts. Les mentions d’activation/lancement de ce brouillon sont des objectifs à vérifier, pas une preuve d’exploitation. La portée juridique et les déclarations publiées doivent être revalidées ; cette révision ne publie ni n’approuve le texte. Voir [état et points ouverts](README.md).
+
 > **Brouillon de travail. Ce document n'est pas un avis juridique.**
 > Il évalue d'abord si une AIPD est requise, puis en constitue la base. La conclusion et les niveaux de risque sont des propositions à valider par un juriste. Repères : **[À valider par un juriste]**, **[Décision de Flo]**, **[À vérifier]**. Champs à compléter : `<domaine>`, `<ÉDITEUR>`, `<ADRESSE>`, `<EMAIL_CONTACT_RGPD>`.
 
@@ -8,7 +10,7 @@
 | Version | 0.1 (brouillon) · 14 novembre 2026 |
 | Fondement | Article 35 du RGPD |
 | Périmètre | Socle de lancement : comptes (T1, T2, T5), synchronisation des courses (T3), **sauvegarde des tracés GPS (T4)**, mesure d'usage (T6), administration (T9). Les phases 7 et 8 sont hors périmètre et déclenchent un réexamen (section 9) |
-| Sources | Cahier des charges v2.1 (§0.2, §2, §5, §6, §7, §8, §9, §10, §13, §17) · `ADMIN_RPC_CONTRACT.md` v1 · [registre](registre-traitements.md) |
+| Sources | Cahier des charges v2.1 (§0.2, §2, §5, §6, §7, §8, §9, §10, §13, §17) · [contrat RPC admin](../backend/admin-rpc-contract.md) v1 · [registre](registre-traitements.md) |
 | Méthode | Méthode de la CNIL : description, nécessité et proportionnalité, risques (accès illégitime, modification non désirée, disparition), mesures. [AIPD (CNIL)](https://www.cnil.fr/fr/RGPD-analyse-impact-protection-des-donnees-aipd) · [Outil PIA (CNIL)](https://www.cnil.fr/fr/outil-pia-telechargez-et-installez-le-logiciel-de-la-cnil) |
 
 ## 1. Faut-il une AIPD ?

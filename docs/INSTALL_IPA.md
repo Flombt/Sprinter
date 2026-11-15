@@ -14,6 +14,7 @@ Ne placer aucun identifiant Apple, mot de passe ou code de validation dans GitHu
 ## Fonctions de cette variante
 
 - Course GPS, allure précise, coach, historique, playlists et exports locaux conservés.
+- Connexion Sprinter obligatoire : les variables publiques Supabase doivent être intégrées au paquet et une méthode de connexion configurée. Sans configuration, l’app reste sur la connexion indisponible. Le code e-mail est utilisable ; la connexion Apple native est désactivée dans cette variante.
 - Santé, groupe d’application et extension Live Activity désactivés pour cette variante. La configuration normale reste disponible pour une future version signée avec les droits Apple correspondants.
 - La cadence Core Motion conserve sa permission dédiée.
 - Les vibrations restent limitées au premier plan ; le suivi GPS verrouillé conserve ses réglages et doit être validé physiquement sur iPhone.
