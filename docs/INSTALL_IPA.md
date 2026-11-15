@@ -23,4 +23,4 @@ La compilation et les vérifications du paquet ne constituent pas une recette ph
 
 ## Reconstruire
 
-Le workflow **Build unsigned iPhone IPA** utilise un Mac hébergé par GitHub, avec Xcode 27 et Node 24. Il se déclenche sur la branche **codex/ipa-sideload**, ou manuellement après son intégration sur la branche principale. Aucun certificat Apple ni secret de signature n’est nécessaire pour compiler ce paquet non signé. Les compilations utilisent le quota GitHub Actions du dépôt privé.
+Le workflow **Build unsigned iPhone IPA** utilise un Mac hébergé par GitHub, avec Xcode 27 et Node 24. Il se déclenche manuellement depuis GitHub Actions, uniquement lorsque l’utilisateur demande une compilation IPA. Aucun certificat Apple ni secret de signature n’est nécessaire pour compiler ce paquet non signé. Les compilations utilisent les ressources GitHub Actions du dépôt.
