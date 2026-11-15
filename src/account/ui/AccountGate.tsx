@@ -19,7 +19,7 @@ const selectInterruptedRun = (state: SessionState) => ({
   busy: state.busy,
 });
 
-export function AccountGate({ onSignedIn }: { onSignedIn: (first: boolean) => void }) {
+export function AccountGate() {
   const { colors } = useTheme();
   const state = useAccount();
   const { hasRun, tracking, busy } = useSessionSelector(selectInterruptedRun, sameFields);
@@ -63,7 +63,7 @@ export function AccountGate({ onSignedIn }: { onSignedIn: (first: boolean) => vo
             <Copy muted>Le nettoyage des données de votre compte supprimé est en cours.</Copy>
           )}
           <FormNotice message={state.notice} />
-          <SignIn onSignedIn={onSignedIn} />
+          <SignIn />
         </>
       ) : state.status === 'loading' ? (
         <ActivityIndicator color={colors.secondary} accessibilityLabel="Vérification du compte" />

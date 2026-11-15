@@ -6,12 +6,12 @@ import { spacing } from '../../ui/tokens';
 import { chooseRouteBackup, useSyncStatus } from '../sync';
 
 /** Choix des parcours GPS (§6.7, §8.1) : posé une fois, aucune réponse présélectionnée. */
-export function RouteChoice({ onChosen }: { onChosen?: () => void }) {
+function RouteChoice() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const choose = (on: boolean) => {
     setBusy(true); setError(null);
-    chooseRouteBackup(on).then(() => onChosen?.()).catch(() => setError('Connexion requise pour enregistrer ce choix.')).finally(() => setBusy(false));
+    void chooseRouteBackup(on).catch(() => setError('Connexion requise pour enregistrer ce choix.')).finally(() => setBusy(false));
   };
   return (
     <Panel variant="setting" style={{ gap: spacing.md }}>

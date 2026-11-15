@@ -11,8 +11,8 @@ import { FormError, FormNotice } from './parts';
 
 const AGE_BANDS = [['', 'Non renseignée'], ['16-24', '16–24'], ['25-34', '25–34'], ['35-44', '35–44'], ['45-54', '45–54'], ['55+', '55 et +']] as const;
 
-/** « Votre profil » (§6.1 étape 4, §6.5) : champs facultatifs, bouton « Passer ». */
-export function ProfileForm({ firstTime, onDone }: { firstTime: boolean; onDone: () => void }) {
+/** Champs facultatifs dans Réglages › Compte › Profil de compte. */
+export function ProfileForm({ onDone }: { onDone: () => void }) {
   const state = useAccount();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -31,7 +31,6 @@ export function ProfileForm({ firstTime, onDone }: { firstTime: boolean; onDone:
   const set = (patch: Partial<Profile>) => setProfile({ ...profile, ...patch });
   return (
     <View style={{ gap: spacing.lg }}>
-      {firstTime && <Copy muted>Ces informations sont facultatives. Vous pourrez les modifier à tout moment.</Copy>}
       {loadError && <Copy variant="caption" muted>Profil indisponible hors connexion. Vos modifications seront enregistrées dès que possible.</Copy>}
       {state.proposedName && profile.display_name === state.proposedName && (
         <Copy variant="caption" muted>Nom proposé par Apple : il ne sera enregistré que si vous validez.</Copy>
@@ -54,7 +53,6 @@ export function ProfileForm({ firstTime, onDone }: { firstTime: boolean; onDone:
       </SettingsDisclosure>
       <Panel variant="setting" style={{ gap: spacing.sm }}>
         <Button title="Enregistrer" disabled={state.busy} onPress={() => void account.saveProfile(profile).then((ok) => { if (ok) onDone(); })} />
-        {firstTime && <Button title="Passer" variant="quiet" onPress={onDone} />}
       </Panel>
       <FormError message={state.error} />
       <FormNotice message={state.notice} />

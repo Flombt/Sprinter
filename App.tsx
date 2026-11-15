@@ -131,6 +131,7 @@ function AppContent() {
     if (authenticated) return;
     cancelStart();
     setSheet(null);
+    setTab('home');
   }, [authenticated, cancelStart]);
 
   const finish = () => {
@@ -165,11 +166,7 @@ function AppContent() {
           importantForAccessibility={modalVisible ? 'no-hide-descendants' : 'auto'}
         >
           {!authenticated ? (
-            <AccountGate
-              onSignedIn={(first) => {
-                if (first && !profileToken) setSheet('accountSetup');
-              }}
-            />
+            <AccountGate />
           ) : startup.ready ? (
             <RootStack
               navigationRef={navigation}

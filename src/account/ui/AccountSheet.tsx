@@ -13,8 +13,7 @@ import { ProfileForm } from './ProfileForm';
 import { SignInMethods } from './SignInMethods';
 import { useFlag } from '../config';
 import { resetDeviceForCurrentAccount, syncEngine, useSyncStatus } from '../../sync/sync';
-import { BackupChoice, SyncScreen } from '../../sync/ui/SyncScreen';
-import { RouteChoice } from '../../sync/ui/RouteChoice';
+import { SyncScreen } from '../../sync/ui/SyncScreen';
 import { SupportForm } from './SupportForm';
 import { CommunityScreen } from '../../community/CommunityScreen';
 import { MaintenanceNotice } from './UpdateRequired';
@@ -27,9 +26,9 @@ import type { VisitTarget } from '../../profile/sharing';
 import { ThemeLibrary } from '../../profile/ui/ThemeLibrary';
 import { ProfileCard } from '../../profile/ui/ProfileCard';
 
-type Route = 'home' | 'profile' | 'backup' | 'routes' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit' | 'themeLibrary' | 'profileCard';
+type Route = 'home' | 'profile' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit' | 'themeLibrary' | 'profileCard';
 const TITLES: Record<Route, string> = {
-  home: 'Compte', profile: 'Votre profil', backup: 'Sauvegarde', routes: 'Parcours GPS', sync: 'Synchronisation',
+  home: 'Compte', profile: 'Votre profil', sync: 'Synchronisation',
   methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte', support: 'Contacter le support', community: 'Classement communautaire',
   myProfile: 'Mon profil', profileEdit: 'Modifier mon profil', profileShare: 'Visibilité et partage', profileSearch: 'Profils partagés', profileVisit: 'Profil',
   themeLibrary: 'Bibliothèque de thèmes', profileCard: 'Carte de profil',
@@ -57,21 +56,18 @@ function signOut(pending: number) {
 }
 
 /** Réglages › Compte (§6.1 étape 5). */
-export function AccountSheet({ onClose, profileToken, startAtProfile = false }: {
+export function AccountSheet({ onClose, profileToken }: {
   onClose: () => void;
   profileToken?: string | null;
-  startAtProfile?: boolean;
 }) {
   const state = useAccount();
   const syncFlag = useFlag('sync_enabled');
-  const routesFlag = useFlag('routes_sync_enabled');
   const supportFlag = useFlag('support_enabled');
   const leaderboardFlag = useFlag('leaderboard_enabled');
   const profilesFlag = useFlag('profiles_enabled') && Platform.OS !== 'web';
   const sharingFlag = useFlag('profile_sharing_enabled');
   const sync = useSyncStatus();
-  const [route, setRoute] = useState<Route>(() => startAtProfile ? 'profile' : 'home');
-  const [firstTime, setFirstTime] = useState(startAtProfile);
+  const [route, setRoute] = useState<Route>('home');
   const [resettingDevice, setResettingDevice] = useState(false);
   const resetDevice = async () => {
     setResettingDevice(true);
@@ -108,9 +104,7 @@ export function AccountSheet({ onClose, profileToken, startAtProfile = false }: 
       {route === 'profileSearch' && <ProfileSearch onOpen={(target) => { setVisit(target); setRoute('profileVisit'); }} />}
       {route === 'profileVisit' && <ProfileVisit target={visit} onSupport={() => setRoute(supportFlag ? 'support' : 'home')} onBlocked={() => setRoute('profileSearch')} />}
       {route === 'profileEdit' && <ProfileEditor onDone={() => setRoute('myProfile')} />}
-      {route === 'profile' && <ProfileForm firstTime={firstTime} onDone={() => { setFirstTime(false); setRoute(firstTime && syncFlag ? 'backup' : 'home'); }} />}
-      {route === 'backup' && <BackupChoice onChosen={() => setRoute(routesFlag && syncEngine.getSnapshot().backup !== 'off' && syncEngine.getSnapshot().backup !== 'pending_off' ? 'routes' : 'home')} />}
-      {route === 'routes' && <RouteChoice onChosen={() => setRoute('home')} />}
+      {route === 'profile' && <ProfileForm onDone={() => setRoute('home')} />}
       {route === 'sync' && <SyncScreen />}
       {route === 'methods' && <SignInMethods />}
       {route === 'data' && <MyData onDelete={() => setRoute('delete')} />}
