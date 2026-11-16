@@ -1,12 +1,15 @@
 import { ChoiceGroup, Input, TextField, Toggle } from '../ui/controls';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Pressable, View } from 'react-native';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { BackHandler, Pressable, View } from 'react-native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RunRecord } from '../core/types';
 import { duration, km, pace, runDate } from '../core/format';
 import { Button, Copy, Header, IconButton, Label, Panel, Screen, styles } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import { confirm } from '../ui/confirm';
-import { session } from '../services/session';
+import { useSessionStructure } from '../services/useSessionSelector';
+import type { RootRoutes } from '../navigation/routes';
 import { createTemplate } from '../workouts/templates';
 import {
   makeGhost,
@@ -450,7 +453,7 @@ export function WorkoutEditor({
 }) {
   const { colors } = useTheme();
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
-  const running = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
+  const running = useSessionStructure();
   const [draft, setDraft] = useState<WorkoutDefinition>(() => JSON.parse(JSON.stringify(initial)));
   const [ghostMeters, setGhostMeters] = useState(initial.challenge.ghost?.distanceMeters ?? 0);
   const [ghostError, setGhostError] = useState<string | null>(null);
@@ -738,8 +741,12 @@ export default function Workouts({
 }) {
   const { colors } = useTheme();
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
-  const running = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
-  const [editor, setEditor] = useState<WorkoutDefinition | null>(() => initialTemplate ? createTemplate(initialTemplate) : null);
+  const running = useSessionStructure();
+  const navigation = useNavigation<NativeStackNavigationProp<RootRoutes>>();
+  const focused = useIsFocused();
+  const [editor, setEditor] = useState<WorkoutDefinition | null>(() =>
+    initialTemplate ? createTemplate(initialTemplate) : null,
+  );
   const [view, setView] = useState<'library' | 'ghost' | 'personalBest' | 'records'>('library');
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<WorkoutLibraryFilter>('all'),
@@ -762,16 +769,77 @@ export default function Workouts({
   useEffect(() => {
     void workouts.initialize();
   }, []);
+  const nested = !initialTemplate && (editor !== null || view !== 'library');
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: !nested });
+  }, [navigation, nested]);
+  useEffect(() => {
+    if (!focused || !nested) return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (editor) setEditor(null);
+      else setView('library');
+      setError(null);
+      return true;
+    });
+    return () => handler.remove();
+  }, [editor, focused, nested]);
   const selected = () => {
     setEditor(null);
     if (onSelected) onSelected();
   };
+  const withLibrary = (content?: ReactNode) => (
+    <View style={{ flex: 1 }}>
+      {!(initialTemplate && onClose) && (
+        <View
+          style={{ flex: 1, display: content ? 'none' : 'flex' }}
+          accessibilityElementsHidden={!!content}
+          importantForAccessibility={content ? 'no-hide-descendants' : 'auto'}
+        >
+          <WorkoutLibraryView
+            key={filter}
+            library={library}
+            running={running}
+            error={error}
+            onClose={onClose}
+            onDetail={onDetail}
+            filter={filter}
+            shown={shown}
+            onBrowse={(next) => {
+              if (next === filter) return;
+              setFilter(next);
+              setShown(WORKOUT_LIBRARY_PAGE_SIZE);
+            }}
+            onShowMore={() => setShown((count) => count + WORKOUT_LIBRARY_PAGE_SIZE)}
+            canPrepare={!!onSelected}
+            onSelected={selected}
+            onEdit={setEditor}
+            onRecords={() => setView('records')}
+            onTemplate={(kind) => {
+              try {
+                setError(null);
+                if (kind === 'ghost' || kind === 'personalBest') setView(kind);
+                else setEditor(createTemplate(kind));
+              } catch (value) {
+                setError(value instanceof Error ? value.message : 'Ce modèle est indisponible.');
+              }
+            }}
+          />
+        </View>
+      )}
+      {content}
+    </View>
+  );
   if (editor)
-    return (
-      <WorkoutEditor key={editor.id} initial={editor} onBack={initialTemplate && onClose ? onClose : () => setEditor(null)} onSelected={selected} />
+    return withLibrary(
+      <WorkoutEditor
+        key={editor.id}
+        initial={editor}
+        onBack={initialTemplate && onClose ? onClose : () => setEditor(null)}
+        onSelected={selected}
+      />,
     );
   if (view === 'personalBest')
-    return (
+    return withLibrary(
       <PersonalBestChooser
         history={running.history}
         error={error}
@@ -787,10 +855,10 @@ export default function Workouts({
             setError(e instanceof Error ? e.message : 'Record indisponible.');
           }
         }}
-      />
+      />,
     );
   if (view === 'ghost')
-    return (
+    return withLibrary(
       <Screen bottom={45}>
         <Header
           title="Choisir mon fantôme"
@@ -836,11 +904,11 @@ export default function Workouts({
             </Panel>
           );
         })}
-      </Screen>
+      </Screen>,
     );
   if (view === 'records') {
     const groups = workoutRecords(running.history);
-    return (
+    return withLibrary(
       <Screen bottom={45}>
         <Header title="Records de séances" onBack={() => setView('library')} />
         <Copy muted>
@@ -885,36 +953,8 @@ export default function Workouts({
             })}
           </Panel>
         ))}
-      </Screen>
+      </Screen>,
     );
   }
-  return (
-    <WorkoutLibraryView
-      library={library}
-      running={running}
-      error={error}
-      onClose={onClose}
-      onDetail={onDetail}
-      filter={filter}
-      shown={shown}
-      onBrowse={(next) => {
-        setFilter(next);
-        setShown(WORKOUT_LIBRARY_PAGE_SIZE);
-      }}
-      onShowMore={() => setShown((count) => count + WORKOUT_LIBRARY_PAGE_SIZE)}
-      canPrepare={!!onSelected}
-      onSelected={selected}
-      onEdit={setEditor}
-      onRecords={() => setView('records')}
-      onTemplate={(kind) => {
-        try {
-          setError(null);
-          if (kind === 'ghost' || kind === 'personalBest') setView(kind);
-          else setEditor(createTemplate(kind));
-        } catch (value) {
-          setError(value instanceof Error ? value.message : 'Ce modèle est indisponible.');
-        }
-      }}
-    />
-  );
+  return withLibrary();
 }

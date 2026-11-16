@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type PropsWithChildren } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import {
   isDatedKind,
   parisDay,
@@ -7,10 +7,10 @@ import {
   type DiscoveryItem,
   type DiscoveryPoint,
 } from '../../supabase/functions/_shared/discovery-model';
-import { Button, Copy, EmptyState, IconButton, Label, Screen } from '../ui/components';
+import { Button, Copy, EmptyState, Header, IconButton, Label, Screen } from '../ui/components';
 import { Input, TextField } from '../ui/controls';
 import { Sheet } from '../ui/Sheet';
-import { useAdaptiveLayout, useTheme } from '../ui/theme';
+import { useTheme } from '../ui/theme';
 import { spacing } from '../ui/tokens';
 import { useDiscovery } from './DiscoveryProvider';
 import {
@@ -48,13 +48,13 @@ import { discoveryPosition } from './actions';
 import type { DiscoveryPreferences } from './preferences';
 
 const pages = [
-  ['explore', 'Explorer'],
-  ['agenda', 'Agenda'],
-  ['map', 'Carte'],
+  ['explore', 'Tout'],
+  ['agenda', 'Courses'],
   ['clubs', 'Clubs'],
   ['routes', 'Parcours'],
+  ['places', 'Lieux'],
 ] as const;
-type Page = (typeof pages)[number][0] | 'favorites';
+type Page = (typeof pages)[number][0] | 'favorites' | 'map';
 type AgendaKind = 'all' | 'race' | 'group';
 const periods: [Period, string][] = [
   ['all', 'À venir'],
@@ -113,7 +113,6 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
   const discovery = useDiscovery();
   const { prefs, now, items, entries } = discovery;
   const { colors } = useTheme();
-  const { largeText, width } = useAdaptiveLayout();
   const [page, setPage] = useState<Page>('explore');
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
@@ -242,91 +241,94 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
     spots.find((item) => item.mediaKey) ??
     groupRuns[0] ??
     spots[0];
-  const featuredRaces = activeRaces.filter((item) => item.id !== feature?.id).slice(0, 3);
+  const preview = scoped.filter((item) => item.id !== feature?.id).slice(0, 4);
+  const previewIds = new Set([...preview.map((item) => item.id), feature?.id]);
+  const more = (item: DiscoveryItem) => !previewIds.has(item.id);
+  const featuredRaces = activeRaces.filter(more).slice(0, 3);
   const distant = scoped.filter(
-    (item) => item.city !== where.name && item.id !== feature?.id && (isSpot(item) || item.kind === 'club'),
+    (item) => item.city !== where.name && more(item) && (isSpot(item) || item.kind === 'club'),
   );
   const currentGoal = prefs.saves.find(
     (save) => save.goal && items.some((item) => item.id === save.item.id && remaining(item, now)),
   );
 
-  const heading = (
-    <>
+  const pageTools = (
+    <View style={{ gap: spacing.sm }}>
       <View style={[styles.wrap, { alignItems: 'center', justifyContent: 'space-between' }]}>
-        <Chip
-          title={position ? 'Autour de moi' : width < 345 ? where.name : `${where.name} · ${market.region}`}
-          icon="location-outline"
-          accessibilityLabel={`Choisir le secteur, ${position ? 'autour de moi' : where.name}`}
-          onPress={() => setDialog('filters')}
-        />
-        <View style={styles.row}>
+        <Copy accessibilityRole="header" variant="title" style={{ flexShrink: 1 }}>
+          {page === 'explore' ? 'À explorer' : (pages.find(([key]) => key === page)?.[1] ?? 'À explorer')}
+        </Copy>
+        <View style={styles.wrap}>
           <IconButton
-            icon={searching ? 'close' : 'search-outline'}
-            label={searching ? 'Fermer la recherche' : 'Rechercher dans Découvrir'}
             quiet
-            onPress={() => {
-              setSearching(!searching);
-              setQuery('');
-              setLimit(12);
-            }}
-          />
-          <IconButton
+            label={scopeIsFiltered ? 'Filtres de découverte, actifs' : 'Filtres de découverte'}
             icon="options-outline"
-            label="Filtres de découverte"
-            quiet
+            selected={scopeIsFiltered}
             onPress={() => setDialog('filters')}
           />
-          <IconButton
-            icon={page === 'favorites' ? 'heart' : 'heart-outline'}
-            label="Favoris et objectifs"
-            quiet
-            onPress={() => choosePage(page === 'favorites' ? 'explore' : 'favorites')}
+          <Button
+            title={page === 'map' ? 'Quitter la carte' : 'Carte'}
+            variant="quiet"
+            onPress={() => choosePage(page === 'map' ? 'explore' : 'map')}
           />
         </View>
       </View>
-      {page === 'explore' && !searching && (
-        <View style={{ gap: spacing.xs }}>
-          <Copy
-            variant="hero"
-            accessibilityRole="header"
-            style={{ fontSize: largeText ? 46 : 64, lineHeight: largeText ? 54 : 68 }}
-          >
-            Courir, ici.
-          </Copy>
-          <Copy muted>Courses, clubs et parcours près de toi.</Copy>
-        </View>
-      )}
-      {searching && (
-        <Input
-          autoFocus
-          value={query}
-          onChangeText={(value) => {
-            setQuery(value);
-            setLimit(12);
-          }}
-          accessibilityLabel="Rechercher une course, un club ou un parcours"
-          placeholder="Course, club, piste, parcours…"
-          returnKeyType="search"
-          autoCorrect={false}
-        />
-      )}
-      <ChipRow label="Navigation Découvrir">
+      <ChipRow label="Catégories de Découvrir">
         {pages.map(([key, title]) => (
           <Chip
             key={key}
             title={title}
             selected={!searching && page === key}
-            onPress={() => choosePage(key)}
+            onPress={() => choosePage(key, key === 'agenda' ? 'race' : 'all')}
           />
         ))}
       </ChipRow>
-    </>
+    </View>
   );
 
   return (
     <>
-      <Screen key={page} gap={spacing.lg}>
-        {heading}
+      <Screen key={page} gap={spacing.xl}>
+        <Header
+          editorial
+          title="Découvrir"
+          subtitle={position ? 'Autour de moi' : `${where.name} · ${market.region}`}
+          right={
+            <View style={styles.row}>
+              <IconButton
+                square
+                icon={searching ? 'close' : 'search-outline'}
+                label={searching ? 'Fermer la recherche' : 'Rechercher dans Découvrir'}
+                onPress={() => {
+                  setSearching(!searching);
+                  setQuery('');
+                  setLimit(12);
+                }}
+              />
+              <IconButton
+                square
+                icon={page === 'favorites' ? 'heart' : 'heart-outline'}
+                label="Favoris et objectifs"
+                selected={page === 'favorites'}
+                onPress={() => choosePage(page === 'favorites' ? 'explore' : 'favorites')}
+              />
+            </View>
+          }
+        />
+        {searching && (
+          <Input
+            autoFocus
+            value={query}
+            onChangeText={(value) => {
+              setQuery(value);
+              setLimit(12);
+            }}
+            accessibilityLabel="Rechercher une course, un club ou un parcours"
+            placeholder="Course, club, piste, parcours…"
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+        )}
         {discovery.storageError && (
           <Copy accessibilityRole="alert" muted variant="caption">
             {discovery.storageError}
@@ -336,6 +338,10 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
           {...discovery}
           refresh={discovery.refreshAvailable ? discovery.refresh : undefined}
         />
+        {discovery.booted && !searching && page === 'explore' && feature && (
+          <Feature item={feature} onPress={() => onOpen(feature.id)} />
+        )}
+        {(discovery.booted || searching) && pageTools}
         {!discovery.booted ? (
           <CatalogueSkeleton />
         ) : searching ? (
@@ -348,33 +354,7 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
           </DiscoverySection>
         ) : page === 'explore' ? (
           <>
-            {feature && <Feature item={feature} onPress={() => onOpen(feature.id)} />}
-            <ChipRow label="Filtres rapides">
-              <Chip
-                title="Cette semaine"
-                icon="calendar-outline"
-                onPress={() => choosePage('agenda', 'all', 'week')}
-              />
-              {facets.slice(0, 2).map(([key, title]) => (
-                <Chip key={key} title={title} selected={filters[key]} onPress={() => applyFilter(key)} />
-              ))}
-              <Chip
-                title="10 km"
-                selected={filters.distanceKm === 10}
-                onPress={() =>
-                  updateBrowse({ filters: { ...filters, distanceKm: filters.distanceKm === 10 ? null : 10 } })
-                }
-              />
-              <Chip
-                title="Trail"
-                selected={filters.terrain === 'trail'}
-                onPress={() =>
-                  updateBrowse({
-                    filters: { ...filters, terrain: filters.terrain === 'trail' ? null : 'trail' },
-                  })
-                }
-              />
-            </ChipRow>
+            {!!preview.length && <View>{preview.map((item) => resultRow(item))}</View>}
             {scopeIsFiltered && !scoped.length && (
               <EmptyState
                 icon="options-outline"
@@ -389,21 +369,10 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
               onPress={() => choosePage('agenda', 'all', 'week')}
             >
               {thisWeek.length ? (
-                largeText ? (
-                  thisWeek.slice(0, 4).map((item) => resultRow(item))
-                ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.row}
-                  >
-                    {thisWeek.slice(0, 4).map((item) => (
-                      <View key={item.id} style={{ width: 264 }}>
-                        {resultRow(item)}
-                      </View>
-                    ))}
-                  </ScrollView>
-                )
+                thisWeek
+                  .filter(more)
+                  .slice(0, 3)
+                  .map((item) => resultRow(item))
               ) : (
                 <Copy muted>
                   Le catalogue n’a pas encore de rendez-vous confirmé pour les sept prochains jours.
@@ -420,7 +389,7 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
               ))}
               {!featuredRaces.length && (
                 <Copy muted>
-                  {feature?.kind === 'race'
+                  {activeRaces.length
                     ? 'Retrouve aussi les annonces de dates dans l’agenda.'
                     : 'Les prochaines dates seront affichées dès leur confirmation.'}
                 </Copy>
@@ -434,16 +403,25 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
                   onPress={() => choosePage('agenda', 'group')}
                 />
               </View>
-              {clubs.slice(0, 2).map((item) => resultRow(item))}
-              {groupRuns[0] && resultRow(groupRuns[0])}
+              {clubs
+                .filter(more)
+                .slice(0, 2)
+                .map((item) => resultRow(item))}
+              {groupRuns
+                .filter(more)
+                .slice(0, 1)
+                .map((item) => resultRow(item))}
             </DiscoverySection>
             <DiscoverySection
               title="Tes spots pour courir"
-              action="Tous les spots"
-              onPress={() => choosePage('routes')}
+              action="Voir les lieux"
+              onPress={() => choosePage('places')}
             >
               <MapOverview onPress={() => choosePage('map')} />
-              {spots.slice(0, 3).map((item) => resultRow(item))}
+              {spots
+                .filter(more)
+                .slice(0, 3)
+                .map((item) => resultRow(item))}
             </DiscoverySection>
             {currentGoal && (
               <DiscoverySection title="Ton prochain objectif">
@@ -570,13 +548,16 @@ export function DiscoveryHome({ onOpen }: { onOpen: (id: string) => void }) {
               )}
             </DiscoverySection>
           </>
-        ) : page === 'routes' ? (
-          <DiscoverySection title="Lieux et parcours">
+        ) : page === 'routes' || page === 'places' ? (
+          <DiscoverySection title={page === 'routes' ? 'Parcours' : 'Lieux pour courir'}>
             <MapOverview onPress={() => choosePage('map')} />
-            {resultRows(spots, {
-              title: 'Aucun spot dans ce secteur',
-              body: 'Choisis un autre secteur ou élargis le rayon.',
-            })}
+            {resultRows(
+              spots.filter((item) => item.kind === (page === 'routes' ? 'route' : 'place')),
+              {
+                title: 'Aucun spot dans ce secteur',
+                body: 'Choisis un autre secteur ou élargis le rayon.',
+              },
+            )}
           </DiscoverySection>
         ) : (
           <DiscoverySection title="Favoris et objectifs">

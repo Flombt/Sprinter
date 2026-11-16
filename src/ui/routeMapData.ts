@@ -49,6 +49,8 @@ export class RecordedTrack {
   private segments: Segment[] = [];
   private result: RouteCoordinate[][] = [];
 
+  constructor(private readonly pointLimit = 1500) {}
+
   update(points: readonly TrackPoint[], count = points.length): RouteCoordinate[][] {
     if (this.source !== points || count < this.count || this.lastPoint !== points[this.count - 1]) {
       this.source = points;
@@ -60,7 +62,7 @@ export class RecordedTrack {
     }
     if (count === this.count) return this.result;
 
-    const stride = 2 ** Math.max(0, Math.ceil(Math.log2(count / 1500)));
+    const stride = 2 ** Math.max(0, Math.ceil(Math.log2(count / this.pointLimit)));
     let changedFrom = Math.max(0, this.segments.length - 1);
     if (stride !== this.stride) {
       for (const segment of this.segments) {
@@ -105,6 +107,34 @@ export class RecordedTrack {
 
 export function recordedSegments(points: readonly TrackPoint[]): RouteCoordinate[][] {
   return new RecordedTrack().update(points);
+}
+
+export function routeProjection(
+  points: readonly RouteCoordinate[],
+  width: number,
+  height: number,
+  paddingX: number,
+  paddingY: number,
+) {
+  let west = Infinity,
+    east = -Infinity,
+    south = Infinity,
+    north = -Infinity;
+  for (const { longitude, latitude } of points) {
+    west = Math.min(west, longitude);
+    east = Math.max(east, longitude);
+    south = Math.min(south, latitude);
+    north = Math.max(north, latitude);
+  }
+  const longitudeScale = Math.max(0.01, Math.cos(((south + north) * Math.PI) / 360));
+  const scale = Math.min(
+    Math.max(1, width - paddingX) / Math.max(0.0001, (east - west) * longitudeScale),
+    Math.max(1, height - paddingY) / Math.max(0.0001, north - south),
+  );
+  return {
+    x: (point: RouteCoordinate) => width / 2 + (point.longitude - (west + east) / 2) * longitudeScale * scale,
+    y: (point: RouteCoordinate) => height / 2 - (point.latitude - (south + north) / 2) * scale,
+  };
 }
 
 export function referenceSegments(reference: RouteCoordinate[][]) {

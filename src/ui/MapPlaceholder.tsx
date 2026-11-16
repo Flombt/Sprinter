@@ -4,7 +4,7 @@ import { useTheme } from './theme';
 
 const grid = Array.from({ length: 11 }, (_, index) => (index + 1) * 8.33);
 
-export function MapPlaceholder() {
+export function MapPlaceholder({ reticle = true }: { reticle?: boolean }) {
   const { colors } = useTheme();
   return (
     <View
@@ -24,9 +24,11 @@ export function MapPlaceholder() {
           style={[styles.horizontal, { top: `${position}%`, backgroundColor: colors.line }]}
         />
       ))}
-      <View style={[styles.reticle, { borderColor: colors.controlLine, backgroundColor: colors.surface }]}>
-        <Icon name="locate-outline" size={28} color={colors.secondary} />
-      </View>
+      {reticle && (
+        <View style={[styles.reticle, { borderColor: colors.controlLine, backgroundColor: colors.surface }]}>
+          <Icon name="locate-outline" size={28} color={colors.secondary} />
+        </View>
+      )}
     </View>
   );
 }

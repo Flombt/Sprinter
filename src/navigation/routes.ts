@@ -1,5 +1,9 @@
 import type { RunRecord } from '../core/types';
-import type { DiscoveryPreparation, DiscoveryWorkoutSuggestion, LinkedPlanDraft } from '../discovery/trainingLink';
+import type {
+  DiscoveryPreparation,
+  DiscoveryWorkoutSuggestion,
+  LinkedPlanDraft,
+} from '../discovery/trainingLink';
 
 export type RootRoutes = {
   Tabs: undefined;
@@ -7,6 +11,10 @@ export type RootRoutes = {
   History: undefined;
   Apple: undefined;
   Preparation: { discovery: DiscoveryPreparation } | undefined;
+  RoutePreview: undefined;
+  Workouts: { returnToPreparation?: boolean } | undefined;
+  RunStats: undefined;
+  Music: undefined;
   DiscoveryDetail: { id: string };
   DiscoveryWorkout: { suggestion: DiscoveryWorkoutSuggestion; discovery: DiscoveryPreparation };
   Detail: { runId: string };

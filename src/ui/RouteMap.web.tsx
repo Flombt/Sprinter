@@ -10,6 +10,7 @@ import {
   RecordedTrack,
   paceZoneColor,
   referenceSegments,
+  routeProjection,
   type RouteMapProps,
 } from './routeMapData';
 import { useTheme } from './theme';
@@ -32,24 +33,7 @@ const MapSurface = memo(function MapSurface({
   const guides = useMemo(() => referenceSegments(reference), [reference]);
   const all = [...recorded.flat(), ...guides.flat(), ...(current ? [current] : [])];
   const { width, height: mapHeight } = size;
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  for (const point of all) {
-    minX = Math.min(minX, point.longitude);
-    maxX = Math.max(maxX, point.longitude);
-    minY = Math.min(minY, point.latitude);
-    maxY = Math.max(maxY, point.latitude);
-  }
-  const longitudeScale = Math.max(0.01, Math.cos(((minY + maxY) * Math.PI) / 360));
-  const scale = Math.min(
-    Math.max(1, width - 64) / Math.max(0.0001, (maxX - minX) * longitudeScale),
-    Math.max(1, mapHeight - 90) / Math.max(0.0001, maxY - minY),
-  );
-  const x = (point: RouteCoordinate) =>
-    width / 2 + (point.longitude - (minX + maxX) / 2) * longitudeScale * scale;
-  const y = (point: RouteCoordinate) => mapHeight / 2 - (point.latitude - (minY + maxY) / 2) * scale;
+  const { x, y } = routeProjection(all, width, mapHeight, 64, 90);
   const path = (segments: RouteCoordinate[][]) =>
     segments
       .map((segment) =>

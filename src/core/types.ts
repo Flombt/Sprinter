@@ -66,7 +66,7 @@ export interface Settings {
 }
 export const DEFAULT_SETTINGS: Settings = {
   config: { ...DEFAULT_CONFIG }, audioEnabled: false, hapticsEnabled: true,
-  backgroundEnabled: true, appearance: 'dark', autoPauseEnabled: false,
+  backgroundEnabled: true, appearance: 'system', autoPauseEnabled: false,
 };
 export const STATE_LABELS: Record<PaceState, string> = {
   acquiring: 'Trouvez votre rythme', onTarget: 'Dans votre rythme', tooFast: 'Ralentissez légèrement',

@@ -30,11 +30,12 @@ export function useProfileAppearance(doc: ProfileDoc): ResolvedAppearance {
 export const useProfileTheme = (doc: ProfileDoc): ProfileTheme => useProfileAppearance(doc);
 
 /** Image recadrée « couvrir » + zoom + déplacement. Une animation devient une image fixe si le mouvement est réduit. */
-export function CroppedImage({ media, poster, width, height, crop, label }: {
-  media: MediaRef; poster?: MediaRef; width: number; height: number; crop?: Partial<Crop>; label: string;
+export function CroppedImage({ media, poster, width, height, crop, label, animate = true }: {
+  media: MediaRef; poster?: MediaRef; width: number; height: number; crop?: Partial<Crop>; label: string; animate?: boolean;
 }) {
   const { reduceMotion } = useTheme();
-  const still = reduceMotion && media.animated && poster;
+  const autoplay = animate && !reduceMotion;
+  const still = !autoplay && media.animated && poster;
   const shown = still ? poster : media;
   const zoom = crop?.zoom ?? 1, x = crop?.x ?? 0, y = crop?.y ?? 0;
   const scale = Math.max(width / shown.width, height / shown.height) * zoom;
@@ -43,7 +44,7 @@ export function CroppedImage({ media, poster, width, height, crop, label }: {
   return (
     <View style={{ width, height, overflow: 'hidden' }} accessible accessibilityRole="image" accessibilityLabel={label}>
       <Image source={{ uri: shown.uri, headers: shown.headers }} placeholder={poster && !still ? { uri: poster.uri, headers: poster.headers } : undefined}
-        autoplay={!reduceMotion} accessibilityIgnoresInvertColors cachePolicy={shown.headers ? 'memory' : 'disk'} contentFit="fill"
+        autoplay={autoplay} accessibilityIgnoresInvertColors cachePolicy={shown.headers ? 'memory' : 'disk'} contentFit="fill"
         style={{ position: 'absolute', width: shownWidth, height: shownHeight, left: -overflowX * (1 + x), top: -overflowY * (1 + y) }} />
     </View>
   );
@@ -71,7 +72,7 @@ function Particles({ color, count = 10 }: { color: string; count?: number }) {
   );
 }
 
-export function BannerArt({ doc, media, theme, height = 132 }: { doc: ProfileDoc; media: Record<string, MediaRef>; theme: ProfileTheme; height?: number }) {
+export function BannerArt({ doc, media, theme, height = 132, animate = true }: { doc: ProfileDoc; media: Record<string, MediaRef>; theme: ProfileTheme; height?: number; animate?: boolean }) {
   const [width, setWidth] = useState(0);
   const banner = doc.banner as BannerPayload | null | undefined;
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
@@ -79,7 +80,7 @@ export function BannerArt({ doc, media, theme, height = 132 }: { doc: ProfileDoc
   const image = banner?.source === 'media' && banner.mediaId ? media[banner.mediaId] : undefined;
   const poster = banner?.posterId ? media[banner.posterId] : undefined;
   let content: React.ReactNode;
-  if (image && width) content = <CroppedImage media={image} poster={poster} width={width} height={height} crop={banner?.crop} label="Bannière : image personnelle" />;
+  if (image && width) content = <CroppedImage media={image} poster={poster} width={width} height={height} crop={banner?.crop} label="Bannière : image personnelle" animate={animate} />;
   else if (banner?.source === 'color' && banner.colors?.[0]) content = <View style={{ flex: 1, backgroundColor: banner.colors[0] }} />;
   else {
     const colors = (banner?.source === 'gradient' && banner.colors && banner.colors.length >= 2 ? banner.colors : preset?.colors ?? theme.banner) as [string, string, ...string[]];
@@ -96,12 +97,12 @@ export function BannerArt({ doc, media, theme, height = 132 }: { doc: ProfileDoc
       accessible={!image} accessibilityRole={image ? undefined : 'image'} accessibilityLabel={label}>
       {content}
       {banner?.veil ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000000', opacity: banner.veil }]} /> : null}
-      {banner?.particles ? <Particles color="#FFFFFF" /> : null}
+      {banner?.particles && animate ? <Particles color="#FFFFFF" /> : null}
     </View>
   );
 }
 
-export function AvatarArt({ doc, media, theme, size = 96 }: { doc: ProfileDoc; media: Record<string, MediaRef>; theme: ProfileTheme; size?: number }) {
+export function AvatarArt({ doc, media, theme, size = 96, animate = true }: { doc: ProfileDoc; media: Record<string, MediaRef>; theme: ProfileTheme; size?: number; animate?: boolean }) {
   const avatar = doc.avatar as AvatarPayload | null | undefined;
   const image = avatar?.source === 'media' && avatar.mediaId ? media[avatar.mediaId] : undefined;
   const poster = avatar?.posterId ? media[avatar.posterId] : undefined;
@@ -113,7 +114,7 @@ export function AvatarArt({ doc, media, theme, size = 96 }: { doc: ProfileDoc; m
   const inner = { width: size, height: size, borderRadius: radius(size), overflow: 'hidden' as const };
   const colors = library?.colors ?? [theme.accent, theme.surface] as [string, string];
   const picture = image
-    ? <View style={inner}><CroppedImage media={image} poster={poster} width={size} height={size} crop={avatar?.crop} label="Avatar : photo personnelle" /></View>
+    ? <View style={inner}><CroppedImage media={image} poster={poster} width={size} height={size} crop={avatar?.crop} label="Avatar : photo personnelle" animate={animate} /></View>
     : (
       <LinearGradient colors={colors} style={[inner, { alignItems: 'center', justifyContent: 'center' }]} accessible accessibilityRole="image"
         accessibilityLabel={library ? `Avatar : ${library.label}` : 'Avatar Sprinter par défaut'}>

@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { session, type SessionState } from '../../services/session';
 import { sameFields } from '../../services/snapshotSelection';
 import { useSessionSelector } from '../../services/useSessionSelector';
 import { Button, Copy, Header, Panel, Screen } from '../../ui/components';
+import { Brand } from '../../ui/brand';
+import { EditorialImage, editorialMedia, PhotoShade } from '../../ui/editorial';
 import { confirm } from '../../ui/confirm';
-import { useTheme } from '../../ui/theme';
-import { spacing } from '../../ui/tokens';
+import { useAdaptiveLayout, useTheme } from '../../ui/theme';
+import { editorial, layout, spacing } from '../../ui/tokens';
 import { hasSignedInAccount, startAccount, useAccount } from '../account';
 import { backend } from '../env';
 import { FormNotice } from './parts';
@@ -19,19 +23,65 @@ const selectInterruptedRun = (state: SessionState) => ({
   busy: state.busy,
 });
 
+function Welcome({ onContinue }: { onContinue: () => void }) {
+  const { largeText, compact } = useAdaptiveLayout();
+  const { reduceTransparency } = useTheme();
+  const insets = useSafeAreaInsets();
+  const gutter = compact ? layout.compactGutter : layout.screenGutter;
+  return (
+    <View style={{ flex: 1, backgroundColor: editorial.surface }}>
+      <StatusBar style="light" />
+      <EditorialImage source={editorialMedia.welcome} contentPosition={{ left: '49%', top: '52%' }} />
+      <PhotoShade full />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.welcome,
+          {
+            paddingTop: insets.top + spacing.md,
+            paddingBottom: Math.max(insets.bottom, spacing.lg),
+            paddingHorizontal: Math.max(gutter, insets.left, insets.right),
+          },
+        ]}
+      >
+        <Brand onPhoto />
+        <View style={[styles.caption, reduceTransparency && { backgroundColor: editorial.surface }]}>
+          <Copy
+            accessibilityRole="header"
+            variant={largeText || compact ? 'title' : 'editorialCover'}
+            style={styles.photoText}
+          >
+            {'Courir.\nRespirer.\nRecommencer.'}
+          </Copy>
+          <Copy style={styles.photoText}>Connectez-vous ou créez un compte pour accéder à Sprinter.</Copy>
+          <Button title="Continuer" endIcon="arrow-forward" onPhoto onPress={onContinue} />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
 export function AccountGate() {
   const { colors } = useTheme();
   const state = useAccount();
   const { hasRun, tracking, busy } = useSessionSelector(selectInterruptedRun, sameFields);
+  const [continued, setContinued] = useState(false);
 
   useEffect(() => {
     if (tracking && !hasSignedInAccount()) void session.pause();
   }, [tracking]);
 
+  const canShowWelcome = state.status === 'signedOut' && !hasRun && !state.pendingDeletion;
+  if (canShowWelcome && !continued) return <Welcome onContinue={() => setContinued(true)} />;
   return (
     <Screen gap={spacing.xl}>
       <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
-        <Header subtitle="SPRINTER" title="Bienvenue" />
+        <Header
+          subtitle="SPRINTER"
+          title="Connexion"
+          editorial
+          onBack={canShowWelcome ? () => setContinued(false) : undefined}
+        />
         <Copy muted>Connectez-vous ou créez un compte pour accéder à Sprinter et démarrer votre course.</Copy>
       </View>
       <MaintenanceNotice />
@@ -83,3 +133,9 @@ export function AccountGate() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  welcome: { flexGrow: 1, justifyContent: 'space-between', gap: 160 },
+  caption: { gap: spacing.md },
+  photoText: { color: editorial.ink },
+});

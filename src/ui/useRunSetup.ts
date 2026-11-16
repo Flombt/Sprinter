@@ -6,7 +6,7 @@ import { workouts } from '../workouts/store';
 import { progression } from '../progression/store';
 import { toolsStore } from '../tools/store';
 
-export function useRunSetup(target: PaceTarget, state: SessionState) {
+export function useRunSetup(target: PaceTarget, state: Pick<SessionState, 'history' | 'settings'>) {
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
   const progress = useSyncExternalStore(
     progression.subscribe,

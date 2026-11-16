@@ -5,10 +5,10 @@ export const useProgression = () => {
   const state = useSyncExternalStore(progression.subscribe, progression.getSnapshot, progression.getSnapshot);
   useEffect(() => { void progression.initialize(); }, []); return state;
 };
-export function useLocalNow() {
+export function useLocalNow(active = true) {
   const [now, setNow] = useState(Date.now);
-  useEffect(() => { const update = () => setNow(Date.now()); const timer = setInterval(update, 60000);
+  useEffect(() => { if (!active) return; const update = () => setNow(Date.now()); update(); const timer = setInterval(update, 60000);
     const listener = AppState.addEventListener('change', state => { if (state === 'active') update(); });
     return () => { clearInterval(timer); listener.remove(); };
-  }, []); return now;
+  }, [active]); return now;
 }

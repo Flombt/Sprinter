@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
-import { Button, Copy, Header, IconButton, ListRow, Panel, Screen, SectionHeading } from '../../ui/components';
+import {
+  Button,
+  Copy,
+  Header,
+  IconButton,
+  ListRow,
+  Panel,
+  Screen,
+  SectionHeading,
+} from '../../ui/components';
 import { confirm } from '../../ui/confirm';
 import { SettingsNotice } from '../../ui/settings';
 import { spacing } from '../../ui/tokens';
@@ -25,40 +34,126 @@ import { ProfileVisit } from '../../profile/ui/ProfileVisit';
 import type { VisitTarget } from '../../profile/sharing';
 import { ThemeLibrary } from '../../profile/ui/ThemeLibrary';
 import { ProfileCard } from '../../profile/ui/ProfileCard';
+import { useProgression } from '../../progression/hooks';
+import { progression } from '../../progression/store';
+import { TextField } from '../../ui/controls';
 
-type Route = 'home' | 'profile' | 'sync' | 'methods' | 'data' | 'delete' | 'support' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare' | 'profileSearch' | 'profileVisit' | 'themeLibrary' | 'profileCard';
+type Route =
+  | 'home'
+  | 'profile'
+  | 'sync'
+  | 'methods'
+  | 'data'
+  | 'delete'
+  | 'support'
+  | 'community'
+  | 'myProfile'
+  | 'profileEdit'
+  | 'profileShare'
+  | 'profileSearch'
+  | 'profileVisit'
+  | 'themeLibrary'
+  | 'profileCard'
+  | 'localProfile';
+export type AccountEntry =
+  'home' | 'data' | 'localProfile' | 'community' | 'myProfile' | 'profileEdit' | 'profileShare';
 const TITLES: Record<Route, string> = {
-  home: 'Compte', profile: 'Votre profil', sync: 'Synchronisation',
-  methods: 'Méthodes de connexion', data: 'Mes données', delete: 'Supprimer mon compte', support: 'Contacter le support', community: 'Classement communautaire',
-  myProfile: 'Mon profil', profileEdit: 'Modifier mon profil', profileShare: 'Visibilité et partage', profileSearch: 'Profils partagés', profileVisit: 'Profil',
-  themeLibrary: 'Bibliothèque de thèmes', profileCard: 'Carte de profil',
+  home: 'Compte',
+  profile: 'Votre profil',
+  sync: 'Synchronisation',
+  methods: 'Méthodes de connexion',
+  data: 'Mes données',
+  delete: 'Supprimer mon compte',
+  support: 'Contacter le support',
+  community: 'Classement communautaire',
+  myProfile: 'Mon profil',
+  profileEdit: 'Modifier mon profil',
+  profileShare: 'Visibilité et partage',
+  profileSearch: 'Profils partagés',
+  profileVisit: 'Profil',
+  themeLibrary: 'Bibliothèque de thèmes',
+  profileCard: 'Carte de profil',
+  localProfile: 'Nom du profil sportif',
 };
 
+function LocalProfile({ onDone }: { onDone: () => void }) {
+  const { data, ready, busy, message } = useProgression();
+  const [value, setValue] = useState<string>();
+  return (
+    <View style={{ gap: spacing.md }}>
+      <TextField
+        label="Nom affiché"
+        value={value ?? data.profileName ?? ''}
+        onChangeText={setValue}
+        maxLength={40}
+        editable={ready && !busy}
+      />
+      {message && (
+        <Copy accessibilityRole="alert" variant="caption">
+          {message}
+        </Copy>
+      )}
+      <Button
+        title="Enregistrer le nom"
+        disabled={!ready || busy}
+        onPress={() => {
+          void progression.saveProfileName(value ?? data.profileName ?? '').then((saved) => {
+            if (saved) onDone();
+          });
+        }}
+      />
+    </View>
+  );
+}
+
 function signOut(pending: number) {
-  const leave = (wipe: boolean) => void account.signOut().then(() => (wipe ? session.purgeLocalHistory() : undefined));
+  const leave = (wipe: boolean) =>
+    void account.signOut().then(() => (wipe ? session.purgeLocalHistory() : undefined));
   if (pending > 0) {
     // §6.7 / §7.8 : proposer de synchroniser avant de partir, sans jamais perdre de données.
-    Alert.alert('Se déconnecter ?', `${pending} élément${pending > 1 ? 's ne sont' : ' n’est'} pas encore synchronisé${pending > 1 ? 's' : ''}. ${pending > 1 ? 'Ils resteront' : 'Il restera'} sur cet appareil.`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Synchroniser maintenant', onPress: () => void syncEngine.sync('manual') },
-      { text: 'Se déconnecter quand même', style: 'destructive', onPress: () => leave(false) },
-    ]);
+    Alert.alert(
+      'Se déconnecter ?',
+      `${pending} élément${pending > 1 ? 's ne sont' : ' n’est'} pas encore synchronisé${pending > 1 ? 's' : ''}. ${pending > 1 ? 'Ils resteront' : 'Il restera'} sur cet appareil.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Synchroniser maintenant', onPress: () => void syncEngine.sync('manual') },
+        { text: 'Se déconnecter quand même', style: 'destructive', onPress: () => leave(false) },
+      ],
+    );
     return;
   }
   const body = 'Vos courses restent sur cet appareil et réapparaîtront si vous vous reconnectez à ce compte.';
-  if (Platform.OS === 'web') { confirm('Se déconnecter ?', body, 'Se déconnecter', () => leave(false)); return; }
+  if (Platform.OS === 'web') {
+    confirm('Se déconnecter ?', body, 'Se déconnecter', () => leave(false));
+    return;
+  }
   Alert.alert('Se déconnecter ?', body, [
     { text: 'Annuler', style: 'cancel' },
     { text: 'Se déconnecter', onPress: () => leave(false) },
-    { text: 'Se déconnecter et effacer les courses de cet appareil', style: 'destructive',
-      onPress: () => confirm('Effacer les courses de cet appareil ?', 'Les courses non sauvegardées en ligne seront perdues.', 'Effacer', () => leave(true), true) },
+    {
+      text: 'Se déconnecter et effacer les courses de cet appareil',
+      style: 'destructive',
+      onPress: () =>
+        confirm(
+          'Effacer les courses de cet appareil ?',
+          'Les courses non sauvegardées en ligne seront perdues.',
+          'Effacer',
+          () => leave(true),
+          true,
+        ),
+    },
   ]);
 }
 
 /** Réglages › Compte (§6.1 étape 5). */
-export function AccountSheet({ onClose, profileToken }: {
+export function AccountSheet({
+  onClose,
+  profileToken,
+  entry = 'home',
+}: {
   onClose: () => void;
   profileToken?: string | null;
+  entry?: AccountEntry;
 }) {
   const state = useAccount();
   const syncFlag = useFlag('sync_enabled');
@@ -67,15 +162,26 @@ export function AccountSheet({ onClose, profileToken }: {
   const profilesFlag = useFlag('profiles_enabled') && Platform.OS !== 'web';
   const sharingFlag = useFlag('profile_sharing_enabled');
   const sync = useSyncStatus();
-  const [route, setRoute] = useState<Route>('home');
+  const initial =
+    (entry === 'community' && !leaderboardFlag) ||
+    ((entry === 'myProfile' || entry === 'profileEdit') && !profilesFlag) ||
+    (entry === 'profileShare' && (!profilesFlag || !sharingFlag))
+      ? 'home'
+      : entry;
+  const [route, setRoute] = useState<Route>(initial);
   const [resettingDevice, setResettingDevice] = useState(false);
   const resetDevice = async () => {
     setResettingDevice(true);
     try {
-      if (!await resetDeviceForCurrentAccount()) throw new Error('reset_incomplete');
+      if (!(await resetDeviceForCurrentAccount())) throw new Error('reset_incomplete');
     } catch {
-      Alert.alert('Changement de compte interrompu', 'Terminez toute course en cours et réessayez. La synchronisation vers le nouveau compte reprendra une fois l’effacement terminé.');
-    } finally { setResettingDevice(false); }
+      Alert.alert(
+        'Changement de compte interrompu',
+        'Terminez toute course en cours et réessayez. La synchronisation vers le nouveau compte reprendra une fois l’effacement terminé.',
+      );
+    } finally {
+      setResettingDevice(false);
+    }
   };
   const [visit, setVisit] = useState<VisitTarget>({});
   useEffect(() => {
@@ -85,25 +191,76 @@ export function AccountSheet({ onClose, profileToken }: {
   }, [profileToken, profilesFlag, sharingFlag, state.status]);
   const back = () => {
     account.clearNotice();
-    setRoute(route === 'delete' ? 'data' : route === 'profileEdit' || route === 'profileShare' || route === 'themeLibrary' || route === 'profileCard' ? 'myProfile'
-      : route === 'profileSearch' ? 'profileShare' : route === 'profileVisit' ? (visit.handle || visit.token ? 'profileSearch' : 'profileShare') : 'home');
+    if (route === initial && entry !== 'home') {
+      onClose();
+      return;
+    }
+    setRoute(
+      route === 'delete'
+        ? 'data'
+        : route === 'profileEdit' ||
+            route === 'profileShare' ||
+            route === 'themeLibrary' ||
+            route === 'profileCard'
+          ? 'myProfile'
+          : route === 'profileSearch'
+            ? 'profileShare'
+            : route === 'profileVisit'
+              ? visit.handle || visit.token
+                ? 'profileSearch'
+                : 'profileShare'
+              : 'home',
+    );
   };
   const close = <IconButton icon="close" label="Fermer" onPress={onClose} quiet />;
   if (state.status !== 'signedIn') return null;
   return (
     <Screen key={route}>
-      <Header title={TITLES[route]} subtitle="Réglages" onBack={route === 'home' ? undefined : back} right={close} />
+      <Header
+        editorial
+        title={TITLES[route]}
+        onBack={route === 'home' || (route === initial && entry !== 'home') ? undefined : back}
+        right={close}
+      />
       <MaintenanceNotice />
       {route === 'support' && <SupportForm />}
-      {route === 'community' && <CommunityScreen />}
-      {route === 'myProfile' && <MyProfileScreen onEdit={() => setRoute('profileEdit')} onShare={() => setRoute('profileShare')}
-        onLibrary={() => setRoute('themeLibrary')} onCard={() => setRoute('profileCard')} />}
+      {route === 'community' && leaderboardFlag && <CommunityScreen />}
+      {route === 'myProfile' && profilesFlag && (
+        <MyProfileScreen
+          onEdit={() => setRoute('profileEdit')}
+          onShare={() => setRoute('profileShare')}
+          onLibrary={() => setRoute('themeLibrary')}
+          onCard={() => setRoute('profileCard')}
+        />
+      )}
       {route === 'themeLibrary' && <ThemeLibrary />}
       {route === 'profileCard' && <ProfileCard />}
-      {route === 'profileShare' && <ShareSettings onVisit={() => { setVisit({}); setRoute('profileVisit'); }} onSearch={() => setRoute('profileSearch')} />}
-      {route === 'profileSearch' && <ProfileSearch onOpen={(target) => { setVisit(target); setRoute('profileVisit'); }} />}
-      {route === 'profileVisit' && <ProfileVisit target={visit} onSupport={() => setRoute(supportFlag ? 'support' : 'home')} onBlocked={() => setRoute('profileSearch')} />}
-      {route === 'profileEdit' && <ProfileEditor onDone={() => setRoute('myProfile')} />}
+      {route === 'profileShare' && profilesFlag && sharingFlag && (
+        <ShareSettings
+          onVisit={() => {
+            setVisit({});
+            setRoute('profileVisit');
+          }}
+          onSearch={() => setRoute('profileSearch')}
+        />
+      )}
+      {route === 'profileSearch' && (
+        <ProfileSearch
+          onOpen={(target) => {
+            setVisit(target);
+            setRoute('profileVisit');
+          }}
+        />
+      )}
+      {route === 'profileVisit' && (
+        <ProfileVisit
+          target={visit}
+          onSupport={() => setRoute(supportFlag ? 'support' : 'home')}
+          onBlocked={() => setRoute('profileSearch')}
+        />
+      )}
+      {route === 'profileEdit' && profilesFlag && <ProfileEditor onDone={back} />}
+      {route === 'localProfile' && <LocalProfile onDone={onClose} />}
       {route === 'profile' && <ProfileForm onDone={() => setRoute('home')} />}
       {route === 'sync' && <SyncScreen />}
       {route === 'methods' && <SignInMethods />}
@@ -113,43 +270,133 @@ export function AccountSheet({ onClose, profileToken }: {
         <View style={{ gap: spacing.lg }}>
           <Panel variant="setting" style={{ gap: spacing.xs }}>
             <Copy variant="emphasis">{state.email ?? 'Compte Sprinter'}</Copy>
-            <Copy muted variant="caption">Connecté avec {state.providers.map((p) => PROVIDER_LABEL[p]).join(', ') || '—'}</Copy>
+            <Copy muted variant="caption">
+              Connecté avec {state.providers.map((p) => PROVIDER_LABEL[p]).join(', ') || '—'}
+            </Copy>
           </Panel>
           {sync.phase === 'bound_other' && (
-            <SettingsNotice icon="swap-horizontal-outline" title="Appareil lié à un autre compte"
-              body="La synchronisation attend la fin du changement de compte. Pour continuer, effacez les données locales ou annulez.">
-              <Button title={resettingDevice ? 'Effacement en cours…' : 'Effacer les données de cet appareil'} disabled={resettingDevice} danger secondary onPress={() => confirm('Effacer les données de cet appareil ?',
-                'Les courses, séances, chaussures, données de progression et parcours GPS de l’autre compte seront effacés de ce téléphone. Les données déjà sauvegardées restent dans ce compte.', 'Effacer',
-                () => void resetDevice(), true)} />
-              <Button title="Annuler" disabled={resettingDevice} variant="quiet" onPress={() => void account.signOut()} />
+            <SettingsNotice
+              icon="swap-horizontal-outline"
+              title="Appareil lié à un autre compte"
+              body="La synchronisation attend la fin du changement de compte. Pour continuer, effacez les données locales ou annulez."
+            >
+              <Button
+                title={resettingDevice ? 'Effacement en cours…' : 'Effacer les données de cet appareil'}
+                disabled={resettingDevice}
+                danger
+                secondary
+                onPress={() =>
+                  confirm(
+                    'Effacer les données de cet appareil ?',
+                    'Les courses, séances, chaussures, données de progression et parcours GPS de l’autre compte seront effacés de ce téléphone. Les données déjà sauvegardées restent dans ce compte.',
+                    'Effacer',
+                    () => void resetDevice(),
+                    true,
+                  )
+                }
+              />
+              <Button
+                title="Annuler"
+                disabled={resettingDevice}
+                variant="quiet"
+                onPress={() => void account.signOut()}
+              />
             </SettingsNotice>
           )}
           <View style={{ gap: spacing.md }}>
             <SectionHeading title="Compte" />
-            <ListRow title="Profil de compte" icon="person-circle-outline" onPress={() => setRoute('profile')}
-              subtitle={<Copy muted variant="caption">Nom affiché, pays, ville, tranche d’âge · facultatifs.</Copy>} />
+            <ListRow
+              title="Profil de compte"
+              icon="person-circle-outline"
+              onPress={() => setRoute('profile')}
+              subtitle={
+                <Copy muted variant="caption">
+                  Nom affiché, pays, ville, tranche d’âge · facultatifs.
+                </Copy>
+              }
+            />
             {profilesFlag && (
-              <ListRow title="Mon profil" icon="color-palette-outline" onPress={() => setRoute('myProfile')}
-                subtitle={<Copy muted variant="caption">Avatar, bannière, thème, statut et widgets · privé.</Copy>} />
+              <ListRow
+                title="Mon profil"
+                icon="color-palette-outline"
+                onPress={() => setRoute('myProfile')}
+                subtitle={
+                  <Copy muted variant="caption">
+                    Avatar, bannière, thème, statut et widgets · privé.
+                  </Copy>
+                }
+              />
             )}
             {syncFlag && (
-              <ListRow title="Synchronisation" icon="sync-outline" onPress={() => setRoute('sync')}
-                subtitle={<Copy muted variant="caption">{sync.backup === 'on' ? 'Sauvegarde activée' : sync.backup === 'unset' ? 'Choisir la sauvegarde des courses' : 'Sauvegarde désactivée'}{sync.pending ? ` · ${sync.pending} en attente` : ''}{sync.blocked ? ` · ${sync.blocked} en erreur` : ''}</Copy>} />
+              <ListRow
+                title="Synchronisation"
+                icon="sync-outline"
+                onPress={() => setRoute('sync')}
+                subtitle={
+                  <Copy muted variant="caption">
+                    {sync.backup === 'on'
+                      ? 'Sauvegarde activée'
+                      : sync.backup === 'unset'
+                        ? 'Choisir la sauvegarde des courses'
+                        : 'Sauvegarde désactivée'}
+                    {sync.pending ? ` · ${sync.pending} en attente` : ''}
+                    {sync.blocked ? ` · ${sync.blocked} en erreur` : ''}
+                  </Copy>
+                }
+              />
             )}
-            <ListRow title="Méthodes de connexion" icon="key-outline" onPress={() => setRoute('methods')}
-              subtitle={<Copy muted variant="caption">Apple, Google, adresse e-mail.</Copy>} />
-            <ListRow title="Mes données" icon="shield-checkmark-outline" onPress={() => setRoute('data')}
-              subtitle={<Copy muted variant="caption">Appareils, choix, export et suppression.</Copy>} />
+            <ListRow
+              title="Méthodes de connexion"
+              icon="key-outline"
+              onPress={() => setRoute('methods')}
+              subtitle={
+                <Copy muted variant="caption">
+                  Apple, Google, adresse e-mail.
+                </Copy>
+              }
+            />
+            <ListRow
+              title="Mes données"
+              icon="shield-checkmark-outline"
+              onPress={() => setRoute('data')}
+              subtitle={
+                <Copy muted variant="caption">
+                  Appareils, choix, export et suppression.
+                </Copy>
+              }
+            />
             {leaderboardFlag && (
-              <ListRow title="Classement communautaire" icon="trophy-outline" onPress={() => setRoute('community')}
-                subtitle={<Copy muted variant="caption">Facultatif, sous pseudo : ni nom, ni lieu, ni parcours.</Copy>} />
+              <ListRow
+                title="Classement communautaire"
+                icon="trophy-outline"
+                onPress={() => setRoute('community')}
+                subtitle={
+                  <Copy muted variant="caption">
+                    Facultatif, sous pseudo : ni nom, ni lieu, ni parcours.
+                  </Copy>
+                }
+              />
             )}
             {supportFlag && (
-              <ListRow title="Contacter le support" icon="chatbubbles-outline" onPress={() => setRoute('support')}
-                subtitle={<Copy muted variant="caption">Une question, un problème : réponse par e-mail.</Copy>} />
+              <ListRow
+                title="Contacter le support"
+                icon="chatbubbles-outline"
+                onPress={() => setRoute('support')}
+                subtitle={
+                  <Copy muted variant="caption">
+                    Une question, un problème : réponse par e-mail.
+                  </Copy>
+                }
+              />
             )}
           </View>
-          <Button title="Se déconnecter" icon="log-out-outline" secondary disabled={state.busy} onPress={() => signOut(sync.pending + sync.blocked)} />
+          <Button
+            title="Se déconnecter"
+            icon="log-out-outline"
+            secondary
+            disabled={state.busy}
+            onPress={() => signOut(sync.pending + sync.blocked)}
+          />
           <FormNotice message={state.notice} />
         </View>
       )}

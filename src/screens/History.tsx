@@ -22,6 +22,8 @@ import {
   type IconName,
 } from '../ui/components';
 import { RunRow } from '../ui/RunRow';
+import { ChoiceGroup } from '../ui/controls';
+import { SettingsDisclosure } from '../ui/settings';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
 import { layout, radii, spacing } from '../ui/tokens';
 
@@ -224,11 +226,15 @@ export default function History({
   const { colors } = useTheme();
   const clock = useLocalNow();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const sorted = useMemo(() => [...state.history].sort((a, b) => b.startedAt - a.startedAt), [state.history]);
-  const stats = useMemo(() => {
-    const now = Date.now();
-    return aggregate(state.history, -Infinity, now + 1, now);
-  }, [state.history, clock]);
+  const [filter, setFilter] = useState<'all' | 'trace'>('all');
+  const sorted = useMemo(
+    () =>
+      state.history
+        .filter((run) => filter === 'all' || run.points.length > 0)
+        .sort((a, b) => b.startedAt - a.startedAt),
+    [filter, state.history],
+  );
+  const stats = useMemo(() => aggregate(state.history, -Infinity, clock + 1, clock), [state.history, clock]);
   const recent = sorted.slice(0, RECENT_COUNT);
   const months = useMemo(() => {
     const groups = new Map<string, { title: string; runs: RunRecord[] }>();
@@ -252,11 +258,11 @@ export default function History({
   return (
     <Screen>
       <Header
-        title="Vos sorties"
-        subtitle="Historique & analyse"
+        title="Historique"
+        editorial
         onBack={onBack}
         right={
-          sorted.length > 0 ? (
+          state.history.length > 0 ? (
             <IconButton
               icon={state.runId ? 'arrow-forward' : 'add'}
               label={state.runId ? 'Retrouver ma course' : 'Préparer une nouvelle course'}
@@ -265,6 +271,21 @@ export default function History({
           ) : undefined
         }
       />
+      {state.history.length > 0 && (
+        <ChoiceGroup
+          value={filter}
+          label="Filtrer les sorties"
+          pills
+          choices={[
+            ['all', 'Toutes'],
+            ['trace', 'Avec tracé'],
+          ]}
+          onChange={(value) => {
+            setFilter(value);
+            setVisibleCount(PAGE_SIZE);
+          }}
+        />
+      )}
       {state.unreadableCount > 0 && (
         <Panel variant="list" style={{ gap: spacing.sm }}>
           <View style={[styles.row, { gap: spacing.sm }]}>
@@ -281,14 +302,16 @@ export default function History({
       )}
       {sorted.length > 0 ? (
         <>
-          <HistoryOverview stats={stats} count={sorted.length} />
           <View style={{ gap: spacing.md }}>
-            <SectionHeading title={recent.length === 1 ? 'Dernière sortie' : 'Dernières sorties'} />
             {recent.map((run) => (
-              <RunRow key={run.id} run={run} onPress={() => onDetail(run)} detailed />
+              <RunRow key={run.id} run={run} onPress={() => onDetail(run)} />
             ))}
           </View>
         </>
+      ) : state.history.length > 0 ? (
+        <Panel>
+          <Copy muted>Aucune sortie avec tracé GPS dans cet historique.</Copy>
+        </Panel>
       ) : (
         <HistoryEmpty
           hasRun={state.runId !== null}
@@ -296,12 +319,6 @@ export default function History({
           onStart={onStart}
         />
       )}
-      <HistoryAnalysis
-        count={sorted.length}
-        onRecords={onRecords}
-        onCompare={onCompare}
-        onProgression={onProgression}
-      />
       {months.length > 0 && (
         <View style={{ gap: spacing.lg }}>
           <SectionHeading title="Sorties précédentes" />
@@ -309,7 +326,7 @@ export default function History({
             <View key={key} style={{ gap: spacing.md }}>
               <Label>{group.title}</Label>
               {group.runs.map((run) => (
-                <RunRow key={run.id} run={run} onPress={() => onDetail(run)} detailed />
+                <RunRow key={run.id} run={run} onPress={() => onDetail(run)} />
               ))}
             </View>
           ))}
@@ -332,6 +349,17 @@ export default function History({
             />
           )}
         </View>
+      )}
+      <HistoryAnalysis
+        count={state.history.length}
+        onRecords={onRecords}
+        onCompare={onCompare}
+        onProgression={onProgression}
+      />
+      {state.history.length > 0 && (
+        <SettingsDisclosure title="Totaux de l’historique" icon="stats-chart-outline">
+          <HistoryOverview stats={stats} count={state.history.length} />
+        </SettingsDisclosure>
       )}
     </Screen>
   );

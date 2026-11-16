@@ -1,11 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Image, Pressable, View, useWindowDimensions } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { music } from './device';
 import { controlReason, selectedPlaylist } from './store';
 import { MusicState, PlayerCommand } from './types';
 import { Copy, Icon, IconName, Label, Panel, styles } from '../ui/components';
 import { useAdaptiveLayout, useTheme } from '../ui/theme';
-import { interaction, radii, spacing } from '../ui/tokens';
+import { interaction, layout, motionDuration, radii, spacing } from '../ui/tokens';
 import { playbackPresentation, playlistTitle } from './presentation';
 import { duration } from '../core/format';
 import { confirm } from '../ui/confirm';
@@ -58,16 +60,17 @@ export function SpotifyBrand({ onPress, caption }: { onPress?: () => void; capti
   );
 }
 export function Artwork({ image, size = 56 }: { image?: string | null; size?: number }) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [image]);
   // Spotify's artwork uses its original proportions and a small, permitted corner radius.
   return image && !failed ? (
-    <Image
+    <ExpoImage
       source={{ uri: image }}
       onError={() => setFailed(true)}
       style={{ width: size, height: size, borderRadius: 4 }}
-      resizeMode="contain"
+      contentFit="contain"
+      transition={reduceMotion ? 0 : motionDuration.media}
       accessibilityLabel="Pochette fournie par Spotify"
     />
   ) : (
@@ -163,18 +166,37 @@ export function PlaybackControls({ state, compact = false }: { state: MusicState
     </View>
   );
 }
-export function MusicDock({ onExpand, active = true }: { onExpand: () => void; active?: boolean }) {
+export function MusicDock({
+  onExpand,
+  active = true,
+  observe = true,
+  safe = false,
+}: {
+  onExpand: () => void;
+  active?: boolean;
+  observe?: boolean;
+  safe?: boolean;
+}) {
   const state = useMusic();
   const { colors } = useTheme();
-  useEffect(() => (active ? music.watchPlayback() : undefined), [active]);
-  const track = state.playback?.track;
-  if (!active || !track || state.status !== 'connected') return null;
+  const inset = useSafeAreaInsets();
+  useEffect(() => (active && observe ? music.watchPlayback() : undefined), [active, observe]);
+  const track = state.status === 'connected' ? state.playback?.track : undefined;
+  const playlist = selectedPlaylist(state);
+  const title = track?.title ?? (playlist && playlistTitle(playlist));
+  if (!active || !title) return null;
   return (
-    <View style={{ paddingHorizontal: spacing.md, paddingVertical: 4 }}>
+    <View
+      style={{
+        paddingHorizontal: spacing.md,
+        paddingTop: spacing.xs,
+        paddingBottom: safe ? inset.bottom + spacing.xs : spacing.xs,
+      }}
+    >
       <View
         style={{
           width: '100%',
-          maxWidth: 500,
+          maxWidth: layout.contentWidth,
           alignSelf: 'center',
           borderRadius: radii.card,
           flexDirection: 'row',
@@ -188,21 +210,25 @@ export function MusicDock({ onExpand, active = true }: { onExpand: () => void; a
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Ouvrir le lecteur Spotify, ${track.title}`}
+          accessibilityLabel={`Ouvrir le lecteur Spotify, ${title}`}
           onPress={onExpand}
           style={{ flex: 1, minWidth: 0, minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 9 }}
         >
-          <Artwork image={track.image} size={36} />
+          <Artwork image={track ? track.image : playlist?.image} size={36} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Copy variant="bodyCompact" numberOfLines={1}>
-              {track.title}
+              {title}
             </Copy>
             <Copy variant="small" muted numberOfLines={1}>
-              {track.artist}
+              {track?.artist ?? 'Playlist pour la sortie'}
             </Copy>
           </View>
         </Pressable>
-        <PlaybackControls state={state} compact />
+        {track ? (
+          <PlaybackControls state={state} compact />
+        ) : (
+          <Icon name="chevron-forward" color={colors.secondary} size={16} />
+        )}
       </View>
     </View>
   );

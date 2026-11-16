@@ -155,7 +155,7 @@ function Dashboard({
     skipped = local.data.entries.filter((e) => e.status === 'skipped').length;
   return (
     <Screen bottom={40}>
-      <Header title="Ma progression" onBack={onBack} />
+      <Header editorial title="Ma progression" onBack={onBack} />
       <Copy muted>
         Vos activités enregistrées, vos objectifs et votre organisation, entièrement sur cet appareil.
       </Copy>

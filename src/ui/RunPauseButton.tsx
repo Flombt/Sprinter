@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { Button, Copy, Icon } from './components';
 import { useTheme } from './theme';
+import { move } from './motion';
 
 export function RunPauseButton({
   paused,
@@ -24,11 +25,7 @@ export function RunPauseButton({
       iconProgress.setValue(paused ? 0 : 1);
       return;
     }
-    const animation = Animated.timing(iconProgress, {
-      toValue: paused ? 0 : 1,
-      duration: 180,
-      useNativeDriver: Platform.OS !== 'web',
-    });
+    const animation = move(iconProgress, paused ? 0 : 1, 120);
     animation.start();
     return () => animation.stop();
   }, [paused, reduceMotion, iconProgress]);
@@ -39,52 +36,60 @@ export function RunPauseButton({
       return;
     }
     labelOpacity.setValue(0.25);
-    const animation = Animated.timing(labelOpacity, {
-      toValue: 1,
-      duration: 180,
-      useNativeDriver: Platform.OS !== 'web',
-    });
+    const animation = move(labelOpacity, 1, 120);
     animation.start();
     return () => animation.stop();
   }, [title, reduceMotion, labelOpacity]);
 
   return (
-    <Button title={title} size="run" feedback="medium" disabled={disabled} onPress={onPress}>
-      <View style={styles.icons}>
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              opacity: iconProgress,
-              transform: [
-                { rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) },
-              ],
-            },
-          ]}
-        >
-          <Icon name="pause" color={colors.accentInk} size={24} />
+    <Button title={title} size="run" feedback="medium" disabled={disabled} onPress={onPress} highContrast>
+      <View style={styles.row}>
+        <Animated.View style={{ opacity: labelOpacity, flexShrink: 1 }}>
+          <Copy
+            variant="button"
+            style={{ color: disabled ? colors.muted : colors.accentInk, fontWeight: '700' }}
+          >
+            {title}
+          </Copy>
         </Animated.View>
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              opacity: Animated.subtract(1, iconProgress),
-              transform: [
-                { rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }) },
-              ],
-            },
-          ]}
-        >
-          <Icon name="play" color={colors.accentInk} size={24} />
-        </Animated.View>
+        <View style={styles.icons}>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                opacity: iconProgress,
+                transform: [
+                  {
+                    rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Icon name="pause" color={disabled ? colors.muted : colors.accentInk} size={24} />
+          </Animated.View>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                opacity: Animated.subtract(1, iconProgress),
+                transform: [
+                  {
+                    rotate: iconProgress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Icon name="play" color={disabled ? colors.muted : colors.accentInk} size={24} />
+          </Animated.View>
+        </View>
       </View>
-      <Animated.View style={{ opacity: labelOpacity, flexShrink: 1 }}>
-        <Copy variant="button" style={{ color: colors.accentInk, textAlign: 'center' }}>
-          {title}
-        </Copy>
-      </Animated.View>
     </Button>
   );
 }
 
-const styles = StyleSheet.create({ icons: { width: 24, height: 24 } });
+const styles = StyleSheet.create({
+  icons: { width: 24, height: 24 },
+  row: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+});

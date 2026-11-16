@@ -3,22 +3,22 @@ import type { TextStyle } from 'react-native';
 /** The paper surface uses the same neutrals in both modes. */
 // prettier-ignore
 const hero = {
-  heroStart: '#F2F0E9', heroEnd: '#F2F0E9',
-  heroText: '#171719', heroSecondary: '#65615C', heroDecoration: '#C3BFB6',
+  heroStart: '#F3F1E9', heroEnd: '#F3F1E9',
+  heroText: '#152724', heroSecondary: '#4E615A', heroDecoration: '#A6B8AF',
 };
 // prettier-ignore
 export const neutralPalettes = {
   light: {
-    ...hero, dark: false, background: '#F2F0E9', surface: '#FFFFFF', raised: '#E7E4DD', field: '#F7F6F2',
-    text: '#171719', secondary: '#606066', muted: '#67676F', line: '#D7D4CC', controlLine: '#8D8B87',
+    ...hero, dark: false, background: '#F3F1E9', surface: '#FBFAF6', raised: '#E7E9DF', field: '#F8F7F2',
+    text: '#152724', secondary: '#4E615A', muted: '#4E615A', line: '#D6DDD4', controlLine: '#72857B',
     switchThumb: '#FFFFFF', danger: '#AD332B', dangerSurface: '#FCEDEA',
-    glass: 'rgba(255,255,255,0.90)', scrim: 'rgba(10,16,8,0.48)', shadow: '#101A08',
+    glass: 'rgba(251,250,246,0.94)', scrim: 'rgba(5,16,12,0.60)', shadow: '#101A08',
   },
   dark: {
-    ...hero, dark: true, background: '#101011', surface: '#1B1B1E', raised: '#252528', field: '#151517',
-    text: '#FAF9F6', secondary: '#A0A0A7', muted: '#94949C', line: '#303034', controlLine: '#73737B',
+    ...hero, dark: true, background: '#101C1B', surface: '#172524', raised: '#253533', field: '#14201F',
+    text: '#F3F6ED', secondary: '#B6C8BD', muted: '#A5B9AF', line: '#334641', controlLine: '#758E83',
     switchThumb: '#FFFFFF', danger: '#FFA59F', dangerSurface: '#392522',
-    glass: 'rgba(25,25,28,0.94)', scrim: 'rgba(0,0,0,0.64)', shadow: '#000000',
+    glass: 'rgba(23,37,36,0.94)', scrim: 'rgba(0,0,0,0.70)', shadow: '#000000',
   },
 };
 export type { ThemeColors } from './palettes';
@@ -47,7 +47,7 @@ export const spacing = {
   xxxl: 32,
   section: 40,
 } as const;
-export const radii = { sm: 6, control: 12, button: 12, card: 18, hero: 20, pill: 999 } as const;
+export const radii = { sm: 6, control: 12, button: 12, card: 18, hero: 23, pill: 999 } as const;
 export const layout = {
   touch: 44,
   button: 56,
@@ -55,10 +55,18 @@ export const layout = {
   toolbarButton: 48,
   input: 52,
   multiline: 112,
-  screenGutter: 24,
-  compactGutter: 16,
+  screenGutter: 20,
+  compactGutter: 14,
   contentWidth: 560,
   tabIcon: 22,
+} as const;
+export const editorial = {
+  ink: '#FFFDF8',
+  secondary: '#C2DED2',
+  surface: '#142D28',
+  scrim: 'rgba(9,27,24,0.82)',
+  graph: '#A7DFCB',
+  instrument: '#0C1615',
 } as const;
 export const interaction = {
   pressedOpacity: 0.78,
@@ -66,6 +74,15 @@ export const interaction = {
   buttonScale: 0.97,
   pressDuration: 100,
   screenDuration: 160,
+} as const;
+export const motionDuration = {
+  tab: 150,
+  indicator: 200,
+  detail: 280,
+  sheet: 240,
+  select: 130,
+  chart: 300,
+  media: 170,
 } as const;
 export const typography = {
   condensedTitle: {
@@ -89,6 +106,30 @@ export const typography = {
     lineHeight: 48,
     fontWeight: 'normal',
     letterSpacing: -0.5,
+  },
+  editorialTitle: {
+    fontFamily: 'SprinterDisplay',
+    fontSize: 44,
+    lineHeight: 44,
+    letterSpacing: -0.7,
+  },
+  editorialSection: {
+    fontFamily: 'SprinterDisplay',
+    fontSize: 27,
+    lineHeight: 30,
+  },
+  editorialCover: {
+    fontFamily: 'SprinterDisplay',
+    fontSize: 54,
+    lineHeight: 49,
+    letterSpacing: -0.9,
+  },
+  editorialNumber: {
+    fontFamily: 'SprinterDisplay',
+    fontSize: 64,
+    lineHeight: 65,
+    letterSpacing: -0.9,
+    fontVariant: ['tabular-nums'],
   },
   display: {
     fontFamily: 'SprinterMetric',

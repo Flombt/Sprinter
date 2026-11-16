@@ -1,20 +1,36 @@
 import { memo } from 'react';
 import { Modal, Platform, View } from 'react-native';
-import type { RunRecord } from '../core/types';
 import Music from '../screens/Music';
 import RunningTools from '../screens/RunningTools';
 import Settings from '../screens/Settings';
-import Workouts from '../screens/Workouts';
-import { AccountSheet } from '../account/ui/AccountSheet';
+import { AccountSheet, type AccountEntry } from '../account/ui/AccountSheet';
 import { useSessionStructure } from '../services/useSessionSelector';
 import { useTheme } from '../ui/theme';
 
-export type Sheet = 'music' | 'player' | 'settings' | 'workouts' | 'tools' | 'account';
+export type Sheet =
+  | 'player'
+  | 'settings'
+  | 'tools'
+  | 'account'
+  | 'accountData'
+  | 'localProfile'
+  | 'myProfile'
+  | 'profileEdit'
+  | 'profileShare'
+  | 'community';
+const accountEntries: Partial<Record<Sheet, AccountEntry>> = {
+  account: 'home',
+  accountData: 'data',
+  localProfile: 'localProfile',
+  myProfile: 'myProfile',
+  profileEdit: 'profileEdit',
+  profileShare: 'profileShare',
+  community: 'community',
+};
 
 export const AppSheets = memo(function AppSheets({
   sheet,
   onClose,
-  onDetail,
   onRecovery,
   onApple,
   onPrepare,
@@ -24,7 +40,6 @@ export const AppSheets = memo(function AppSheets({
 }: {
   sheet: Sheet | null;
   onClose: () => void;
-  onDetail: (run: RunRecord) => void;
   onRecovery: () => void;
   onApple: () => void;
   onPrepare: () => void;
@@ -34,6 +49,7 @@ export const AppSheets = memo(function AppSheets({
 }) {
   const { colors, reduceMotion } = useTheme();
   const state = useSessionStructure();
+  const entry = sheet ? accountEntries[sheet] : undefined;
   return (
     <Modal
       visible={sheet !== null}
@@ -43,10 +59,10 @@ export const AppSheets = memo(function AppSheets({
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        {(sheet === 'music' || sheet === 'player') && (
+        {sheet === 'player' && (
           <Music
             key={sheet}
-            initialPlayer={sheet === 'player'}
+            initialPlayer
             onClose={onClose}
             foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
           />
@@ -61,8 +77,14 @@ export const AppSheets = memo(function AppSheets({
             onAccount={onAccount}
           />
         )}
-        {sheet === 'account' && <AccountSheet onClose={onClose} profileToken={profileToken} />}
-        {sheet === 'workouts' && <Workouts onClose={onClose} onSelected={onClose} onDetail={onDetail} />}
+        {entry && (
+          <AccountSheet
+            key={entry}
+            entry={entry}
+            onClose={onClose}
+            profileToken={sheet === 'account' ? profileToken : undefined}
+          />
+        )}
         {sheet === 'tools' && <RunningTools onBack={onClose} onPrepare={onPrepare} />}
       </View>
     </Modal>

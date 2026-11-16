@@ -23,6 +23,8 @@ const icons: Record<PaceState, IconName> = {
 };
 const cursorSize = 12;
 const paceZones = { onTarget: 'on', tooFast: 'fast', tooSlow: 'slow' } as const;
+const instrumentLabels = { onTarget: 'Dans la cible', tooFast: 'Trop rapide', tooSlow: 'Trop lent' } as const;
+const ticks = Array.from({ length: 22 }, (_, index) => index);
 
 export function PaceGauge({
   value,
@@ -33,6 +35,7 @@ export function PaceGauge({
   running,
   autoPaused,
   paper = false,
+  instrument = false,
 }: {
   value: number | null;
   target: Pick<PaceTarget, 'fast' | 'slow'> | null;
@@ -42,6 +45,7 @@ export function PaceGauge({
   running: boolean;
   autoPaused: boolean;
   paper?: boolean;
+  instrument?: boolean;
 }) {
   const { colors, lightColors, reduceMotion } = useTheme();
   const palette = paper ? lightColors : colors;
@@ -53,10 +57,13 @@ export function PaceGauge({
     ? 'Pause automatique'
     : running && quality !== 'good'
       ? QUALITY_LABELS[quality]
-      : STATE_LABELS[status];
-  const zone = status === 'onTarget' || status === 'tooFast' || status === 'tooSlow'
-    ? palette.zone[paceZones[status]]
-    : undefined;
+      : instrument && (status === 'onTarget' || status === 'tooFast' || status === 'tooSlow')
+        ? instrumentLabels[status]
+        : STATE_LABELS[status];
+  const zone =
+    status === 'onTarget' || status === 'tooFast' || status === 'tooSlow'
+      ? palette.zone[paceZones[status]]
+      : undefined;
   const textColor = zone?.text ?? palette.secondary;
   const model = target
     ? paceGaugePosition(running && quality === 'good' ? value : null, target, tolerance)
@@ -69,7 +76,7 @@ export function PaceGauge({
       return;
     }
     const toValue = Math.max(0, width - cursorSize) * cursor;
-    if (reduceMotion || !positioned.current) {
+    if (reduceMotion || instrument || !positioned.current) {
       positioned.current = true;
       translateX.setValue(toValue);
       return;
@@ -82,18 +89,26 @@ export function PaceGauge({
     });
     animation.start();
     return () => animation.stop();
-  }, [cursor, width, reduceMotion, translateX]);
+  }, [cursor, width, reduceMotion, translateX, instrument]);
 
   return (
     <View style={styles.container}>
-      {model && (
+      {model && (!instrument || cursor !== null) && (
         <View
           accessible={false}
           onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-          style={styles.rail}
+          style={[styles.rail, instrument && styles.ruler]}
         >
-          <View style={[styles.line, { backgroundColor: palette.line }]} />
-          {width > 0 && (
+          {instrument ? (
+            <View style={styles.ticks} pointerEvents="none">
+              {ticks.map((index) => (
+                <View key={index} style={[styles.tick, { backgroundColor: palette.controlLine }]} />
+              ))}
+            </View>
+          ) : (
+            <View style={[styles.line, { backgroundColor: palette.line }]} />
+          )}
+          {width > 0 && !instrument && (
             <View
               style={[
                 styles.zone,
@@ -109,6 +124,7 @@ export function PaceGauge({
             <Animated.View
               style={[
                 styles.cursor,
+                instrument && styles.rulerCursor,
                 {
                   backgroundColor: zone?.color ?? palette.secondary,
                   borderColor: palette.background,
@@ -119,7 +135,7 @@ export function PaceGauge({
           )}
         </View>
       )}
-      <View style={[styles.status, zone && { backgroundColor: zone.soft }]}>
+      <View style={[styles.status, zone && !instrument && { backgroundColor: zone.soft }]}>
         <Icon name={icons[status]} size={17} color={textColor} />
         <Copy variant="caption" accessibilityLiveRegion="polite" style={{ color: textColor, flexShrink: 1 }}>
           {label}
@@ -132,6 +148,10 @@ export function PaceGauge({
 const styles = StyleSheet.create({
   container: { gap: spacing.xs, paddingHorizontal: spacing.xl },
   rail: { height: cursorSize, justifyContent: 'center', overflow: 'hidden' },
+  ruler: { alignSelf: 'center', height: 20, width: '84%', maxWidth: 248 },
+  ticks: { flexDirection: 'row', justifyContent: 'space-between' },
+  tick: { height: 11, width: 1 },
+  rulerCursor: { left: 4, height: 20, width: 3, borderWidth: 0 },
   line: { height: spacing.xs, borderRadius: radii.pill },
   zone: { position: 'absolute', height: spacing.xs, borderRadius: radii.pill },
   cursor: {
@@ -142,7 +162,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   status: {
-    flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: spacing.sm,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radii.pill,
+    flexDirection: 'row',
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
   },
 });

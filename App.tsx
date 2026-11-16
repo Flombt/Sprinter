@@ -72,6 +72,7 @@ function AppContent() {
   const navigation = useNavigationContainerRef<RootRoutes>();
   const pendingHome = useRef(false);
   const [tab, setTab] = useState<Tab>('home');
+  const [homeRequest, setHomeRequest] = useState(0);
   const [playlistImport, setPlaylistImport] = useState<string>();
   const clearPlaylistImport = useCallback(() => setPlaylistImport(undefined), []);
   const [target, setTarget] = useState<PaceTarget>({ ...DEFAULT_EXACT_TARGET });
@@ -80,9 +81,6 @@ function AppContent() {
   const account = useAccount();
   const authenticated = isSignedIn(account);
   const userId = authenticated ? account.userId : null;
-  useEffect(() => {
-    if (!authenticated) setTab((current) => current === 'discover' ? 'home' : current);
-  }, [authenticated]);
   const config = useAppConfig();
   useEffect(() => {
     if (authenticated && profileToken && config.flags.profile_sharing_enabled) setSheet('account');
@@ -106,9 +104,17 @@ function AppContent() {
 
   const openHome = useCallback(() => {
     setTab('home');
+    setHomeRequest((value) => value + 1);
     pendingHome.current = !navigation.isReady();
     if (navigation.isReady() && navigation.canGoBack()) navigation.dispatch(StackActions.popToTop());
   }, [navigation]);
+
+  const openPendingPlaylist = useCallback(() => {
+    if (!playlistImport || !authenticated || !startup.ready || !navigation.isReady()) return;
+    if (navigation.getCurrentRoute()?.name === 'Music') return;
+    navigation.dispatch(StackActions.push('Music'));
+  }, [authenticated, navigation, playlistImport, startup.ready]);
+  useEffect(openPendingPlaylist, [openPendingPlaylist]);
 
   useEffect(() => {
     const open = (url: string | null | undefined) => {
@@ -118,10 +124,8 @@ function AppContent() {
       const playlist = playlistFromAppLink(url);
       if (playlist) {
         setPlaylistImport(playlist);
-        setTab('music');
         setSheet(null);
         pendingHome.current = false;
-        if (navigation.isReady() && navigation.canGoBack()) navigation.dispatch(StackActions.popToTop());
       }
     };
     void Linking.getInitialURL()
@@ -129,7 +133,7 @@ function AppContent() {
       .catch(() => undefined);
     const subscription = Linking.addEventListener('url', (event) => open(event.url));
     return () => subscription.remove();
-  }, [navigation, openHome]);
+  }, [openHome]);
 
   const openRecovery = useCallback(() => navigation.navigate('Recovery'), [navigation]);
   const runStart = useRunStart(openHome, openRecovery);
@@ -180,8 +184,10 @@ function AppContent() {
               userId={userId}
               onReady={() => {
                 if (pendingHome.current) openHome();
+                openPendingPlaylist();
               }}
               tab={tab}
+              homeRequest={homeRequest}
               onTabChange={setTab}
               playlistImport={playlistImport}
               onPlaylistImportRead={clearPlaylistImport}
@@ -219,10 +225,6 @@ function AppContent() {
               setSheet(null);
               setProfileToken(null);
             }}
-            onDetail={(run) => {
-              setSheet(null);
-              navigation.dispatch(StackActions.push('Detail', { runId: run.id }));
-            }}
             onRecovery={() => {
               setSheet(null);
               navigation.navigate('Recovery');
@@ -233,7 +235,8 @@ function AppContent() {
             }}
             onPrepare={() => {
               setSheet(null);
-              if (!session.getSnapshot().run) navigation.navigate('Preparation');
+              if (!session.getSnapshot().run && navigation.getCurrentRoute()?.name !== 'Preparation')
+                navigation.navigate('Preparation');
             }}
             onTools={() => setSheet('tools')}
             onAccount={() => setSheet('account')}

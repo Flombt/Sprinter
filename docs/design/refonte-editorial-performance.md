@@ -2,9 +2,9 @@
 
 [Prototype hors ligne](prototype/index.html) · [Maquettes](prototype/index.html#maquettes) · [Comparaison avant / après](prototype/index.html#comparatif) · [Aperçu des écrans](prototype/captures/apercu.webp) · [Interface actuelle](interface.md)
 
-Ouvrir `docs/design/prototype/index.html` dans un navigateur depuis le dépôt. Les commandes à gauche ouvrent directement les maquettes. Les onglets, boutons, feuilles et retours du téléphone permettent de les parcourir comme une application. À droite, les scénarios changent l’état de départ. Le prototype simule le compte, la course, le catalogue et Spotify. Le code natif et le binaire iOS répondent au parcours décrit dans la fiche de l’interface actuelle.
+Ouvrir `docs/design/prototype/index.html` dans un navigateur depuis le dépôt. Les commandes à gauche ouvrent directement les maquettes. Les onglets, boutons, feuilles et retours du téléphone permettent de les parcourir comme une application. À droite, les scénarios changent l’état de départ. Le prototype simule le compte, la course, le catalogue et Spotify. La direction A est intégrée à l’application React Native : voir l’[interface actuelle](interface.md) et les [preuves de validation](../quality/validation.md#intégration-editorial-coast--16-novembre-2026).
 
-## Audit de l’existant
+## Audit avant intégration
 
 Relevé du 15 novembre 2026 sur `b311a01`. Les captures **Avant** viennent de l’export web du dépôt exécuté dans Edge à 390 × 844 CSS et 2×, en thème sombre. Le compte est synthétique. Le serveur local restitue l’instantané public de Découvrir et le compte n’a ni sortie ni playlist. Les captures **Après** reprennent la taille, le thème, la cible de 5:00/km et l’état correspondant. La barre système de l’iPhone est dessinée dans la maquette. Le fond de carte web diffère du fournisseur natif.
 
@@ -32,7 +32,7 @@ Les sept paires couvrent Courir, Préparer, le début d’une course, Découvrir
 | **B · Night Pace**      | Ardoise bleue et image plus haute. Le panneau Découvrir utilise une vue régionale de Villefranche créditée. Le départ ressort davantage avec l’accent clair.                          | L’image consomme plus d’espace et le contraste ressenti dépend de la luminosité extérieure. Garder ce registre comme piste d’ambiance.          |
 | **C · Editorial Sport** | Couverture de piste, titre en capitales, cartouche presque carré avec un filet terre cuite. Découvrir conserve le lieu de la course et reprend le cartouche.                          | La composition met l’accent sur l’effort. La couleur terre cuite reste une couleur d’édition, les zones du coach conservent leur sens.          |
 
-**Proposition à valider**. Editorial Coast pour les destinations, clair et sombre, avec une surface instrumentale à contraste renforcé pendant la course. La photographie inspire l’avant-course et l’exploration. Le tracé enregistré devient le visuel du bilan et de l’historique.
+**Direction A retenue**. Editorial Coast pour les destinations, clair et sombre, avec une surface instrumentale à contraste renforcé pendant la course. La photographie inspire l’avant-course et l’exploration. Le tracé enregistré devient le visuel du bilan et de l’historique.
 
 ### Lecture des références
 

@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   DarkTheme,
   DefaultTheme,
   NavigationContainer,
+  useIsFocused,
+  useNavigation,
   type NavigationContainerRefWithCurrent,
 } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,16 +25,42 @@ import Progression from '../screens/Progression';
 import Recovery from '../screens/Recovery';
 import RunSummary from '../screens/RunSummary';
 import Workouts from '../screens/Workouts';
+import Music from '../screens/Music';
+import RunStats from '../screens/RunStats';
+import { RoutePreview } from '../screens/LiveRun';
 import { Shoes } from '../progression/Shoes';
-import { useSessionStructure } from '../services/useSessionSelector';
+import { useLiveSession, useSessionStructure } from '../services/useSessionSelector';
 import { session } from '../services/session';
 import { EmptyState, Header, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
+import { motionDuration } from '../ui/tokens';
 import type { Sheet } from './AppSheets';
 import { RunTabs, type Tab } from './RunTabs';
 import { resolveRun, type RootRoutes } from './routes';
 
 const Stack = createNativeStackNavigator<RootRoutes>();
+
+function RunStatsRoute({
+  covered,
+  ...props
+}: Omit<React.ComponentProps<typeof RunStats>, 'active' | 'state'> & { covered: boolean }) {
+  const focused = useIsFocused() && !covered;
+  const state = useLiveSession(focused);
+  return <RunStats {...props} active={focused} state={state} />;
+}
+
+function MusicRoute({
+  covered,
+  ...props
+}: Omit<React.ComponentProps<typeof Music>, 'active' | 'onNestedChange'> & { covered: boolean }) {
+  const active = useIsFocused() && !covered;
+  const navigation = useNavigation<NativeStackNavigationProp<RootRoutes, 'Music'>>();
+  const onNestedChange = useCallback(
+    (nested: boolean) => navigation.setOptions({ gestureEnabled: !nested }),
+    [navigation],
+  );
+  return <Music {...props} active={active} onNestedChange={onNestedChange} />;
+}
 
 function RunDetailRoute({
   runId,
@@ -67,6 +95,7 @@ function RunDetailRoute({
         history={history}
         onBack={navigation.goBack}
         onDetail={() => navigation.push('Detail', { runId })}
+        onHistory={() => navigation.replace('History')}
       />
     );
   }
@@ -89,6 +118,7 @@ export function RootStack({
   userId,
   onReady,
   tab,
+  homeRequest,
   onTabChange,
   playlistImport,
   onPlaylistImportRead,
@@ -105,6 +135,7 @@ export function RootStack({
   userId: string;
   onReady: () => void;
   tab: Tab;
+  homeRequest: number;
   onTabChange: (tab: Tab) => void;
   playlistImport?: string;
   onPlaylistImportRead: () => void;
@@ -123,6 +154,7 @@ export function RootStack({
     const snapshot = session.getSnapshot();
     return !snapshot.run && !snapshot.busy && !starting;
   };
+  const detailTransition = reduceMotion ? 'none' : Platform.OS === 'ios' ? 'simple_push' : 'fade';
   const base = colors.dark ? DarkTheme : DefaultTheme;
   const theme = useMemo(
     () => ({
@@ -156,18 +188,20 @@ export function RootStack({
             <RunTabs
               state={state}
               tab={tab}
+              homeRequest={homeRequest}
               onTabChange={onTabChange}
-              playlistImport={playlistImport}
-              onPlaylistImportRead={onPlaylistImportRead}
               target={target}
-              onTargetChange={onTargetChange}
               starting={starting}
               covered={covered}
               onStart={() => onStart(target)}
               onRecover={() => navigation.push('Recovery')}
-              onPrepare={() => navigation.push('Preparation')}
+              onPrepare={() => {
+                if (canPrepare()) navigation.push('Preparation');
+              }}
+              onWorkouts={() => {
+                if (canPrepare()) navigation.push('Workouts');
+              }}
               onDiscoveryDetail={(id) => navigation.push('DiscoveryDetail', { id })}
-              onHistory={() => navigation.push('History')}
               statsNavigation={{
                 onHistory: () => navigation.push('History'),
                 onDetail: (run) => navigation.push('Detail', { runId: run.id }),
@@ -175,10 +209,11 @@ export function RootStack({
                 onRecords: () => navigation.push('Records'),
                 onProgression: () => navigation.push('Progression'),
                 onShoes: () => navigation.push('Shoes'),
+                onCompare: () => navigation.push('Comparison'),
               }}
-              onSettings={() => onOpenSheet('settings')}
-              onMusic={() => onOpenSheet('music')}
-              onPlayer={() => onOpenSheet('player')}
+              onRunStats={() => navigation.push('RunStats')}
+              onOpenSheet={onOpenSheet}
+              onMusic={() => navigation.push('Music')}
               onFinish={onFinish}
               onConfirmFinish={onConfirmFinish}
             />
@@ -195,13 +230,64 @@ export function RootStack({
               onStart={onStart}
               starting={starting}
               covered={covered}
-              onMusic={() => onOpenSheet('music')}
-              onWorkouts={() => onOpenSheet('workouts')}
+              onMusic={() => navigation.push('Music')}
+              onWorkouts={() => navigation.push('Workouts', { returnToPreparation: true })}
               onTools={() => onOpenSheet('tools')}
+              onMap={() => navigation.push('RoutePreview')}
+              onSettings={() => onOpenSheet('settings')}
             />
           )}
         </Stack.Screen>
-        <Stack.Screen name="DiscoveryDetail">
+        <Stack.Screen name="RoutePreview">
+          {({ navigation }) => <RoutePreview onBack={navigation.goBack} />}
+        </Stack.Screen>
+        <Stack.Screen name="Workouts">
+          {({ navigation, route }) => (
+            <Workouts
+              onClose={navigation.goBack}
+              onSelected={() => {
+                if (!canPrepare() || route.params?.returnToPreparation) navigation.goBack();
+                else navigation.replace('Preparation');
+              }}
+              onDetail={(run) => navigation.push('Detail', { runId: run.id })}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="Music"
+          options={{ animation: detailTransition, animationDuration: motionDuration.sheet }}
+        >
+          {({ navigation }) => (
+            <MusicRoute
+              covered={covered}
+              onClose={navigation.goBack}
+              foregroundOnlyRun={(state.running || state.autoPaused) && !state.backgroundActive}
+              playlistImport={playlistImport}
+              onPlaylistImportRead={onPlaylistImportRead}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="RunStats">
+          {({ navigation }) => (
+            <RunStatsRoute
+              covered={covered}
+              target={target}
+              onTargetChange={onTargetChange}
+              onPrepare={() => {
+                if (canPrepare()) navigation.push('Preparation');
+              }}
+              onSettings={() => onOpenSheet('settings')}
+              onMusic={() => navigation.push('Music')}
+              onFinish={onFinish}
+              onConfirmFinish={onConfirmFinish}
+              onBack={navigation.goBack}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="DiscoveryDetail"
+          options={{ animation: detailTransition, animationDuration: motionDuration.detail }}
+        >
           {({ navigation, route }) => (
             <DiscoveryDetail
               id={route.params.id}

@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import {
-  Animated,
-  BackHandler,
-  PanResponder,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Animated, BackHandler, PanResponder, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Copy, IconButton } from './components';
 import { useTheme } from './theme';
-import { layout, radii, spacing } from './tokens';
+import { layout, motionDuration, radii, spacing } from './tokens';
+import { move } from './motion';
 
 export function Sheet({
   title,
@@ -23,7 +15,7 @@ export function Sheet({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const { colors, reduceMotion } = useTheme();
+  const { colors, reduceMotion, reduceTransparency } = useTheme();
   const { bottom } = useSafeAreaInsets();
   const [expanded, setExpanded] = useState(false);
   const offset = useRef(new Animated.Value(reduceMotion ? 0 : 32)).current;
@@ -35,11 +27,9 @@ export function Sheet({
         done?.();
         return;
       }
-      Animated.timing(offset, { toValue, duration: 180, useNativeDriver: Platform.OS !== 'web' }).start(
-        (result) => {
-          if (result.finished) done?.();
-        },
-      );
+      move(offset, toValue, toValue ? motionDuration.tab : motionDuration.sheet).start((result) => {
+        if (result.finished) done?.();
+      });
     },
     [offset, reduceMotion],
   );
@@ -85,7 +75,10 @@ export function Sheet({
         accessibilityRole="button"
         accessibilityLabel={'Fermer ' + title}
         onPress={close}
-        style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: reduceTransparency ? colors.shadow : colors.scrim },
+        ]}
       />
       <Animated.View
         accessibilityViewIsModal

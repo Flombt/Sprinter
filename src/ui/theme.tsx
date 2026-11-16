@@ -8,6 +8,7 @@ type DevPalette = { name: PaletteName; select: (name: PaletteName) => void };
 type ThemeValue = {
   colors: ThemeColors;
   lightColors: ThemeColors;
+  instrumentColors: ThemeColors;
   reduceMotion: boolean;
   reduceTransparency: boolean;
   devPalette?: DevPalette;
@@ -18,6 +19,7 @@ export const defaultPalettes = buildPalettes(ACTIVE_PALETTE);
 const ThemeContext = createContext<ThemeValue>({
   colors: defaultPalettes.dark,
   lightColors: defaultPalettes.light,
+  instrumentColors: defaultPalettes.instrument,
   reduceMotion: false,
   reduceTransparency: false,
 });
@@ -65,19 +67,28 @@ function ResolvedThemeProvider({
     };
   }, []);
   const name = devPalette?.name ?? ACTIVE_PALETTE;
-  const palettes = useMemo(
-    () => name === ACTIVE_PALETTE ? defaultPalettes : buildPalettes(name),
-    [name],
-  );
+  const palettes = useMemo(() => (name === ACTIVE_PALETTE ? defaultPalettes : buildPalettes(name)), [name]);
   const dark = appearance === 'system' ? system === 'dark' : appearance === 'dark';
   const colors = dark ? palettes.dark : palettes.light;
   const value = useMemo(
-    () => ({ colors, lightColors: palettes.light, reduceMotion, reduceTransparency, devPalette }),
-    [colors, palettes.light, reduceMotion, reduceTransparency, devPalette],
+    () => ({
+      colors,
+      lightColors: palettes.light,
+      instrumentColors: palettes.instrument,
+      reduceMotion,
+      reduceTransparency,
+      devPalette,
+    }),
+    [colors, palettes.light, palettes.instrument, reduceMotion, reduceTransparency, devPalette],
   );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 export const useTheme = () => useContext(ThemeContext);
+export function InstrumentTheme({ children }: { children: React.ReactNode }) {
+  const theme = useTheme();
+  const value = useMemo(() => ({ ...theme, colors: theme.instrumentColors }), [theme]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
 export function useAdaptiveLayout() {
   const { width, fontScale } = useWindowDimensions();
   return { width, fontScale, largeText: fontScale >= 1.3, compact: width < 375 };

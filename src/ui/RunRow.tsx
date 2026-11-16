@@ -1,82 +1,91 @@
-import { useMemo } from 'react';
-import { View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { RunRecord } from '../core/types';
 import { averagePace, duration, km, pace, runDate } from '../core/format';
 import { CHALLENGE_STATUS } from '../workouts/types';
-import { Copy, ListRow } from './components';
-import { RunnerGlyph } from './brand';
-import { useTheme } from './theme';
-import { spacing } from './tokens';
+import { Copy, Icon, Label } from './components';
+import { paceReadout } from './editorial';
+import { RouteTrace } from './RouteTrace';
+import { useAdaptiveLayout, useTheme } from './theme';
+import { interaction, radii, spacing } from './tokens';
 
 export function RunRow({
   run,
   onPress,
-  detailed = false,
+  compact = false,
 }: {
   run: RunRecord;
   onPress: () => void;
-  detailed?: boolean;
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
-  const date = useMemo(() => {
-    if (!detailed) return '';
-    const started = new Date(run.startedAt);
-    return Number.isFinite(started.getTime())
-      ? started.toLocaleString('fr-FR', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : 'Date indisponible';
-  }, [detailed, run.startedAt]);
-  const average = pace(averagePace(run));
+  const { largeText } = useAdaptiveLayout();
+  const split = compact && !largeText;
+  const date = runDate(run.startedAt);
+  const name = run.workout?.definition.name ?? 'Sortie du ' + date;
+  const average = paceReadout(pace(averagePace(run)));
+  const performance = km(run.distanceMeters) + ' km · ' + duration(run.activeSeconds);
+  const paceLabel = average === '—' ? 'Allure indisponible' : average + ' /km';
   return (
-    <ListRow
-      icon={<RunnerGlyph size={22} color={colors.accentText} />}
-      title={`${km(run.distanceMeters)} km`}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[
+        name,
+        performance,
+        paceLabel,
+        run.points.length ? 'Tracé GPS disponible' : 'Aucun tracé GPS',
+      ].join(', ')}
       onPress={onPress}
-      label={
-        detailed
-          ? `Course du ${date}, ${km(run.distanceMeters)} kilomètres, ${duration(run.activeSeconds)} de temps actif, ` +
-            (average === '—' ? 'allure moyenne indisponible' : `allure moyenne ${average} par kilomètre`)
-          : `Course du ${runDate(run.startedAt)}, ${km(run.distanceMeters)} kilomètres, ` +
-            `${duration(run.activeSeconds)}, allure ${average} par kilomètre`
-      }
-      subtitle={
-        <View style={{ gap: spacing.xs }}>
-          <Copy variant="caption" muted>
-            {detailed ? date : `${runDate(run.startedAt)} · ${duration(run.activeSeconds)}`}
+      style={({ pressed }) => [
+        styles.card,
+        split && styles.split,
+        {
+          borderColor: colors.line,
+          backgroundColor: colors.surface,
+          opacity: pressed ? interaction.pressedOpacity : 1,
+        },
+      ]}
+    >
+      {(!compact || !largeText) && (
+        <View style={split ? styles.preview : undefined}>
+          <RouteTrace points={run.points} height={split ? 96 : 105} />
+        </View>
+      )}
+      <View style={styles.details}>
+        <View style={styles.copy}>
+          <Label numberOfLines={largeText ? undefined : 1}>{date}</Label>
+          <Copy variant="emphasis">{name}</Copy>
+          <Copy muted variant="caption">
+            {performance}
+            {!compact && average !== '—' ? ' · ' + paceLabel : ''}
           </Copy>
-          {detailed && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
-              <Copy variant="caption">Actif · {duration(run.activeSeconds)}</Copy>
-              <Copy variant="caption">{average} /km</Copy>
-            </View>
-          )}
           {run.healthKit && (
-            <Copy variant="small" muted>
+            <Copy muted variant="small">
               Santé · {run.healthKit.sourceName}
             </Copy>
           )}
-          {run.workout && (
-            <Copy variant="small" muted>
-              {run.workout.definition.name} · {CHALLENGE_STATUS[run.workout.challengeStatus]}
+          {run.workout && !compact && (
+            <Copy muted variant="small">
+              {CHALLENGE_STATUS[run.workout.challengeStatus]}
             </Copy>
           )}
         </View>
-      }
-      trailing={
-        detailed ? undefined : (
-          <View style={{ gap: spacing.xs }}>
-            <Copy variant="emphasis">{average}</Copy>
-            <Copy variant="small" muted>
-              /km
-            </Copy>
-          </View>
-        )
-      }
-    />
+        <Icon name="chevron-forward" size={17} color={colors.accentText} />
+      </View>
+    </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  card: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderRadius: radii.card },
+  split: { flexDirection: 'row', alignItems: 'center' },
+  preview: { width: '31%', alignSelf: 'center' },
+  details: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  copy: { flex: 1, minWidth: 0, gap: spacing.xs },
+});

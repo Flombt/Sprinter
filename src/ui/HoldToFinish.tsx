@@ -4,7 +4,6 @@ import { Copy, Icon } from './components';
 import { haptic } from './haptics';
 import { useTheme } from './theme';
 import { interaction, radii, spacing } from './tokens';
-import { GlassSurface } from './GlassSurface';
 
 const holdDuration = 1000;
 const finishAction = [{ name: 'activate', label: 'Confirmer la fin de la course' }];
@@ -87,7 +86,7 @@ export function HoldToFinish({
       {...keyboard}
       accessibilityRole="button"
       accessibilityLabel="Terminer la course"
-      accessibilityHint="Maintenez pour enregistrer votre sortie. Avec VoiceOver, activez pour confirmer."
+      accessibilityHint="Maintenez pour enregistrer votre sortie ou touchez pour confirmer."
       accessibilityState={{ disabled }}
       accessibilityActions={finishAction}
       onAccessibilityAction={(event) => {
@@ -96,18 +95,19 @@ export function HoldToFinish({
       disabled={disabled}
       delayLongPress={holdDuration}
       onPressIn={startHold}
+      onPress={() => {
+        if (!finishIssued.current) onConfirm();
+      }}
       onLongPress={validate}
       onPressOut={release}
       style={[
         styles.button,
         {
           backgroundColor: disabled ? colors.raised : 'transparent',
-          borderColor: colors.line,
           opacity: disabled ? interaction.disabledOpacity : 1,
         },
       ]}
     >
-      {!disabled && <GlassSurface radius={radii.button} color={colors.raised} />}
       <Animated.View
         pointerEvents="none"
         accessible={false}
@@ -120,10 +120,10 @@ export function HoldToFinish({
           },
         ]}
       />
-      <Icon name="stop-outline" size={19} color={colors.text} />
-      <Copy variant="caption" style={{ flexShrink: 1 }}>
-        Maintenez pour terminer
+      <Copy variant="emphasis" style={{ flexShrink: 1 }}>
+        Terminer
       </Copy>
+      <Icon name="stop" size={17} color={colors.text} />
     </Pressable>
   );
 }
@@ -137,7 +137,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.sm,
     borderRadius: radii.button,
-    borderWidth: 1,
     overflow: 'hidden',
   },
 });

@@ -85,7 +85,7 @@ export function TrackSheet({
     return (
       <ScreenEntrance>
         <View style={[page, { flex: 1, gap: spacing.md }]}>
-          <Header title={title} subtitle="Lecteur Spotify" onBack={() => setPreview(false)} />
+          <Header editorial title={title} subtitle="Lecteur Spotify" onBack={() => setPreview(false)} />
           <PlaylistEmbed id={playlist.id} title={title} />
           <Button
             variant="quiet"
@@ -115,7 +115,7 @@ export function TrackSheet({
       <View style={{ alignItems: 'center', paddingVertical: spacing.sm }}>
         <Artwork image={playlist.image} size={Math.min(216, Math.max(138, width * 0.54))} />
       </View>
-      <Copy variant="condensedTitle" accessibilityRole="header">
+      <Copy variant="editorialTitle" accessibilityRole="header">
         {title}
       </Copy>
       {!!details && (

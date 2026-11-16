@@ -1,7 +1,6 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { Pressable, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PaceTarget } from '../core/types';
 import { duration, estimatedDuration, km, pace, targetLabel, validateTarget } from '../core/format';
 import { preparationTarget, type DiscoveryPreparation } from '../discovery/trainingLink';
@@ -13,25 +12,17 @@ import { progression } from '../progression/store';
 import { CAN_BACKGROUND } from '../services/capabilities';
 import { session } from '../services/session';
 import type { SessionStructure } from '../services/useSessionSelector';
-import { MusicSelection } from '../spotify/components';
+import { MusicSelection, useMusic } from '../spotify/components';
+import { selectedPlaylist } from '../spotify/store';
+import { playlistTitle } from '../spotify/presentation';
 import { RhythmTools, SelectedRoute, WeatherPanel, useTools } from '../tools/components';
-import {
-  Button,
-  Copy,
-  Header,
-  Label,
-  ListRow,
-  NumericReadout,
-  Panel,
-  Screen,
-  styles,
-} from '../ui/components';
+import { Button, Copy, Header, Label, NumericReadout, Panel, Screen } from '../ui/components';
 import { ChoiceGroup, Input, Picker, Toggle } from '../ui/controls';
 import { PaceStepper } from '../ui/PaceStepper';
-import { SettingsDisclosure } from '../ui/settings';
+import { DetailRow, paceReadout } from '../ui/editorial';
 import { Sheet } from '../ui/Sheet';
 import { useTheme } from '../ui/theme';
-import { interaction, spacing } from '../ui/tokens';
+import { editorial, interaction, radii, spacing } from '../ui/tokens';
 import { useMapPosition } from '../ui/useMapPosition';
 import { validateWorkout } from '../workouts/definition';
 import { workouts } from '../workouts/store';
@@ -50,6 +41,8 @@ const paneTitles = {
   workout: 'Séance',
   music: 'Musique',
   shoes: 'Chaussures',
+  route: 'Parcours',
+  advanced: 'Réglages avancés',
 };
 type Pane = keyof typeof paneTitles;
 
@@ -99,6 +92,8 @@ export default function Preparation({
   onMusic,
   onWorkouts,
   onTools,
+  onMap,
+  onSettings,
 }: {
   state: SessionStructure;
   discovery?: DiscoveryPreparation;
@@ -111,12 +106,14 @@ export default function Preparation({
   onMusic: () => void;
   onWorkouts: () => void;
   onTools: () => void;
+  onMap: () => void;
+  onSettings: () => void;
 }) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const focused = useIsFocused();
-  const [footerHeight, setFooterHeight] = useState(110);
-  const [draft, setDraft] = useState(() => discovery ? preparationTarget(initialTarget, discovery) : undefined);
+  const [draft, setDraft] = useState(() =>
+    discovery ? preparationTarget(initialTarget, discovery) : undefined,
+  );
   const target = draft ?? initialTarget;
   const [precise, setPrecise] = useState(target.fast === target.slow);
   const [custom, setCustom] = useState(
@@ -132,6 +129,7 @@ export default function Preparation({
   }, []);
 
   const library = useSyncExternalStore(workouts.subscribe, workouts.getSnapshot, workouts.getSnapshot);
+  const playlist = selectedPlaylist(useMusic());
   const tools = useTools();
   const referenceRoute = tools.routes.find((route) => route.id === tools.preferences.selectedRouteId);
   const progress = useProgression();
@@ -199,134 +197,141 @@ export default function Preparation({
         accessibilityElementsHidden={pane !== null}
         importantForAccessibility={pane ? 'no-hide-descendants' : 'auto'}
       >
-        <Screen bottom={Math.max(spacing.xxl, footerHeight - insets.bottom + spacing.lg)}>
-          <Header title="Prêt à partir" onBack={onBack} />
-          {!state.runId && (
-            <View style={{ gap: spacing.sm }}>
-              <Copy variant="caption" muted accessibilityLiveRegion="polite">
-                {gpsLabel}
+        <Screen
+          gap={spacing.md}
+          footer={
+            <>
+              {preview.status === 'denied' && (
+                <Copy variant="caption" muted>
+                  Autorisation GPS requise.
+                </Copy>
+              )}
+              <Button
+                title={
+                  state.busy
+                    ? 'Préparation du GPS…'
+                    : starting
+                      ? 'Départ en cours…'
+                      : state.runId
+                        ? 'Retrouver ma course'
+                        : 'Démarrer'
+                }
+                endIcon="play"
+                onPress={() => onStart(target)}
+                disabled={(!state.runId && !!error) || state.busy || starting}
+              />
+            </>
+          }
+        >
+          <Header title="Préparer" onBack={onBack} editorial />
+          {discovery && (
+            <Panel variant="setting" style={{ backgroundColor: colors.accentSoft }}>
+              <Label>Objectif Découvrir</Label>
+              <Copy variant="emphasis">{discovery.name}</Copy>
+            </Panel>
+          )}
+          <View
+            style={{
+              backgroundColor: editorial.surface,
+              borderRadius: radii.card,
+              padding: spacing.lg,
+              minHeight: 142,
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+              gap: spacing.md,
+            }}
+          >
+            <View style={{ flexShrink: 1, minWidth: 0, gap: spacing.xs }}>
+              <Label style={{ color: editorial.secondary }}>
+                {selected ? 'Allures de la séance' : 'Allure cible'}
+              </Label>
+              <Copy variant={selected ? 'heading' : 'editorialNumber'} style={{ color: editorial.ink }}>
+                {selected?.name ?? paceReadout(targetLabel(target))}
+                {!selected && (
+                  <Copy variant="body" style={{ color: editorial.ink }}>
+                    {' '}
+                    /km
+                  </Copy>
+                )}
               </Copy>
-              {preview.status !== 'ready' && (
-                <Button
-                  title="Actualiser la position"
-                  icon="locate-outline"
-                  variant="quiet"
-                  disabled={preview.status === 'locating' || starting}
-                  onPress={() => void preview.locate(true)}
-                />
+              {!selected && (
+                <Copy variant="caption" style={{ color: editorial.secondary }}>
+                  {target.finishSeconds != null
+                    ? 'Objectif de temps'
+                    : target.kilometerTargets
+                      ? 'Allure par kilomètre'
+                      : precise
+                        ? 'Allure précise'
+                        : 'Plage d’allure'}
+                </Copy>
               )}
             </View>
-          )}
-          <View style={[styles.row, { flexWrap: 'wrap', gap: spacing.sm }]}>
             <Button
-              title="Allure"
-              icon="speedometer-outline"
-              variant="secondary"
-              onPress={() => setPane('pace')}
-            />
-            <Button
-              title="Distance"
-              icon="flag-outline"
-              variant="secondary"
-              onPress={() => setPane('distance')}
-            />
-            <Button
-              title="Séance"
-              icon="fitness-outline"
-              variant="secondary"
-              onPress={() => setPane('workout')}
-            />
-            <Button
-              title="Musique"
-              icon="musical-notes-outline"
-              variant="secondary"
-              onPress={() => setPane('music')}
+              title="Modifier"
+              style={{ alignSelf: 'flex-start' }}
+              onDark
+              size="compact"
+              secondary
+              onPress={() => setPane(selected ? 'workout' : 'pace')}
             />
           </View>
-          <Copy muted variant="caption">
-            {selected?.name ?? targetLabel(target) + ' /km'}
-            {target.distanceMeters !== null && !selected ? ' · ' + km(target.distanceMeters, 1) + ' km' : ''}
-          </Copy>
+          <View>
+            <DetailRow
+              title="Distance"
+              detail={
+                selected
+                  ? 'Définie par la séance'
+                  : target.distanceMeters === null
+                    ? 'Libre'
+                    : km(target.distanceMeters, 2).replace(/,00$/, '') + ' km'
+              }
+              icon="flag-outline"
+              onPress={() => setPane('distance')}
+            />
+            <DetailRow
+              title="Séance"
+              detail={selected?.name ?? 'Course libre'}
+              icon="layers-outline"
+              onPress={() => setPane('workout')}
+            />
+            <DetailRow
+              title="Musique"
+              detail={playlist ? playlistTitle(playlist) : 'Aucune playlist'}
+              icon="musical-notes-outline"
+              onPress={() => setPane('music')}
+            />
+            <DetailRow
+              title="Parcours"
+              detail={referenceRoute?.name ?? 'Sans itinéraire'}
+              icon="map-outline"
+              onPress={() => setPane('route')}
+              rule={false}
+            />
+          </View>
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: colors.line,
+              borderRadius: radii.control,
+              paddingHorizontal: spacing.sm,
+            }}
+          >
+            <DetailRow
+              title="Réglages avancés"
+              detail={shoe ? 'Coach, GPS · ' + shoe.name : 'Coach, chaussures et GPS'}
+              icon="options-outline"
+              onPress={() => setPane('advanced')}
+              rule={false}
+            />
+          </View>
           {error && (
             <Copy accessibilityRole="alert" style={{ color: colors.danger }}>
               {error}
             </Copy>
           )}
-          <SettingsDisclosure title="Plus d’options" icon="options-outline">
-            {progress.ready && (
-              <ListRow
-                title="Chaussures"
-                icon="footsteps-outline"
-                subtitle={
-                  <Copy muted variant="caption">
-                    {shoe?.name ?? 'Non attribuées'}
-                  </Copy>
-                }
-                onPress={() => setPane('shoes')}
-              />
-            )}
-            {progress.message && (
-              <Copy muted variant="caption">
-                {progress.message}
-              </Copy>
-            )}
-            <SelectedRoute onChoose={onTools} running={!!state.runId} />
-            <RhythmTools compact />
-            <WeatherPanel route={referenceRoute} />
-            <Toggle
-              title="Signaux audio"
-              body="Deux sons pour reconnaître l’écart."
-              value={state.settings.audioEnabled}
-              onChange={(audioEnabled) => void session.updateSettings({ audioEnabled })}
-            />
-            <Toggle
-              title="Pause automatique aux arrêts"
-              body="Le GPS reste actif pour détecter la reprise."
-              value={state.settings.autoPauseEnabled === true}
-              disabled={!!state.runId}
-              onChange={(autoPauseEnabled) => void session.updateSettings({ autoPauseEnabled })}
-            />
-            <Copy muted variant="caption">
-              {CAN_BACKGROUND && state.settings.backgroundEnabled
-                ? 'Suivi écran verrouillé activé. Les alertes en arrière-plan utilisent les signaux audio.'
-                : 'Gardez Sprinter à l’écran pendant la course. Le suivi écran verrouillé exige une version installée.'}
-            </Copy>
-          </SettingsDisclosure>
-          <Copy muted variant="small">
-            {selected
-              ? 'Une fin de séance ou un défi perdu ne termine pas votre course.'
-              : 'Les alertes respectent le lissage, la confirmation et l’espacement configurés.'}
-          </Copy>
         </Screen>
-        <View
-          onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: colors.background,
-            padding: spacing.lg,
-            paddingBottom: Math.max(spacing.lg, insets.bottom),
-            borderTopWidth: 1,
-            borderTopColor: colors.line,
-          }}
-        >
-          <Button
-            title={
-              state.busy
-                ? 'Préparation du GPS…'
-                : starting
-                  ? 'Départ en cours…'
-                  : state.runId
-                    ? 'Retrouver ma course'
-                    : 'Démarrer ma course'
-            }
-            icon="arrow-forward"
-            onPress={() => onStart(target)}
-            disabled={(!state.runId && !!error) || state.busy || starting}
-          />
-        </View>
       </View>
       {pane && (
         <Sheet title={heading} onClose={close}>
@@ -484,6 +489,84 @@ export default function Preparation({
                 onMusic();
               }}
             />
+          )}
+          {pane === 'route' && (
+            <>
+              <SelectedRoute
+                onChoose={() => {
+                  close();
+                  onTools();
+                }}
+                running={!!state.runId}
+              />
+              <DetailRow
+                title="Voir la carte"
+                detail={gpsLabel}
+                icon="map-outline"
+                onPress={() => {
+                  close();
+                  onMap();
+                }}
+                rule={false}
+              />
+            </>
+          )}
+          {pane === 'advanced' && (
+            <>
+              {progress.ready && (
+                <DetailRow
+                  title="Chaussures"
+                  detail={shoe?.name ?? 'Non attribuées'}
+                  icon="footsteps-outline"
+                  onPress={() => setPane('shoes')}
+                />
+              )}
+              {progress.message && (
+                <Copy muted variant="caption">
+                  {progress.message}
+                </Copy>
+              )}
+              <DetailRow
+                title="Réglages du coach"
+                icon="options-outline"
+                onPress={() => {
+                  close();
+                  onSettings();
+                }}
+              />
+              <View style={{ gap: spacing.xs }}>
+                <Copy variant="caption" muted accessibilityLiveRegion="polite">
+                  {gpsLabel}
+                </Copy>
+                <Button
+                  title="Actualiser la position"
+                  icon="locate-outline"
+                  variant="quiet"
+                  disabled={preview.status === 'locating' || starting || !!state.runId}
+                  onPress={() => void preview.locate(true)}
+                />
+              </View>
+              <RhythmTools compact />
+              <WeatherPanel route={referenceRoute} />
+              <Toggle
+                title="Signaux audio"
+                body="Deux sons pour reconnaître l’écart."
+                value={state.settings.audioEnabled}
+                onChange={(audioEnabled) => void session.updateSettings({ audioEnabled })}
+              />
+              <Toggle
+                title="Pause automatique aux arrêts"
+                body="Le GPS reste actif pour détecter la reprise."
+                value={state.settings.autoPauseEnabled === true}
+                disabled={!!state.runId}
+                onChange={(autoPauseEnabled) => void session.updateSettings({ autoPauseEnabled })}
+              />
+              <Copy muted variant="caption">
+                {CAN_BACKGROUND && state.settings.backgroundEnabled
+                  ? 'Suivi écran verrouillé activé. Les alertes en arrière-plan utilisent les signaux audio.'
+                  : 'Gardez Sprinter à l’écran pendant la course. Le suivi écran verrouillé exige une version installée.'}
+              </Copy>
+            </>
           )}
           {pane === 'shoes' && (
             <>

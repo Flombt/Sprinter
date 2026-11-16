@@ -101,7 +101,7 @@ export default function Detail({
     );
   return (
     <Screen bottom={40}>
-      <Header title="Votre sortie" onBack={onBack} />
+      <Header editorial title={run.workout?.definition.name ?? 'Votre sortie'} onBack={onBack} />
       <CloudRoutePanel run={run} />
       <View style={{ gap: spacing.sm }}>
         <View style={[styles.row, { gap: spacing.sm, flexWrap: 'wrap' }]}>

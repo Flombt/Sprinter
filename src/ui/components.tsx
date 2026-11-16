@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdaptiveLayout, useTheme } from './theme';
 import {
   cardStyles,
+  editorial,
   interaction,
   layout,
   paperColors,
@@ -30,7 +31,6 @@ import {
 import { useBottomBarInset } from './layout';
 import { ScreenEntrance } from './motion';
 import { haptic, type HapticFeedback } from './haptics';
-import { GlassSurface } from './GlassSurface';
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 export function Copy({
@@ -92,10 +92,13 @@ export function Button({
   style,
   hint,
   onHero = false,
+  onPhoto = false,
+  onDark = false,
   feedback = 'light',
   size,
   children,
   arrow = false,
+  endIcon,
   highContrast = false,
 }: {
   title: string;
@@ -108,10 +111,13 @@ export function Button({
   hint?: string;
   variant?: 'primary' | 'secondary' | 'quiet';
   onHero?: boolean;
+  onPhoto?: boolean;
+  onDark?: boolean;
   feedback?: HapticFeedback;
   size?: 'run' | 'toolbar' | 'compact' | 'large';
   children?: React.ReactNode;
   arrow?: boolean;
+  endIcon?: IconName;
   highContrast?: boolean;
 }) {
   const { colors, reduceMotion } = useTheme();
@@ -121,31 +127,38 @@ export function Button({
   const color =
     highContrast && disabled
       ? colors.muted
-      : onHero
-        ? colors.heroActionText
-        : danger
-          ? primary
-            ? colors.background
-            : colors.danger
-          : primary
-            ? colors.accentInk
-            : colors.text;
+      : onPhoto
+        ? editorial.surface
+        : onDark && !primary
+          ? editorial.ink
+          : onHero
+            ? colors.heroActionText
+            : danger
+              ? primary
+                ? colors.background
+                : colors.danger
+              : primary
+                ? colors.accentInk
+                : colors.text;
   const backgroundColor =
     highContrast && disabled
       ? colors.raised
-      : onHero
-        ? colors.heroAction
-        : danger
-          ? primary
-            ? colors.danger
-            : colors.dangerSurface
-          : primary
-            ? colors.accent
-            : kind === 'secondary'
-              ? colors.raised
-              : 'transparent';
-  const showArrow = arrow && primary;
-  const glass = !disabled && (kind !== 'quiet' || onHero || danger);
+      : onPhoto
+        ? editorial.graph
+        : onHero
+          ? colors.heroAction
+          : danger
+            ? primary
+              ? colors.danger
+              : colors.dangerSurface
+            : primary
+              ? colors.accent
+              : kind === 'secondary'
+                ? onDark
+                  ? 'transparent'
+                  : colors.raised
+                : 'transparent';
+  const trailingIcon = endIcon ?? (arrow && primary ? 'arrow-forward' : undefined);
   useEffect(() => {
     if (reduceMotion || disabled) {
       scale.stopAnimation();
@@ -187,48 +200,39 @@ export function Button({
           size === 'toolbar' && { minHeight: layout.toolbarButton },
           size === 'compact' && styles.compactButton,
           size === 'large' && styles.largeButton,
-          showArrow && { justifyContent: 'space-between' },
-          highContrast && (disabled || !primary) && { borderWidth: 1, borderColor: colors.line },
+          trailingIcon && { justifyContent: 'space-between' },
+          kind === 'secondary' && {
+            borderWidth: 1,
+            borderColor: onDark ? editorial.secondary : colors.controlLine,
+          },
           {
-            backgroundColor: glass ? 'transparent' : backgroundColor,
+            backgroundColor,
             opacity:
               disabled && !highContrast
                 ? interaction.disabledOpacity
-                : pressed && !glass
+                : pressed
                   ? interaction.pressedOpacity
                   : 1,
           },
         ]}
       >
-        {({ pressed }) => (
+        {children ?? (
           <>
-            {glass && (
-              <GlassSurface
-                radius={radii.button}
-                kind={primary || danger || onHero ? 'solid' : 'control'}
-                color={backgroundColor}
-                pressed={pressed}
-              />
-            )}
-            {children ?? (
-              <>
-                <View style={styles.buttonLabel}>
-                  {icon && <Icon name={icon} color={color} size={highContrast ? 19 : 22} />}
-                  <Copy
-                    variant={size === 'compact' ? 'bodyCompact' : 'button'}
-                    style={{
-                      color,
-                      flexShrink: 1,
-                      textAlign: showArrow ? 'left' : 'center',
-                      fontWeight: highContrast ? '700' : typography.button.fontWeight,
-                    }}
-                  >
-                    {title}
-                  </Copy>
-                </View>
-                {showArrow && <Icon name="arrow-forward" size={22} color={color} />}
-              </>
-            )}
+            <View style={styles.buttonLabel}>
+              {icon && <Icon name={icon} color={color} size={highContrast ? 19 : 22} />}
+              <Copy
+                variant={size === 'compact' ? 'bodyCompact' : 'button'}
+                style={{
+                  color,
+                  flexShrink: 1,
+                  textAlign: trailingIcon ? 'left' : 'center',
+                  fontWeight: '700',
+                }}
+              >
+                {title}
+              </Copy>
+            </View>
+            {trailingIcon && <Icon name={trailingIcon} size={20} color={color} />}
           </>
         )}
       </Pressable>
@@ -243,6 +247,7 @@ export function IconButton({
   disabled = false,
   feedback = 'light',
   square = false,
+  selected,
   paper = false,
   onPressIn,
   onPressOut,
@@ -256,6 +261,7 @@ export function IconButton({
   disabled?: boolean;
   feedback?: HapticFeedback;
   square?: boolean;
+  selected?: boolean;
   paper?: boolean;
   onPressIn?: React.ComponentProps<typeof Pressable>['onPressIn'];
   onPressOut?: React.ComponentProps<typeof Pressable>['onPressOut'];
@@ -263,7 +269,6 @@ export function IconButton({
   delayLongPress?: number;
 }) {
   const { colors } = useTheme();
-  const glass = !disabled && !paper && (!quiet || square);
   const press = () => {
     if (feedback !== 'none') haptic[feedback]();
     onPress();
@@ -272,7 +277,7 @@ export function IconButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, selected }}
       disabled={disabled}
       onPress={press}
       onPressIn={onPressIn}
@@ -283,41 +288,34 @@ export function IconButton({
         styles.iconButton,
         square && {
           borderRadius: radii.control,
-          borderWidth: glass ? 0 : 1,
+          borderWidth: 1,
           borderColor: paper ? paperColors.line : colors.line,
         },
         {
-          backgroundColor: glass
-            ? 'transparent'
+          backgroundColor: selected
+            ? colors.accentSoft
             : square && pressed
               ? paper
                 ? paperColors.pressed
                 : colors.raised
-              : quiet || paper
+              : (quiet && !square) || paper
                 ? 'transparent'
                 : colors.surface,
           opacity: disabled
             ? square
               ? 0.3
               : interaction.disabledOpacity
-            : pressed && !glass
+            : pressed
               ? interaction.pressedOpacity
               : 1,
         },
       ]}
     >
-      {({ pressed }) => (
-        <>
-          {glass && (
-            <GlassSurface
-              radius={square ? radii.control : radii.pill}
-              color={quiet ? colors.background : colors.surface}
-              pressed={pressed}
-            />
-          )}
-          <Icon name={icon} size={square ? 19 : 22} color={paper ? colors.heroText : colors.text} />
-        </>
-      )}
+      <Icon
+        name={icon}
+        size={square ? 19 : 22}
+        color={paper ? colors.heroText : selected ? colors.accentText : colors.text}
+      />
     </Pressable>
   );
 }
@@ -489,43 +487,75 @@ export function Screen({
   bottom = spacing.xxl,
   gap = spacing.xxl,
   scroll = true,
+  footer,
+  bleed = false,
+  top = spacing.md,
 }: {
   children: React.ReactNode;
   bottom?: number;
   gap?: number;
   scroll?: boolean;
+  footer?: React.ReactNode;
+  bleed?: boolean;
+  top?: number;
 }) {
   const { colors } = useTheme();
   const inset = useSafeAreaInsets(),
     barInset = useBottomBarInset();
   const { compact, largeText } = useAdaptiveLayout();
   const gutter = compact || largeText ? layout.compactGutter : layout.screenGutter;
+  const horizontal = Math.max(gutter, inset.left, inset.right);
   const content = {
-    paddingTop: inset.top + spacing.lg,
-    paddingHorizontal: Math.max(gutter, inset.left, inset.right),
-    paddingBottom: Math.max(inset.bottom + bottom, barInset + spacing.xxl),
+    paddingTop: inset.top + top,
+    paddingHorizontal: bleed ? 0 : horizontal,
+    paddingBottom: footer ? bottom : Math.max(inset.bottom + bottom, barInset + spacing.lg),
     gap,
     width: '100%' as const,
     maxWidth: layout.contentWidth,
     alignSelf: 'center' as const,
   };
   return (
-    <ScreenEntrance>
-      {scroll ? (
-        <ScrollView
-          style={{ flex: 1, backgroundColor: colors.background }}
-          contentContainerStyle={content}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
-          showsVerticalScrollIndicator={false}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenEntrance>
+        {scroll ? (
+          <ScrollView
+            style={{ flex: 1, backgroundColor: colors.background }}
+            contentContainerStyle={content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[{ flex: 1, backgroundColor: colors.background }, content]}>{children}</View>
+        )}
+      </ScreenEntrance>
+      {footer && (
+        <View
+          style={{
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.line,
+            marginBottom: barInset,
+          }}
         >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[{ flex: 1, backgroundColor: colors.background }, content]}>{children}</View>
+          <View
+            style={{
+              width: '100%',
+              maxWidth: layout.contentWidth,
+              alignSelf: 'center',
+              paddingHorizontal: horizontal,
+              paddingTop: spacing.sm,
+              paddingBottom: barInset ? spacing.sm : Math.max(inset.bottom, spacing.sm),
+              gap: spacing.xs,
+            }}
+          >
+            {footer}
+          </View>
+        </View>
       )}
-    </ScreenEntrance>
+    </View>
   );
 }
 export function Header({
@@ -533,19 +563,24 @@ export function Header({
   subtitle,
   onBack,
   right,
+  editorial = false,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
   right?: React.ReactNode;
+  editorial?: boolean;
 }) {
   const { largeText } = useAdaptiveLayout();
   return (
     <View style={[styles.row, { alignItems: 'flex-start', flexWrap: 'wrap', gap: spacing.md }]}>
-      {onBack && <IconButton icon="chevron-back" label="Retour" onPress={onBack} quiet />}
+      {onBack && <IconButton icon="chevron-back" label="Retour" onPress={onBack} quiet square={editorial} />}
       <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
         {subtitle && <Label>{subtitle}</Label>}
-        <Copy accessibilityRole="header" variant={onBack ? 'heading' : 'title'}>
+        <Copy
+          accessibilityRole="header"
+          variant={editorial && !largeText ? 'editorialTitle' : onBack ? 'heading' : 'title'}
+        >
           {title}
         </Copy>
       </View>
@@ -559,14 +594,20 @@ export function SectionHeading({
   title,
   action,
   onPress,
+  editorial = false,
 }: {
   title: string;
   action?: string;
   onPress?: () => void;
+  editorial?: boolean;
 }) {
   return (
     <View style={[styles.row, { justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm }]}>
-      <Copy accessibilityRole="header" variant="section" style={{ flexShrink: 1 }}>
+      <Copy
+        accessibilityRole="header"
+        variant={editorial ? 'editorialSection' : 'section'}
+        style={{ flexShrink: 1 }}
+      >
         {title}
       </Copy>
       {action && (

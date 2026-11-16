@@ -178,12 +178,11 @@ function useDiscoveryState(userId: string, visible: boolean, blocked: boolean) {
 
   const toggleFavorite = useCallback(
     async (item: DiscoveryItem) => {
-      if (
-        await persist((old) =>
-          updateSaved(old, item, { favorite: !old.saves.find((save) => save.item.id === item.id)?.favorite }),
-        )
-      )
-        haptic.select();
+      const saved = await persist((old) =>
+        updateSaved(old, item, { favorite: !old.saves.find((save) => save.item.id === item.id)?.favorite }),
+      );
+      if (saved) haptic.select();
+      return saved;
     },
     [persist],
   );

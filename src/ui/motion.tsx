@@ -1,7 +1,16 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Platform } from 'react-native';
+import { Animated, Easing, Platform } from 'react-native';
 import { useTheme } from './theme';
 import { interaction } from './tokens';
+
+export function move(value: Animated.Value, toValue: number, duration: number) {
+  return Animated.timing(value, {
+    toValue,
+    duration,
+    easing: Easing.out(Easing.cubic),
+    useNativeDriver: Platform.OS !== 'web',
+  });
+}
 
 /** One short entrance per mount, independent of live metrics or business state. */
 export function ScreenEntrance({ children }: { children: ReactNode }) {
@@ -17,11 +26,7 @@ export function ScreenEntrance({ children }: { children: ReactNode }) {
       return;
     }
     opacity.setValue(0.94);
-    const animation = Animated.timing(opacity, {
-      toValue: 1,
-      duration: interaction.screenDuration,
-      useNativeDriver: Platform.OS !== 'web',
-    });
+    const animation = move(opacity, 1, interaction.screenDuration);
     animation.start();
     return () => animation.stop();
   }, [opacity, reduceMotion]);

@@ -1,169 +1,167 @@
-import { useCallback, useState, type ComponentProps } from 'react';
+import { useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { PaceTarget } from '../core/types';
 import { DiscoveryHome } from '../discovery/DiscoveryHome';
 import Home from '../screens/Home';
-import Music from '../screens/Music';
-import RunStats from '../screens/RunStats';
+import LiveRun from '../screens/LiveRun';
+import ProfileTab from '../screens/ProfileTab';
 import StatsDashboard, { type StatsNavigation } from '../screens/StatsDashboard';
-import { useLiveSession, type SessionStructure } from '../services/useSessionSelector';
+import type { SessionStructure } from '../services/useSessionSelector';
 import { MusicDock } from '../spotify/components';
+import { Button } from '../ui/components';
 import { BottomBarInsetContext } from '../ui/layout';
 import { BottomTabs, TabPane, type TabItem } from '../ui/navigation';
+import { layout, spacing } from '../ui/tokens';
+import type { Sheet } from './AppSheets';
 
-export type Tab = 'discover' | 'home' | 'stats' | 'music';
+export type Tab = 'home' | 'discover' | 'progress' | 'profile';
+
 const tabs: readonly TabItem<Tab>[] = [
-  { key: 'discover', title: 'Découvrir', icon: 'compass-outline', selectedIcon: 'compass' },
   { key: 'home', title: 'Courir', icon: 'flash-outline' },
-  { key: 'stats', title: 'Stats', icon: 'stats-chart-outline' },
-  { key: 'music', title: 'Spotify', icon: 'musical-notes-outline' },
+  { key: 'discover', title: 'Découvrir', icon: 'compass-outline' },
+  { key: 'progress', title: 'Progrès', icon: 'stats-chart-outline' },
+  { key: 'profile', title: 'Profil', icon: 'person-outline' },
 ];
-
-function LiveHome(props: Omit<ComponentProps<typeof Home>, 'state'>) {
-  const state = useLiveSession(props.active);
-  return <Home {...props} state={state} />;
-}
-
-function LiveStats({
-  navigation,
-  ...props
-}: Omit<ComponentProps<typeof RunStats>, 'state' | 'onBack'> & { navigation: StatsNavigation }) {
-  const [showRunSettings, setShowRunSettings] = useState(false);
-  const state = useLiveSession(props.active && showRunSettings);
-  if (showRunSettings) return <RunStats {...props} state={state} onBack={() => setShowRunSettings(false)} />;
-  return (
-    <StatsDashboard
-      {...navigation}
-      history={state.history}
-      hasRun={!!state.run}
-      onRunSettings={() => setShowRunSettings(true)}
-    />
-  );
-}
 
 export function RunTabs({
   state,
   tab,
   onTabChange,
-  playlistImport,
-  onPlaylistImportRead,
+  homeRequest,
   target,
-  onTargetChange,
   starting,
   covered,
   onStart,
   onRecover,
   onPrepare,
+  onWorkouts,
   onDiscoveryDetail,
-  onHistory,
   statsNavigation,
-  onSettings,
+  onRunStats,
+  onOpenSheet,
   onMusic,
-  onPlayer,
   onFinish,
   onConfirmFinish,
 }: {
   state: SessionStructure;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
-  playlistImport?: string;
-  onPlaylistImportRead: () => void;
+  homeRequest: number;
   target: PaceTarget;
-  onTargetChange: (target: PaceTarget) => void;
   starting: boolean;
   covered: boolean;
   onStart: () => void;
   onRecover: () => void;
   onPrepare: () => void;
+  onWorkouts: () => void;
   onDiscoveryDetail: (id: string) => void;
-  onHistory: () => void;
   statsNavigation: StatsNavigation;
-  onSettings: () => void;
+  onRunStats: () => void;
+  onOpenSheet: (sheet: Sheet) => void;
   onMusic: () => void;
-  onPlayer: () => void;
   onFinish: () => void;
   onConfirmFinish: () => void;
 }) {
   const focused = useIsFocused();
-  const insets = useSafeAreaInsets();
-  const [musicVisited, setMusicVisited] = useState(false);
-  const [discoveryVisited, setDiscoveryVisited] = useState(false);
+  const [visited, setVisited] = useState<Partial<Record<Tab, boolean>>>({});
   const [tabBarHeight, setTabBarHeight] = useState(0);
-  const [playerHeight, setPlayerHeight] = useState(0);
+  const [actionsHeight, setActionsHeight] = useState(0);
+  const [browse, setBrowse] = useState<{ id: string; request: number }>();
   const active = focused && !covered;
-  const running = state.running || state.autoPaused;
-  const hideTabBar = tab === 'home' && running;
-  const playerBottom = hideTabBar ? insets.bottom : tabBarHeight;
-  const bottomInset = hideTabBar && !playerHeight ? 0 : playerBottom + playerHeight;
-  const changeTab = useCallback(
-    (next: Tab) => {
-      if (next === 'music') setMusicVisited(true);
-      if (next === 'discover') setDiscoveryVisited(true);
-      onTabChange(next);
-    },
-    [onTabChange],
-  );
+  const tracking = state.running || state.autoPaused;
+  const current = tracking ? 'home' : tab;
+  const browsingPause = state.runId !== null && browse?.id === state.runId && browse.request === homeRequest;
+  const live = !!state.runId && (tracking || (current === 'home' && !browsingPause));
+  const bottom = live ? 0 : tabBarHeight + actionsHeight;
+
+  const changeTab = (next: Tab) => {
+    setVisited((previous) => (previous[next] ? previous : { ...previous, [next]: true }));
+    onTabChange(next);
+  };
+  const returnToRun = () => {
+    setBrowse(undefined);
+    onTabChange('home');
+  };
 
   return (
-    <BottomBarInsetContext.Provider value={bottomInset}>
-      {(discoveryVisited || tab === 'discover') && (
-        <TabPane visible={tab === 'discover'}>
+    <BottomBarInsetContext.Provider value={bottom}>
+      <TabPane visible={current === 'home'}>
+        {live ? (
+          <LiveRun
+            active={active}
+            onBrowse={() => {
+              if (state.runId && !tracking) setBrowse({ id: state.runId, request: homeRequest });
+            }}
+            onMusic={onMusic}
+            onStats={onRunStats}
+            onFinish={onFinish}
+            onConfirmFinish={onConfirmFinish}
+          />
+        ) : (
+          <Home
+            state={state}
+            target={target}
+            starting={starting}
+            onStart={onStart}
+            onRecovery={onRecover}
+            onPrepare={onPrepare}
+            onWorkouts={onWorkouts}
+            onReturn={returnToRun}
+            onMusic={onMusic}
+          />
+        )}
+      </TabPane>
+      {(visited.discover || tab === 'discover') && (
+        <TabPane visible={current === 'discover'}>
           <DiscoveryHome onOpen={onDiscoveryDetail} />
         </TabPane>
       )}
-      <TabPane visible={tab === 'home'}>
-        <LiveHome
-          active={active && tab === 'home'}
-          target={target}
-          starting={starting}
-          onStart={onStart}
-          onRecovery={onRecover}
-          onPrepare={onPrepare}
-          onHistory={onHistory}
-          onStats={() => changeTab('stats')}
-          onMusic={() => changeTab('music')}
-          onSettings={onSettings}
-          onFinish={onFinish}
-          onConfirmFinish={onConfirmFinish}
-        />
-      </TabPane>
-      <TabPane visible={tab === 'stats'}>
-        <LiveStats
-          navigation={statsNavigation}
-          active={active && tab === 'stats'}
-          target={target}
-          onTargetChange={onTargetChange}
-          onPrepare={onPrepare}
-          onSettings={onSettings}
-          onMusic={onMusic}
-          onFinish={onFinish}
-          onConfirmFinish={onConfirmFinish}
-        />
-      </TabPane>
-      {(musicVisited || tab === 'music') && (
-        <TabPane visible={tab === 'music'}>
-          <Music
-            active={active && tab === 'music'}
-            foregroundOnlyRun={running && !state.backgroundActive}
-            playlistImport={playlistImport}
-            onPlaylistImportRead={onPlaylistImportRead}
+      {(visited.progress || tab === 'progress') && (
+        <TabPane visible={current === 'progress'}>
+          <StatsDashboard
+            {...statsNavigation}
+            history={state.history}
+            hasRun={!!state.runId}
+            active={active && current === 'progress'}
+            onStart={() => changeTab('home')}
+            onRunSettings={onRunStats}
           />
         </TabPane>
       )}
-      <View
-        pointerEvents="box-none"
-        onLayout={(event) => setPlayerHeight(event.nativeEvent.layout.height)}
-        style={{ position: 'absolute', zIndex: 2, left: 0, right: 0, bottom: playerBottom }}
-      >
-        <MusicDock active={active} onExpand={onPlayer} />
-      </View>
+      {(visited.profile || tab === 'profile') && (
+        <TabPane visible={current === 'profile'}>
+          <ProfileTab
+            history={state.history}
+            active={active && current === 'profile'}
+            onOpen={onOpenSheet}
+            onMusic={onMusic}
+          />
+        </TabPane>
+      )}
+      {!live && (
+        <View
+          pointerEvents="box-none"
+          onLayout={(event) => setActionsHeight(event.nativeEvent.layout.height)}
+          style={{ position: 'absolute', zIndex: 2, left: 0, right: 0, bottom: tabBarHeight }}
+        >
+          <MusicDock active={active} onExpand={() => onOpenSheet('player')} />
+          {!!state.runId && current !== 'home' && (
+            <View style={{ paddingHorizontal: layout.screenGutter, paddingBottom: spacing.xs }}>
+              <Button
+                title="Revenir à la course en pause"
+                size="compact"
+                endIcon="arrow-forward"
+                onPress={returnToRun}
+              />
+            </View>
+          )}
+        </View>
+      )}
       <BottomTabs
         items={tabs}
-        value={tab}
-        disabledItem={running ? 'discover' : undefined}
-        hidden={hideTabBar}
+        value={current}
+        hidden={live}
         onChange={changeTab}
         onHeightChange={setTabBarHeight}
       />

@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Copy } from './components';
 import { useTheme } from './theme';
-import { spacing } from './tokens';
+import { editorial, spacing } from './tokens';
 
 export function SpeedMark({ size = 30, color }: { size?: number; color?: string }) {
   const { colors } = useTheme();
@@ -31,14 +31,14 @@ export function RunnerGlyph({ size = 24, color }: { size?: number; color?: strin
   );
 }
 
-export function Brand() {
+export function Brand({ onPhoto = false }: { onPhoto?: boolean } = {}) {
   return (
     <View
       accessibilityLabel="Sprinter"
       style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
     >
-      <SpeedMark size={28} />
-      <Copy variant="heading" style={{ letterSpacing: 0.6 }}>
+      <SpeedMark size={28} color={onPhoto ? editorial.ink : undefined} />
+      <Copy variant="heading" style={{ letterSpacing: 0.6, color: onPhoto ? editorial.ink : undefined }}>
         SPRINTER
       </Copy>
     </View>

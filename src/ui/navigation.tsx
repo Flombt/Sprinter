@@ -1,11 +1,11 @@
-import { interaction, layout, radii, typography } from './tokens';
+import { interaction, layout, motionDuration, radii, typography } from './tokens';
 import { RunnerGlyph } from './brand';
 import { Copy, Icon, type IconName } from './components';
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlassSurface, hasNativeGlass } from './GlassSurface';
-import { useTheme } from './theme';
+import { useAdaptiveLayout, useTheme } from './theme';
+import { move } from './motion';
 import { haptic } from './haptics';
 
 export interface TabItem<T extends string> {
@@ -16,28 +16,23 @@ export interface TabItem<T extends string> {
 }
 
 export function TabPane({ visible, children }: { visible: boolean; children: ReactNode }) {
-  const { reduceMotion, reduceTransparency } = useTheme();
-  const fade = !reduceMotion && !hasNativeGlass(reduceTransparency);
+  const { reduceMotion } = useTheme();
   const opacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!visible || !fade) {
+    if (!visible || reduceMotion) {
       opacity.setValue(1);
       return;
     }
-    opacity.setValue(0);
-    const animation = Animated.timing(opacity, {
-      toValue: 1,
-      duration: 120,
-      useNativeDriver: Platform.OS !== 'web',
-    });
+    opacity.setValue(0.72);
+    const animation = move(opacity, 1, motionDuration.tab);
     animation.start();
     return () => animation.stop();
-  }, [visible, fade, opacity]);
+  }, [visible, reduceMotion, opacity]);
 
   return (
     <Animated.View
-      style={[StyleSheet.absoluteFill, { opacity: visible ? opacity : 0, zIndex: visible ? 1 : 0 }]}
+      style={[StyleSheet.absoluteFill, visible ? { opacity } : { display: 'none' }]}
       pointerEvents={visible ? 'auto' : 'none'}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
@@ -65,6 +60,7 @@ function BottomTabsView<T extends string>({
 }) {
   const insets = useSafeAreaInsets(),
     { colors, reduceMotion } = useTheme();
+  const { compact, largeText } = useAdaptiveLayout();
   const [width, setWidth] = useState(0),
     x = useRef(new Animated.Value(0)).current,
     positioned = useRef(false);
@@ -82,12 +78,7 @@ function BottomTabsView<T extends string>({
       positioned.current = true;
       return;
     }
-    const animation = Animated.timing(x, {
-      toValue: index * itemWidth,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web',
-    });
+    const animation = move(x, index * itemWidth, motionDuration.indicator);
     animation.start();
     return () => animation.stop();
   }, [index, itemWidth, reduceMotion, width, x]);
@@ -97,11 +88,7 @@ function BottomTabsView<T extends string>({
       slide.setValue(toValue);
       return;
     }
-    const animation = Animated.timing(slide, {
-      toValue,
-      duration: 200,
-      useNativeDriver: Platform.OS !== 'web',
-    });
+    const animation = move(slide, toValue, motionDuration.indicator);
     animation.start();
     return () => animation.stop();
   }, [hidden, reduceMotion, slide]);
@@ -125,14 +112,16 @@ function BottomTabsView<T extends string>({
         bottom: 0,
         left: 0,
         right: 0,
-        paddingHorizontal: 16,
-        paddingTop: 4,
+        paddingHorizontal: compact ? 8 : 12,
+        paddingTop: 5,
         paddingBottom: Math.max(8, insets.bottom),
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderColor: colors.line,
+        backgroundColor: colors.background,
         transform: [{ translateY: Animated.multiply(slide, height || 150) }],
       }}
     >
       <View style={styles.dock}>
-        <GlassSurface kind="dock" radius={radii.pill} />
         <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={styles.row}>
           {width > 0 && (
             <Animated.View
@@ -151,7 +140,7 @@ function BottomTabsView<T extends string>({
                 style={{
                   width: Math.max(0, Math.min(118, itemWidth - 8)),
                   flex: 1,
-                  borderRadius: radii.pill,
+                  borderRadius: radii.control,
                   backgroundColor: colors.accentSoft,
                 }}
               />
@@ -177,9 +166,9 @@ function BottomTabsView<T extends string>({
                 style={({ pressed }) => ({
                   flex: 1,
                   minWidth: 0,
-                  minHeight: layout.touch,
+                  minHeight: largeText ? 50 : layout.touch,
                   paddingVertical: 3,
-                  paddingHorizontal: 4,
+                  paddingHorizontal: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 1,
@@ -189,15 +178,21 @@ function BottomTabsView<T extends string>({
                 {item.key === 'home' ? (
                   <RunnerGlyph size={21} color={color} />
                 ) : (
-                  <Icon name={selected ? (item.selectedIcon ?? item.icon) : item.icon} size={20} color={color} />
+                  <Icon
+                    name={selected ? (item.selectedIcon ?? item.icon) : item.icon}
+                    size={20}
+                    color={color}
+                  />
                 )}
                 <Copy
                   variant="bodyCompact"
+                  maxFontSizeMultiplier={1.55}
                   style={[
                     typography.tab,
                     {
                       fontWeight: selected ? '600' : '400',
-                      color: selected ? colors.text : colors.secondary,
+                      color,
+                      textAlign: 'center',
                     },
                   ]}
                 >
@@ -217,10 +212,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 500,
-    borderRadius: radii.pill,
-    boxShadow: '0px 5px 18px rgba(0,0,0,0.18)',
   },
-  row: { flexDirection: 'row', margin: 3 },
+  row: { flexDirection: 'row' },
 });
 
 export const BottomTabs = memo(BottomTabsView) as typeof BottomTabsView;

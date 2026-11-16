@@ -15,7 +15,7 @@ export default function PersonalRecords({
   const state = usePersonalRecords(history);
   return (
     <Screen bottom={40}>
-      <Header title="Records personnels GPS" onBack={onBack} />
+      <Header editorial title="Records personnels GPS" onBack={onBack} />
       <Copy muted>
         De 100 m au marathon, les meilleurs passages sont détectés sur vos portions GPS continues. Les
         pauses et les pertes GPS interrompent la mesure.

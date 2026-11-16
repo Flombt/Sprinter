@@ -190,7 +190,8 @@ export function ChoiceGroup<T extends string | number>({
   label,
   disabled = false,
   segmented = false,
-}: ChoiceGroupProps<T> & { segmented?: boolean }) {
+  pills = false,
+}: ChoiceGroupProps<T> & { segmented?: boolean; pills?: boolean }) {
   const { colors } = useTheme();
   const { largeText } = useAdaptiveLayout();
   return (
@@ -201,7 +202,7 @@ export function ChoiceGroup<T extends string | number>({
       style={{
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: segmented ? spacing.xs : spacing.sm,
+        gap: segmented || pills ? spacing.xs : spacing.sm,
         ...(segmented
           ? { borderRadius: radii.control + spacing.xs, backgroundColor: colors.raised, padding: spacing.xs }
           : {}),
@@ -224,19 +225,29 @@ export function ChoiceGroup<T extends string | number>({
             style={({ pressed }) => ({
               minHeight: layout.touch,
               minWidth: layout.touch,
-              borderRadius: radii.control,
+              borderRadius: pills ? radii.pill : radii.control,
               borderWidth: 1,
-              paddingHorizontal: spacing.md,
+              paddingHorizontal: pills ? spacing.sm : spacing.md,
               paddingVertical: spacing.sm,
               justifyContent: 'center',
               backgroundColor: selected
                 ? segmented
                   ? colors.surface
-                  : colors.accentSoft
+                  : pills
+                    ? colors.accent
+                    : colors.accentSoft
                 : segmented
                   ? 'transparent'
-                  : colors.surface,
-              borderColor: selected ? colors.accentText : segmented ? 'transparent' : colors.controlLine,
+                  : pills
+                    ? 'transparent'
+                    : colors.surface,
+              borderColor: selected
+                ? pills
+                  ? colors.accent
+                  : colors.accentText
+                : segmented
+                  ? 'transparent'
+                  : colors.controlLine,
               ...(segmented && !largeText ? { flexGrow: 1, flexBasis: 0 } : {}),
               opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1,
             })}
@@ -244,8 +255,14 @@ export function ChoiceGroup<T extends string | number>({
             <Copy
               variant="caption"
               style={{
-                color: selected ? colors.accentText : colors.secondary,
-                fontWeight: selected ? '700' : '500',
+                color: selected
+                  ? pills
+                    ? colors.accentInk
+                    : colors.accentText
+                  : pills
+                    ? colors.text
+                    : colors.secondary,
+                fontWeight: selected || pills ? '700' : '500',
                 textAlign: 'center',
               }}
             >

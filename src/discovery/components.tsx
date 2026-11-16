@@ -3,8 +3,9 @@ import { Image, type ImageSource } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { DiscoveryItem } from '../../supabase/functions/_shared/discovery-model';
-import { Button, Copy, Icon, Label, type IconName } from '../ui/components';
-import { defaultPalettes, useAdaptiveLayout, useTheme } from '../ui/theme';
+import { Copy, Icon, Label, SectionHeading, type IconName } from '../ui/components';
+import { PhotoCover } from '../ui/editorial';
+import { useAdaptiveLayout, useTheme } from '../ui/theme';
 import { interaction, layout, radii, spacing } from '../ui/tokens';
 import { dayLabel, kindTitle, kmLabel, scheduleLabel, terrainTitle, verifiedRegistration } from './catalog';
 import { parisDay } from '../../supabase/functions/_shared/discovery-model';
@@ -54,7 +55,6 @@ const photos: Record<string, Photo> = {
 };
 export const photoFor = (item: DiscoveryItem) =>
   item.mediaKey && Object.hasOwn(photos, item.mediaKey) ? photos[item.mediaKey] : undefined;
-const photoInk = defaultPalettes.dark.text;
 
 export function DiscoveryArt({
   item,
@@ -152,16 +152,16 @@ export function Chip({
       style={({ pressed }) => [
         styles.chip,
         {
-          borderColor: selected ? colors.accentText : colors.controlLine,
-          backgroundColor: selected ? colors.accentSoft : colors.surface,
+          borderColor: selected ? colors.accent : colors.controlLine,
+          backgroundColor: selected ? colors.accent : colors.surface,
           opacity: disabled ? interaction.disabledOpacity : pressed ? interaction.pressedOpacity : 1,
         },
       ]}
     >
-      {icon && <Icon size={16} name={icon} color={selected ? colors.accentText : colors.secondary} />}
+      {icon && <Icon size={16} name={icon} color={selected ? colors.accentInk : colors.secondary} />}
       <Copy
         variant="caption"
-        style={{ color: selected ? colors.accentText : colors.text, flexShrink: 1, fontWeight: '600' }}
+        style={{ color: selected ? colors.accentInk : colors.text, flexShrink: 1, fontWeight: '600' }}
       >
         {title}
       </Copy>
@@ -187,39 +187,22 @@ export function ChipRow({ children, label }: { children: ReactNode; label?: stri
 
 export function Feature({ item, onPress }: { item: DiscoveryItem; onPress: () => void }) {
   const race = item.kind === 'race';
-  const { largeText } = useAdaptiveLayout();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${race ? scheduleLabel(item) : item.city}`}
-      accessibilityHint="Ouvre la fiche"
+    <PhotoCover
+      title={item.title}
+      eyebrow={race ? 'Course à la une' : kindTitle[item.kind]}
+      detail={[
+        race ? scheduleLabel(item, true) : item.setting,
+        item.city,
+        item.distancesKm?.map(kmLabel).join(' / '),
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      height={242}
+      source={photoFor(item)?.asset}
+      position={{ left: '53%', top: '58%' }}
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
-    >
-      <DiscoveryArt item={item} style={{ minHeight: largeText ? 310 : 242, justifyContent: 'flex-end' }}>
-        <View style={{ gap: 5, padding: spacing.xl, paddingTop: largeText ? 130 : 92 }}>
-          <Label style={{ color: photoInk }}>{race ? 'Course à la une' : kindTitle[item.kind]}</Label>
-          <Copy accessibilityRole="header" variant="hero" style={{ color: photoInk }}>
-            {item.title}
-          </Copy>
-          <Copy style={{ color: photoInk }}>
-            {[
-              race ? scheduleLabel(item, true) : item.setting,
-              item.city,
-              item.distancesKm?.map(kmLabel).join(' / '),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </Copy>
-          <View style={[styles.row, { marginTop: spacing.xs }]}>
-            <Copy variant="emphasis" style={{ color: photoInk }}>
-              {race ? 'Voir la course' : 'Voir la fiche'}
-            </Copy>
-            <Icon name="arrow-forward" size={19} color={photoInk} />
-          </View>
-        </View>
-      </DiscoveryArt>
-    </Pressable>
+    />
   );
 }
 
@@ -258,7 +241,6 @@ export function ResultRow({
       style={({ pressed }) => [
         styles.result,
         {
-          backgroundColor: colors.surface,
           borderColor: colors.line,
           opacity: pressed ? interaction.pressedOpacity : 1,
         },
@@ -328,14 +310,7 @@ export function DiscoverySection({
 }) {
   return (
     <View style={{ gap: spacing.md }}>
-      <View style={[styles.wrap, { justifyContent: 'space-between', alignItems: 'center' }]}>
-        <Copy accessibilityRole="header" variant="heading" style={{ flexShrink: 1 }}>
-          {title}
-        </Copy>
-        {action && onPress && (
-          <Button title={action} size="compact" variant="quiet" feedback="none" onPress={onPress} />
-        )}
-      </View>
+      <SectionHeading editorial title={title} action={action} onPress={onPress} />
       {children}
     </View>
   );
@@ -412,9 +387,8 @@ const styles = StyleSheet.create({
   art: { overflow: 'hidden', borderRadius: radii.hero },
   artCenter: { alignItems: 'center', justifyContent: 'center' },
   result: {
-    borderRadius: radii.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.sm,
     gap: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',

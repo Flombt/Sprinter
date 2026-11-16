@@ -17,25 +17,44 @@ function contrast(first: string, second: string) {
 }
 
 const paletteNames: PaletteName[] = ['tempo', 'signal', 'cobalt'];
-const modes = ['light', 'dark'] as const;
+const modes = ['light', 'dark', 'instrument'] as const;
 const surfaces = ['background', 'surface', 'raised'] as const;
 
 describe.each(paletteNames)('palette %s', (name) => {
   describe.each(modes)('thème %s', (mode) => {
     const colors = buildPalettes(name)[mode];
     const swatches = {
-      accent: { color: colors.accent, text: colors.accentText, soft: colors.accentSoft, onColor: colors.accentInk },
+      accent: {
+        color: colors.accent,
+        text: colors.accentText,
+        soft: colors.accentSoft,
+        onColor: colors.accentInk,
+      },
       ...colors.zone,
     };
 
-    it.each(Object.entries(swatches))('%s respecte le contraste du texte et des éléments graphiques', (role, swatch) => {
-      expect(contrast(swatch.onColor, swatch.color), role + '.onColor sur son aplat').toBeGreaterThanOrEqual(4.5);
-      expect(contrast(swatch.text, swatch.soft), role + '.text sur son fond teinté').toBeGreaterThanOrEqual(4.5);
-      for (const surface of surfaces) {
-        expect(contrast(swatch.text, colors[surface]), role + '.text sur ' + surface).toBeGreaterThanOrEqual(4.5);
-        expect(contrast(swatch.color, colors[surface]), role + '.color sur ' + surface).toBeGreaterThanOrEqual(3);
-      }
-    });
+    it.each(Object.entries(swatches))(
+      '%s respecte le contraste du texte et des éléments graphiques',
+      (role, swatch) => {
+        expect(
+          contrast(swatch.onColor, swatch.color),
+          role + '.onColor sur son aplat',
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(swatch.text, swatch.soft), role + '.text sur son fond teinté').toBeGreaterThanOrEqual(
+          4.5,
+        );
+        for (const surface of surfaces) {
+          expect(
+            contrast(swatch.text, colors[surface]),
+            role + '.text sur ' + surface,
+          ).toBeGreaterThanOrEqual(4.5);
+          expect(
+            contrast(swatch.color, colors[surface]),
+            role + '.color sur ' + surface,
+          ).toBeGreaterThanOrEqual(3);
+        }
+      },
+    );
 
     it('respecte le contraste du bouton sur la carte crème', () => {
       expect(contrast(colors.heroActionText, colors.heroAction)).toBeGreaterThanOrEqual(4.5);
@@ -45,9 +64,9 @@ describe.each(paletteNames)('palette %s', (name) => {
     it('préserve les contrastes de texte neutres déjà conformes', () => {
       for (const text of ['text', 'secondary', 'muted'] as const) {
         for (const surface of [...surfaces, 'field'] as const) {
-          // Existing light muted on raised measures 4.41:1 and is outside the palette phase.
-          if (mode === 'light' && text === 'muted' && surface === 'raised') continue;
-          expect(contrast(colors[text], colors[surface]), text + ' sur ' + surface).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(colors[text], colors[surface]), text + ' sur ' + surface).toBeGreaterThanOrEqual(
+            4.5,
+          );
         }
       }
     });
